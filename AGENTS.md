@@ -50,6 +50,7 @@ pytest --cov        # With coverage
 - **Follow PEP 8** style guidelines strictly
 - **100-character line limit** (4-space indentation for Python, 2-space for YAML/JSON/MD)
 - **Group imports** at module top (stdlib, third-party, local)
+- **Avoid trailing whitespaces**
 
 ### Testing Requirements
 - **Write unit tests** for every new function
