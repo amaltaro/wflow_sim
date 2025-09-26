@@ -45,10 +45,10 @@ Automated release notes system for the Workflow Simulator project.
 ## Testing
 
 ```bash
-# Test locally
-./scripts/test-changelog.sh
+# Test the release workflow locally
+./scripts/test-release.sh
 
-# Generate changelog manually
+# Generate changelog manually (requires tags)
 git-chglog --config .chglog/config.yml --output CHANGELOG.md
 ```
 
@@ -57,9 +57,26 @@ git-chglog --config .chglog/config.yml --output CHANGELOG.md
 - **Workflow doesn't trigger**: Ensure tag follows semantic versioning (`1.0.0` or `v1.0.0`)
 - **Empty changelog**: Check commits follow conventional format
 - **Permission errors**: Verify GitHub Actions permissions
+- **Go cache errors**: The workflow disables Go cache to avoid `go.sum` issues
+- **git-chglog failures**: The workflow has fallback mechanisms for changelog generation
+
+### Common Issues
+
+1. **"Generate Changelog" step fails**:
+   - Check that commits follow conventional commit format
+   - Verify the `.chglog/config.yml` file exists
+   - The workflow will create a basic changelog if git-chglog fails
+
+2. **"Setup Go" cache warnings**:
+   - These are warnings, not errors
+   - The workflow disables Go cache to avoid dependency issues
+
+3. **No commits found**:
+   - Ensure commits are properly formatted
+   - Check that the tag range includes commits with conventional format
 
 ## Configuration Files
 
-- `.github/workflows/release-notes.yml` - GitHub Actions workflow
-- `.chglog/config.yml` - git-chglog configuration
+- `.github/workflows/release-notes.yml` - GitHub Actions workflow (single, robust approach)
+- `.chglog/config.yml` - Simple, reliable git-chglog configuration
 - `CONTRIBUTING.md` - Detailed commit guidelines

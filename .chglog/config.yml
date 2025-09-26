@@ -2,24 +2,6 @@
 # See: https://github.com/git-chglog/git-chglog
 
 style: github
-template: |
-  ## [{{.Tag}}]({{.URL}}) ({{datetime "2006-01-02" .Tag.Date}})
-  
-  {{range .Commits -}}
-  ### {{.Type | title}} {{if .Scope}}({{.Scope}}){{end}}
-  {{range .Commits}}
-  - {{.Subject}} ([{{.Hash.Short}}]({{.URL}}))
-  {{end}}
-  {{end}}
-  
-  {{if .NoteGroups}}
-  {{range .NoteGroups -}}
-  ### {{.Title}}
-  {{range .Notes}}
-  - {{.Body}}
-  {{end}}
-  {{end}}
-  {{end}}
 
 info:
   title: "CHANGELOG"
@@ -27,7 +9,6 @@ info:
 
 options:
   commits:
-    # Filters
     filters:
       Type:
         - feat
@@ -38,46 +19,8 @@ options:
         - perf
         - test
         - chore
-    # Sort commits
-    sort: "Scope"
-    # Commit message format
-    commit_message:
-      pattern: "^(\\w*)(\\(.+\\\))?: (.+)$"
-      pattern_maps:
-        - Type
-        - Scope
-        - Subject
-    # Header format
-    header:
-      pattern: "^(\\w*)(\\(.+\\\))?: (.+)$"
-      pattern_maps:
-        - Type
-        - Scope
-        - Subject
-    # Body format
-    body:
-      pattern: "^(\\w*)(\\(.+\\\))?: (.+)$"
-      pattern_maps:
-        - Type
-        - Scope
-        - Subject
-    # Footer format
-    footer:
-      pattern: "^(\\w*)(\\(.+\\\))?: (.+)$"
-      pattern_maps:
-        - Type
-        - Scope
-        - Subject
-    # Notes
-    notes:
-      pattern: "^(\\w*)(\\(.+\\\))?: (.+)$"
-      pattern_maps:
-        - Type
-        - Scope
-        - Subject
 
   commit_groups:
-    # Group commits by type
     title_order:
       - feat
       - fix
@@ -87,9 +30,6 @@ options:
       - perf
       - test
       - chore
-    # Sort groups
-    sort: "Title"
-    # Group title map
     title_maps:
       feat: "Features"
       fix: "Bug Fixes"
@@ -99,58 +39,3 @@ options:
       perf: "Performance Improvements"
       test: "Tests"
       chore: "Maintenance"
-
-  header:
-    # Header template
-    commit:
-      - "{{if .Scope}}{{.Scope}}: {{end}}{{.Subject}}"
-    # Header format
-    commit_filters:
-      Type:
-        - feat
-        - fix
-        - docs
-        - style
-        - refactor
-        - perf
-        - test
-        - chore
-
-  footer:
-    # Footer template
-    commit:
-      - "{{if .Scope}}{{.Scope}}: {{end}}{{.Subject}}"
-    # Footer format
-    commit_filters:
-      Type:
-        - feat
-        - fix
-        - docs
-        - style
-        - refactor
-        - perf
-        - test
-        - chore
-
-  issues:
-    # Issue format
-    prefix:
-      - "#"
-    # Issue link format
-    link: "https://github.com/amaltaro/wflow_sim/issues/{{.Number}}"
-
-  refs:
-    # Reference format
-    actions:
-      - "{{if .Scope}}{{.Scope}}: {{end}}{{.Subject}}"
-    # Reference filters
-    commit_filters:
-      Type:
-        - feat
-        - fix
-        - docs
-        - style
-        - refactor
-        - perf
-        - test
-        - chore
