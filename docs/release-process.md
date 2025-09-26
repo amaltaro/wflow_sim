@@ -65,7 +65,7 @@ git-chglog --config .chglog/config.yml --output CHANGELOG.md
 1. **"Generate Changelog" step fails**:
    - Check that commits follow conventional commit format
    - Verify the `.chglog/config.yml` file exists
-   - The workflow will create a basic changelog if git-chglog fails
+   - The workflow will automatically generate a grouped changelog if git-chglog fails
 
 2. **"Setup Go" cache warnings**:
    - These are warnings, not errors
@@ -74,6 +74,11 @@ git-chglog --config .chglog/config.yml --output CHANGELOG.md
 3. **No commits found**:
    - Ensure commits are properly formatted
    - Check that the tag range includes commits with conventional format
+
+4. **Fallback mechanism**:
+   - If git-chglog fails, the workflow automatically creates a structured changelog
+   - Commits are grouped by type (Features, Bug Fixes, Documentation, etc.)
+   - No manual intervention required
 
 ## Configuration Files
 

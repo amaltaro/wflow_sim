@@ -120,6 +120,16 @@ pytest -v           # Verbose output
 pytest --cov        # With coverage
 ```
 
+### Release Process
+```bash
+# Test release workflow locally
+./scripts/test-release.sh
+
+# Create a release (triggers automated release notes)
+git tag -a v1.0.0 -m "Release 1.0.0"
+git push origin v1.0.0
+```
+
 ## Documentation
 
 - [Workflow Metrics Usage](docs/workflow_metrics_usage.md) - Detailed metrics documentation
