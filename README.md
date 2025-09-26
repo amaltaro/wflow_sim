@@ -123,7 +123,9 @@ pytest --cov        # With coverage
 ## Documentation
 
 - [Workflow Metrics Usage](docs/workflow_metrics_usage.md) - Detailed metrics documentation
+- [Release Process](docs/release-process.md) - Automated release notes system
 - [Agent Instructions](AGENTS.md) - AI agent development guidelines
+- [Contributing Guidelines](CONTRIBUTING.md) - How to contribute to the project
 
 ## Examples
 
