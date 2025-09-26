@@ -11,36 +11,159 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # Required to create releases
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Required to get full history for changelog
-      
+
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.21'
           cache: false # Disable cache to avoid go.sum issues
-      
+
       - name: Install git-chglog
         run: |
           go install github.com/git-chglog/git-chglog/cmd/git-chglog@latest
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-      
+
       - name: Generate Changelog
         id: changelog
         run: |
-          # Generate changelog with our simple, robust configuration
-          git-chglog --config .chglog/config.yml --output CHANGELOG.md ${{ github.ref_name }} || {
-            echo "Changelog generation failed, creating basic changelog..."
+          # Try to generate changelog with git-chglog
+          if git-chglog --config .chglog/config.yml --output CHANGELOG.md ${{ github.ref_name }} 2>/dev/null; then
+            echo "✅ Changelog generated successfully with git-chglog"
+          else
+            echo "⚠️  git-chglog failed, generating manual changelog with commit type grouping..."
+
+            # Get commits since last tag
+            LAST_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+            if [ -n "$LAST_TAG" ]; then
+              COMMITS=$(git log --oneline $LAST_TAG..HEAD)
+            else
+              COMMITS=$(git log --oneline -10)
+            fi
+
+            # Create manual changelog with commit type grouping
             echo "## ${{ github.ref_name }}" > CHANGELOG.md
             echo "" >> CHANGELOG.md
-            echo "Release ${{ github.ref_name }}" >> CHANGELOG.md
-            echo "" >> CHANGELOG.md
-            echo "Please ensure commits follow conventional commit format for automatic changelog generation." >> CHANGELOG.md
-          }
+
+            # Group commits by type
+            FEATURES=$(echo "$COMMITS" | grep -E "^(feat|feature)" || true)
+            FIXES=$(echo "$COMMITS" | grep -E "^(fix|bugfix)" || true)
+            DOCS=$(echo "$COMMITS" | grep -E "^(docs|doc)" || true)
+            STYLE=$(echo "$COMMITS" | grep -E "^(style)" || true)
+            REFACTOR=$(echo "$COMMITS" | grep -E "^(refactor)" || true)
+            PERF=$(echo "$COMMITS" | grep -E "^(perf|performance)" || true)
+            TESTS=$(echo "$COMMITS" | grep -E "^(test|tests)" || true)
+            CHORE=$(echo "$COMMITS" | grep -E "^(chore|chores)" || true)
+            OTHER=$(echo "$COMMITS" | grep -vE "^(feat|feature|fix|bugfix|docs|doc|style|refactor|perf|performance|test|tests|chore|chores)" || true)
+
+            # Add grouped sections
+            if [ -n "$FEATURES" ]; then
+              echo "### Features" >> CHANGELOG.md
+              echo "" >> CHANGELOG.md
+              echo "$FEATURES" | while read -r commit; do
+                if [ -n "$commit" ]; then
+                  echo "- $commit" >> CHANGELOG.md
+                fi
+              done
+              echo "" >> CHANGELOG.md
+            fi
+
+            if [ -n "$FIXES" ]; then
+              echo "### Bug Fixes" >> CHANGELOG.md
+              echo "" >> CHANGELOG.md
+              echo "$FIXES" | while read -r commit; do
+                if [ -n "$commit" ]; then
+                  echo "- $commit" >> CHANGELOG.md
+                fi
+              done
+              echo "" >> CHANGELOG.md
+            fi
+
+            if [ -n "$DOCS" ]; then
+              echo "### Documentation" >> CHANGELOG.md
+              echo "" >> CHANGELOG.md
+              echo "$DOCS" | while read -r commit; do
+                if [ -n "$commit" ]; then
+                  echo "- $commit" >> CHANGELOG.md
+                fi
+              done
+              echo "" >> CHANGELOG.md
+            fi
+
+            if [ -n "$STYLE" ]; then
+              echo "### Code Style" >> CHANGELOG.md
+              echo "" >> CHANGELOG.md
+              echo "$STYLE" | while read -r commit; do
+                if [ -n "$commit" ]; then
+                  echo "- $commit" >> CHANGELOG.md
+                fi
+              done
+              echo "" >> CHANGELOG.md
+            fi
+
+            if [ -n "$REFACTOR" ]; then
+              echo "### Code Refactoring" >> CHANGELOG.md
+              echo "" >> CHANGELOG.md
+              echo "$REFACTOR" | while read -r commit; do
+                if [ -n "$commit" ]; then
+                  echo "- $commit" >> CHANGELOG.md
+                fi
+              done
+              echo "" >> CHANGELOG.md
+            fi
+
+            if [ -n "$PERF" ]; then
+              echo "### Performance Improvements" >> CHANGELOG.md
+              echo "" >> CHANGELOG.md
+              echo "$PERF" | while read -r commit; do
+                if [ -n "$commit" ]; then
+                  echo "- $commit" >> CHANGELOG.md
+                fi
+              done
+              echo "" >> CHANGELOG.md
+            fi
+
+            if [ -n "$TESTS" ]; then
+              echo "### Tests" >> CHANGELOG.md
+              echo "" >> CHANGELOG.md
+              echo "$TESTS" | while read -r commit; do
+                if [ -n "$commit" ]; then
+                  echo "- $commit" >> CHANGELOG.md
+                fi
+              done
+              echo "" >> CHANGELOG.md
+            fi
+
+            if [ -n "$CHORE" ]; then
+              echo "### Maintenance" >> CHANGELOG.md
+              echo "" >> CHANGELOG.md
+              echo "$CHORE" | while read -r commit; do
+                if [ -n "$commit" ]; then
+                  echo "- $commit" >> CHANGELOG.md
+                fi
+              done
+              echo "" >> CHANGELOG.md
+            fi
+
+            if [ -n "$OTHER" ]; then
+              echo "### Other Changes" >> CHANGELOG.md
+              echo "" >> CHANGELOG.md
+              echo "$OTHER" | while read -r commit; do
+                if [ -n "$commit" ]; then
+                  echo "- $commit" >> CHANGELOG.md
+                fi
+              done
+              echo "" >> CHANGELOG.md
+            fi
+
+            echo "---" >> CHANGELOG.md
+            echo "*Generated automatically from commit messages*" >> CHANGELOG.md
+          fi
 
           # Output the changelog
           CHANGELOG=$(cat CHANGELOG.md)
