@@ -1,12 +1,8 @@
-# Configuration for git-chglog
-# See: https://github.com/git-chglog/git-chglog
-
 style: github
-
+template: CHANGELOG.tpl.md
 info:
-  title: "CHANGELOG"
-  repository_url: "https://github.com/amaltaro/wflow_sim"
-
+  title: CHANGELOG
+  repository_url: https://github.com/dmwm/wmcoredb
 options:
   commits:
     filters:
@@ -19,23 +15,22 @@ options:
         - perf
         - test
         - chore
-
   commit_groups:
-    title_order:
-      - feat
-      - fix
-      - docs
-      - style
-      - refactor
-      - perf
-      - test
-      - chore
     title_maps:
-      feat: "Features"
-      fix: "Bug Fixes"
-      docs: "Documentation"
-      style: "Code Style"
-      refactor: "Code Refactoring"
-      perf: "Performance Improvements"
-      test: "Tests"
-      chore: "Maintenance"
+      feat: Features
+      fix: Bug Fixes
+      docs: Documentation
+      style: Code Style
+      refactor: Code Refactoring
+      perf: Performance Improvements
+      test: Tests
+      chore: Maintenance
+  header:
+    pattern: "^(\\w*)(?:\\(([\\w\\$\\.\\-\\*\\s]*)\\))?\\:\\s(.*)$"
+    pattern_maps:
+      - Type
+      - Scope
+      - Subject
+  notes:
+    keywords:
+      - BREAKING CHANGE
