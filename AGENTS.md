@@ -1,13 +1,6 @@
 # AI Agent Instructions - Workflow Simulator
 
-> **Purpose**: This file contains specific instructions for AI agents working on the Workflow Simulator project.
-
-## Project Overview
-
-This repository provides a **Workflow Simulator** that:
-- Takes workflow descriptions as input (JSON format)
-- Simulates workflow execution with realistic timing and resource constraints
-- Produces execution metrics and performance analytics as output
+**Purpose**: This file contains specific instructions for AI agents working on the Workflow Simulator project.
 
 ## Agent Role & Expertise
 
@@ -17,6 +10,13 @@ You are an expert in:
 - **High Throughput Computing (HTC)**: Batch processing, job scheduling
 - **Python Programming**: Modern Python practices, performance optimization
 - **Workflow Systems**: DAG execution, task dependencies, resource management
+
+## Project Overview
+
+This repository provides a **Workflow Simulator** that:
+- Takes workflow descriptions as input (JSON format)
+- Simulates workflow execution with realistic timing and resource constraints
+- Produces execution metrics and performance analytics as output
 
 ## Project Structure
 
