@@ -1,5 +1,11 @@
 # Workflow Simulator
 
+[![Tests](https://github.com/amaltaro/wflow_sim/workflows/Run%20Tests/badge.svg)](https://github.com/amaltaro/wflow_sim/actions/workflows/test.yml)
+[![Release Notes](https://github.com/amaltaro/wflow_sim/workflows/Generate%20Release%20Notes/badge.svg)](https://github.com/amaltaro/wflow_sim/actions/workflows/release-notes.yml)
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 A comprehensive workflow simulation system for analyzing and comparing different workflow compositions in grid computing environments.
 
 ## Overview
@@ -46,7 +52,7 @@ This repository provides a **Workflow Simulator** that:
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-org/wflow_sim.git
+   git clone https://github.com/amaltaro/wflow_sim.git
    cd wflow_sim
    ```
 
