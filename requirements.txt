@@ -1,0 +1,6 @@
+# wflow-sim Dependencies
+# This project uses only Python standard library modules
+# No external dependencies are required for basic functionality
+
+# Optional: For development and testing
+pytest>=7.0.0

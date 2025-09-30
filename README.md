@@ -35,6 +35,35 @@ This repository provides a **Workflow Simulator** that:
 - **Resource Efficiency**: CPU, memory, storage, and network usage
 - **Scalability Analysis**: Job scaling and parallel execution efficiency
 
+## Installation
+
+### Prerequisites
+
+- Python 3.8 or higher
+- No external dependencies required (uses only Python standard library)
+
+### Quick Setup
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-org/wflow_sim.git
+   cd wflow_sim
+   ```
+
+2. **Run the example:**
+   ```bash
+   python examples/metrics_example.py
+   ```
+
+### Optional: Install Testing Dependencies
+
+If you want to run the tests:
+
+```bash
+pip install -r requirements.txt
+pytest tests/ -v
+```
+
 ## Quick Start
 
 ### 1. Calculate Workflow Metrics
@@ -107,18 +136,26 @@ Workflows are defined in JSON format with the following structure:
 
 ## Development
 
-### Code Quality
+### Testing
+
 ```bash
-ruff check          # Type-check and lint
-ruff format         # Auto-fix formatting
+# Install testing dependencies
+pip install -r requirements.txt
+
+# Run all tests
+pytest tests/ -v
+
+# Run tests with coverage
+pytest tests/ --cov=src --cov-report=html
 ```
 
-### Testing
-```bash
-pytest              # Run all tests
-pytest -v           # Verbose output
-pytest --cov        # With coverage
-```
+### Code Quality
+
+The project follows Python best practices:
+- Use type hints where appropriate
+- Follow PEP 8 style guidelines
+- Write comprehensive docstrings
+- Maintain high test coverage
 
 ### Release Process
 ```bash
