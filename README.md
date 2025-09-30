@@ -3,7 +3,7 @@
 [![Tests](https://github.com/amaltaro/wflow_sim/workflows/Run%20Tests/badge.svg)](https://github.com/amaltaro/wflow_sim/actions/workflows/test.yml)
 [![Release Notes](https://github.com/amaltaro/wflow_sim/workflows/Generate%20Release%20Notes/badge.svg)](https://github.com/amaltaro/wflow_sim/actions/workflows/release-notes.yml)
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Code Style](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
 A comprehensive workflow simulation system for analyzing and comparing different workflow compositions in grid computing environments.
