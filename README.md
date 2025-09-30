@@ -149,6 +149,17 @@ pytest tests/ -v
 pytest tests/ --cov=src --cov-report=html
 ```
 
+### Continuous Integration
+
+The project includes a GitHub Actions workflow that automatically:
+- Runs on every push to `main` and `develop` branches
+- Runs on pull requests to `main` branch
+- Tests on Python 3.12
+- Installs dependencies and runs unit tests
+- Verifies the example script works correctly
+
+If any tests fail, the CI pipeline will report the error and fail the build.
+
 ### Code Quality
 
 The project follows Python best practices:
