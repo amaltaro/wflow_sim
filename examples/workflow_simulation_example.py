@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from workflow_runner import WorkflowRunner
-from workflow_simulator import load_workflow_from_file, ResourceConfig
+from workflow_simulator import ResourceConfig
 
 
 def main():
@@ -27,13 +27,11 @@ def main():
     # Configure logging (optional - set to WARNING to reduce output)
     logging.basicConfig(level=logging.WARNING)
     
-    # Load workflow data
+    # Set workflow file path
     workflow_file = Path(__file__).parent.parent / 'templates' / '3tasks_composition_001.json'
-    print(f"Loading workflow from: {workflow_file}")
+    print(f"Using workflow file: {workflow_file}")
     
-    try:
-        workflow_data = load_workflow_from_file(workflow_file)
-    except FileNotFoundError:
+    if not workflow_file.exists():
         print(f"❌ Error: Workflow file not found: {workflow_file}")
         return 1
     
@@ -53,7 +51,7 @@ def main():
     
     # Run simulation
     print("🚀 Starting workflow simulation...")
-    results = runner.run_workflow(workflow_data)
+    results = runner.run_workflow(workflow_file)
     
     if not results['success']:
         print(f"❌ Simulation failed: {results['error_message']}")

@@ -105,15 +105,15 @@ class WorkflowSimulator:
         """Setup logging configuration."""
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            format='%(asctime)s:%(name)s:%(levelname)s: %(message)s'
         )
         
-    def simulate_workflow(self, workflow_data: Dict[str, Any]) -> SimulationResult:
+    def simulate_workflow(self, workflow_filepath: Union[str, Path]) -> SimulationResult:
         """
-        Simulate workflow execution based on the provided workflow data.
+        Simulate workflow execution based on the provided workflow file.
         
         Args:
-            workflow_data: Dictionary containing workflow definition
+            workflow_filepath: Path to JSON file containing workflow definition
             
         Returns:
             SimulationResult object with execution details and metrics
@@ -121,6 +121,12 @@ class WorkflowSimulator:
         self.logger.info("Starting workflow simulation")
         
         try:
+            # Load workflow data from file
+            with open(workflow_filepath, 'r') as f:
+                workflow_data = json.load(f)
+
+            self.logger.info(f"Loaded workflow data from: {workflow_filepath}")
+            self.logger.info(f"Using resources: {self.resource_config}")
             # Parse workflow data
             workflow_id = workflow_data.get('workflow_id', 'unknown')
             composition_number = workflow_data.get('CompositionNumber', 0)
@@ -162,9 +168,9 @@ class WorkflowSimulator:
         except Exception as e:
             self.logger.error(f"Workflow simulation failed: {str(e)}")
             return SimulationResult(
-                workflow_id=workflow_data.get('workflow_id', 'unknown'),
-                composition_number=workflow_data.get('CompositionNumber', 0),
-                total_events=workflow_data.get('RequestNumEvents', 0),
+                workflow_id='unknown',
+                composition_number=0,
+                total_events=0,
                 total_groups=0,
                 total_jobs=0,
                 total_wall_time=0.0,
@@ -430,8 +436,7 @@ class WorkflowSimulator:
             }
             execution_log.append(log_entry)
             
-            self.logger.info(f"Job {job.job_id}: {job.batch_size} events, "
-                           f"{job.wallclock_time:.2f}s wallclock")
+            self.logger.debug(f"Job {job.job_id}: {job.batch_size} events, {job.wallclock_time:.2f}s wallclock")
             
             max_job_time = max(max_job_time, job.wallclock_time)
             current_time += job.wallclock_time
@@ -498,9 +503,6 @@ def load_workflow_from_file(filepath: Union[str, Path]) -> Dict[str, Any]:
 
 def main():
     """Example usage of the WorkflowSimulator."""
-    # Load workflow data
-    workflow_data = load_workflow_from_file('templates/3tasks_composition_001.json')
-    
     # Configure resources
     resource_config = ResourceConfig(
         target_wallclock_time=43200.0,  # 12 hours
@@ -509,7 +511,7 @@ def main():
     
     # Create simulator and run simulation
     simulator = WorkflowSimulator(resource_config)
-    result = simulator.simulate_workflow(workflow_data)
+    result = simulator.simulate_workflow('templates/3tasks_composition_001.json')
     
     # Print results
     simulator.print_simulation_summary(result)

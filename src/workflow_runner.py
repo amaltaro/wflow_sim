@@ -11,8 +11,12 @@ from typing import Dict, List, Any, Optional, Union
 from pathlib import Path
 import time
 
-from workflow_simulator import WorkflowSimulator, ResourceConfig, SimulationResult
-from workflow_metrics import WorkflowMetricsCalculator, WorkflowMetrics
+try:
+    from .workflow_simulator import WorkflowSimulator, ResourceConfig, SimulationResult
+    from .workflow_metrics import WorkflowMetricsCalculator, WorkflowMetrics
+except ImportError:
+    from workflow_simulator import WorkflowSimulator, ResourceConfig, SimulationResult
+    from workflow_metrics import WorkflowMetricsCalculator, WorkflowMetrics
 
 
 class WorkflowRunner:
@@ -34,12 +38,12 @@ class WorkflowRunner:
         self.simulator = WorkflowSimulator(self.resource_config)
         self.logger = logging.getLogger(__name__)
         
-    def run_workflow(self, workflow_data: Dict[str, Any]) -> Dict[str, Any]:
+    def run_workflow(self, workflow_filepath: Union[str, Path]) -> Dict[str, Any]:
         """
         Run a complete workflow simulation and analysis.
         
         Args:
-            workflow_data: Dictionary containing workflow definition
+            workflow_filepath: Path to JSON file containing workflow definition
             
         Returns:
             Dictionary containing simulation results and metrics
@@ -47,7 +51,7 @@ class WorkflowRunner:
         self.logger.info("Starting complete workflow execution and analysis")
         
         # Step 1: Run simulation
-        simulation_result = self.simulator.simulate_workflow(workflow_data)
+        simulation_result = self.simulator.simulate_workflow(workflow_filepath)
         
         if not simulation_result.success:
             self.logger.error(f"Workflow simulation failed: {simulation_result.error_message}")
@@ -59,7 +63,7 @@ class WorkflowRunner:
             }
         
         # Step 2: Convert simulation result to metrics-compatible format
-        metrics_data = self._convert_simulation_to_metrics_data(simulation_result, workflow_data)
+        metrics_data = self._convert_simulation_to_metrics_data(simulation_result, workflow_filepath)
         
         # Step 3: Calculate metrics
         metrics_calculator = WorkflowMetricsCalculator(metrics_data)
@@ -75,8 +79,12 @@ class WorkflowRunner:
         }
     
     def _convert_simulation_to_metrics_data(self, simulation_result: SimulationResult, 
-                                          workflow_data: Dict[str, Any]) -> Dict[str, Any]:
+                                          workflow_filepath: Union[str, Path]) -> Dict[str, Any]:
         """Convert simulation result to format compatible with metrics calculator."""
+        # Load workflow data from file
+        with open(workflow_filepath, 'r') as f:
+            workflow_data = json.load(f)
+
         # Start with original workflow data
         metrics_data = workflow_data.copy()
         
@@ -258,9 +266,6 @@ class WorkflowRunner:
 
 def main():
     """Example usage of the WorkflowRunner."""
-    # Load workflow data
-    workflow_data = load_workflow_from_file('templates/3tasks_composition_001.json')
-    
     # Configure resources
     resource_config = ResourceConfig(
         target_wallclock_time=43200.0,  # 12 hours
@@ -269,7 +274,7 @@ def main():
     
     # Create runner and execute workflow
     runner = WorkflowRunner(resource_config)
-    results = runner.run_workflow(workflow_data)
+    results = runner.run_workflow('templates/3tasks_composition_001.json')
     
     # Print complete summary
     runner.print_complete_summary(results)
@@ -279,5 +284,4 @@ def main():
 
 
 if __name__ == "__main__":
-    from .workflow_simulator import load_workflow_from_file
     main()
