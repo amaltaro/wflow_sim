@@ -33,10 +33,6 @@ The workflow simulation system provides:
 
 ```python
 from src.workflow_runner import WorkflowRunner, ResourceConfig
-from src.workflow_simulator import load_workflow_from_file
-
-# Load workflow data
-workflow_data = load_workflow_from_file('templates/3tasks_composition_001.json')
 
 # Configure resources
 resource_config = ResourceConfig(
@@ -46,7 +42,7 @@ resource_config = ResourceConfig(
 
 # Create runner and execute
 runner = WorkflowRunner(resource_config)
-results = runner.run_workflow(workflow_data)
+results = runner.run_workflow('templates/3tasks_composition_001.json')
 
 # Print results
 runner.print_complete_summary(results)
@@ -87,7 +83,7 @@ from src.workflow_simulator import WorkflowSimulator, ResourceConfig
 simulator = WorkflowSimulator(ResourceConfig())
 
 # Run simulation
-result = simulator.simulate_workflow(workflow_data)
+result = simulator.simulate_workflow('templates/3tasks_composition_001.json')
 
 # Print simulation summary
 simulator.print_simulation_summary(result)
@@ -105,7 +101,7 @@ from src.workflow_runner import WorkflowRunner
 runner = WorkflowRunner(resource_config)
 
 # Run complete analysis (simulation + metrics)
-results = runner.run_workflow(workflow_data)
+results = runner.run_workflow('templates/3tasks_composition_001.json')
 
 # Access individual components
 simulation = results['simulation_result']
@@ -287,7 +283,7 @@ logging.basicConfig(level=logging.INFO)
 Main simulation engine class.
 
 **Methods:**
-- `simulate_workflow(workflow_data)`: Run simulation
+- `simulate_workflow(workflow_filepath)`: Run simulation from JSON file
 - `print_simulation_summary(result)`: Print results
 - `write_simulation_result(result, filepath)`: Save results
 
@@ -296,7 +292,7 @@ Main simulation engine class.
 High-level interface combining simulation and metrics.
 
 **Methods:**
-- `run_workflow(workflow_data)`: Complete analysis
+- `run_workflow(workflow_filepath)`: Complete analysis from JSON file
 - `print_complete_summary(results)`: Print comprehensive results
 - `write_complete_results(results, filepath)`: Save complete results
 
