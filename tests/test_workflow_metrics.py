@@ -31,7 +31,7 @@ class TestWorkflowMetricsCalculator:
                 "SizePerEvent": 200,
                 "TimePerEvent": 10,
                 "GroupName": "group_1",
-                "GroupInputEvents": 1000
+                "GroupInputEvents": 1080
             },
             "Taskset2": {
                 "KeepOutput": True,
@@ -43,7 +43,7 @@ class TestWorkflowMetricsCalculator:
                 "TimePerEvent": 20,
                 "InputTaskset": "Taskset1",
                 "GroupName": "group_1",
-                "GroupInputEvents": 1000
+                "GroupInputEvents": 1080
             },
             "Taskset3": {
                 "KeepOutput": True,
@@ -55,7 +55,7 @@ class TestWorkflowMetricsCalculator:
                 "TimePerEvent": 10,
                 "InputTaskset": "Taskset2",
                 "GroupName": "group_1",
-                "GroupInputEvents": 1000
+                "GroupInputEvents": 1080
             },
             "CompositionNumber": 1
         }
@@ -82,8 +82,8 @@ class TestWorkflowMetricsCalculator:
         """Test total jobs calculation."""
         calculator = WorkflowMetricsCalculator(self.sample_workflow)
         total_jobs = calculator._calculate_total_jobs()
-        # Should be 1000 jobs (1000000 requested / 1000 group input events)
-        assert total_jobs == 1000
+        # Should be 926 jobs (1000000 requested / 1080 group input events, rounded up)
+        assert total_jobs == 926
     
     def test_calculate_metrics(self):
         """Test complete metrics calculation."""
@@ -94,10 +94,11 @@ class TestWorkflowMetricsCalculator:
         assert metrics.composition_number == 1
         assert metrics.total_tasksets == 3
         assert metrics.total_groups == 1
-        assert metrics.total_jobs == 1000
-        assert metrics.total_execution_time > 0
-        assert metrics.resource_efficiency >= 0
-        assert metrics.throughput >= 0
+        assert metrics.total_jobs == 926
+        assert metrics.total_wall_time == 40000000.0
+        assert metrics.total_turnaround_time == 43200.0
+        assert metrics.resource_efficiency == pytest.approx(0.05554938340184424, rel=1e-10)
+        assert metrics.throughput == pytest.approx(0.025, rel=1e-10)
         assert metrics.success_rate == 1.0
     
     def test_get_groups_info(self):
@@ -106,7 +107,7 @@ class TestWorkflowMetricsCalculator:
         groups = calculator._get_groups_info()
         
         assert "group_1" in groups
-        assert groups["group_1"]["GroupInputEvents"] == 1000
+        assert groups["group_1"]["GroupInputEvents"] == 1080
         assert len(groups["group_1"]["tasksets"]) == 3
     
     def test_get_metrics_summary(self):
@@ -117,7 +118,7 @@ class TestWorkflowMetricsCalculator:
         
         required_keys = [
             'workflow_id', 'total_tasksets', 'total_groups', 'total_jobs',
-            'execution_time', 'resource_efficiency', 'throughput', 'success_rate'
+            'total_wall_time', 'total_turnaround_time', 'resource_efficiency', 'throughput', 'success_rate'
         ]
         
         for key in required_keys:
@@ -150,7 +151,7 @@ class TestWorkflowMetricsCalculator:
         
         assert data['total_tasksets'] == 3
         assert data['total_groups'] == 1
-        assert data['total_jobs'] == 1000
+        assert data['total_jobs'] == 926
 
 
 if __name__ == "__main__":

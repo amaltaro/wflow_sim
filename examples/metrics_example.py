@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from workflow_metrics import WorkflowMetricsCalculator
+from workflow_runner import WorkflowRunner
 
 
 def main():
@@ -28,13 +29,28 @@ def main():
     # Load workflow data
     with open(template_path, 'r') as f:
         workflow_data = json.load(f)
-    
+
     print("Loading workflow data from:", template_path)
     print(f"Workflow: {workflow_data.get('Comments', 'Unknown')}")
     print(f"Number of tasks: {workflow_data.get('NumTasks', 0)}")
     print(f"Requested events: {workflow_data.get('RequestNumEvents', 0)}")
+
+    # Run simulation to get accurate results
+    print("\nRunning workflow simulation...")
+    runner = WorkflowRunner()
+    results = runner.run_workflow(template_path)
     
-    # Create metrics calculator
+    if not results['success']:
+        print(f"Simulation failed: {results['error_message']}")
+        return
+
+    # Create metrics calculator with original workflow data + simulation results
+    # Add simulation results to the original workflow data
+    workflow_data['simulation_results'] = {
+        'total_wall_time': results['simulation_result'].total_wall_time,
+        'total_turnaround_time': results['simulation_result'].total_turnaround_time,
+        'total_jobs': results['simulation_result'].total_jobs
+    }
     calculator = WorkflowMetricsCalculator(workflow_data)
     
     # Calculate metrics

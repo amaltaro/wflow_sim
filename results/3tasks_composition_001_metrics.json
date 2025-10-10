@@ -4,8 +4,8 @@
   "total_tasksets": 3,
   "total_groups": 1,
   "total_jobs": 925,
-  "total_execution_time": 43200.0,
-  "total_wall_time": 43200.0,
+  "total_wall_time": 40000000,
+  "total_turnaround_time": 43200.0,
   "group_metrics": [
     {
       "group_id": "group_5",
@@ -88,5 +88,5 @@
   "resource_efficiency": 0.05554938340184424,
   "throughput": 23.14814814814815,
   "success_rate": 1.0,
-  "timestamp": 1758922132.871606
+  "timestamp": 1760099572.193378
 }
