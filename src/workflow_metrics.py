@@ -7,6 +7,7 @@ results, supporting performance analysis and comparison of different workflow co
 
 import json
 import logging
+import math
 from typing import Dict, List, Any, Optional, Union
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -113,9 +114,8 @@ class WorkflowMetricsCalculator:
         # Calculate timing metrics
         total_wall_time = self._calculate_total_wall_time()
 
-        # Get turnaround time from simulation results if available
-        simulation_results = self.workflow_data.get('simulation_results', {})
-        total_turnaround_time = simulation_results.get('total_turnaround_time', self._calculate_total_execution_time())
+        # Calculate turnaround time (time of longest job)
+        total_turnaround_time = self._calculate_total_turnaround_time()
 
         # Calculate group-level metrics
         group_metrics = self._calculate_group_metrics()
@@ -171,25 +171,39 @@ class WorkflowMetricsCalculator:
 
             # Calculate job scaling based on requested vs actual events
             if group_input_events > 0:
-                jobs_for_group = max(1, requested_events // group_input_events)
+                jobs_for_group = max(1, math.ceil(requested_events / group_input_events))
                 total_jobs += jobs_for_group
 
         return total_jobs
 
     def _calculate_total_execution_time(self) -> float:
         """Calculate total execution time across all tasksets."""
-        # This would be calculated from actual execution results
-        # For now, return a placeholder calculation
-        total_time = 0.0
+        # Calculate time per job (sum of all taskset times in a group)
+        time_per_job = 0.0
         for key, value in self.workflow_data.items():
             if key.startswith('Taskset') and isinstance(value, dict):
                 time_per_event = value.get('TimePerEvent', 0)
                 input_events = value.get('GroupInputEvents', 0)
-                total_time += time_per_event * input_events
-        return total_time
+                # Time for this taskset in one job
+                taskset_time = time_per_event * input_events
+                time_per_job += taskset_time
+
+        # Calculate exact fractional job count for wall time
+        requested_events = self.workflow_data.get('RequestNumEvents', 0)
+        groups = self._get_groups_info()
+        exact_total_jobs = 0.0
+
+        for group_id, group_info in groups.items():
+            group_input_events = group_info.get('GroupInputEvents', requested_events)
+            if group_input_events > 0:
+                exact_jobs_for_group = requested_events / group_input_events
+                exact_total_jobs += exact_jobs_for_group
+
+        # Total wall time = exact fractional jobs * time per job
+        return exact_total_jobs * time_per_job
 
     def _calculate_total_wall_time(self) -> float:
-        """Calculate total wall time (real elapsed time)."""
+        """Calculate total wall time (sum of all job times)."""
         # Use simulation results if available, otherwise calculate from workflow data
         simulation_results = self.workflow_data.get('simulation_results', {})
         if 'total_wall_time' in simulation_results:
@@ -197,6 +211,25 @@ class WorkflowMetricsCalculator:
 
         # Fallback to calculation from workflow data
         return self._calculate_total_execution_time()
+
+    def _calculate_total_turnaround_time(self) -> float:
+        """Calculate total turnaround time (time of longest job)."""
+        # Use simulation results if available, otherwise calculate from workflow data
+        simulation_results = self.workflow_data.get('simulation_results', {})
+        if 'total_turnaround_time' in simulation_results:
+            return simulation_results['total_turnaround_time']
+
+        # Fallback: calculate time per job (since jobs run in parallel, turnaround = longest job time)
+        time_per_job = 0.0
+        for key, value in self.workflow_data.items():
+            if key.startswith('Taskset') and isinstance(value, dict):
+                time_per_event = value.get('TimePerEvent', 0)
+                input_events = value.get('GroupInputEvents', 0)
+                # Time for this taskset in one job
+                taskset_time = time_per_event * input_events
+                time_per_job += taskset_time
+
+        return time_per_job
 
     def _calculate_group_metrics(self) -> List[GroupMetrics]:
         """Calculate metrics for each group."""
