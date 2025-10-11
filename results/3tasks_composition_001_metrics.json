@@ -1,9 +1,9 @@
 {
-  "workflow_id": "unknown",
+  "workflow_id": "/Users/amaltar2/Master/wflow_sim/templates/3tasks_composition_001.json",
   "composition_number": 1,
   "total_tasksets": 3,
   "total_groups": 1,
-  "total_jobs": 925,
+  "total_jobs": 926,
   "total_wall_time": 40000000,
   "total_turnaround_time": 43200.0,
   "group_metrics": [
@@ -81,12 +81,12 @@
         "storage_usage": 594000,
         "network_usage": 0.0
       },
-      "job_count": 925,
+      "job_count": 926,
       "success": true
     }
   ],
-  "resource_efficiency": 0.05554938340184424,
+  "resource_efficiency": 0.05555555555555555,
   "throughput": 23.14814814814815,
   "success_rate": 1.0,
-  "timestamp": 1760099572.193378
+  "timestamp": 1760155057.0798268
 }
