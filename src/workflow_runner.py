@@ -62,12 +62,9 @@ class WorkflowRunner:
                 'error_message': simulation_result.error_message
             }
 
-        # Step 2: Convert simulation result to metrics-compatible format
-        metrics_data = self._convert_simulation_to_metrics_data(simulation_result, workflow_filepath)
-
-        # Step 3: Calculate metrics
-        metrics_calculator = WorkflowMetricsCalculator(metrics_data)
-        metrics = metrics_calculator.calculate_metrics()
+        # Step 2: Calculate metrics directly from simulation result
+        metrics_calculator = WorkflowMetricsCalculator()
+        metrics = metrics_calculator.calculate_metrics(simulation_result)
 
         self.logger.info("Workflow execution and analysis completed successfully")
 
@@ -78,52 +75,6 @@ class WorkflowRunner:
             'error_message': None
         }
 
-    def _convert_simulation_to_metrics_data(self, simulation_result: SimulationResult,
-                                          workflow_filepath: Union[str, Path]) -> Dict[str, Any]:
-        """Convert simulation result to format compatible with metrics calculator."""
-        # Load workflow data from file
-        with open(workflow_filepath, 'r') as f:
-            workflow_data = json.load(f)
-
-        # Start with original workflow data
-        metrics_data = workflow_data.copy()
-
-        # Add simulation-specific data
-        metrics_data['workflow_id'] = simulation_result.workflow_id
-        metrics_data['simulation_results'] = {
-            'total_wall_time': simulation_result.total_wall_time,
-            'total_turnaround_time': simulation_result.total_turnaround_time,
-            'total_jobs': simulation_result.total_jobs,
-            'groups': []
-        }
-
-        # Convert group information
-        for group in simulation_result.groups:
-            group_data = {
-                'group_id': group.group_id,
-                'job_count': group.job_count,
-                'total_execution_time': group.total_execution_time,
-                'input_events': group.input_events,
-                'tasksets': []
-            }
-
-            # Convert taskset information
-            for taskset in group.tasksets:
-                taskset_data = {
-                    'taskset_id': taskset.taskset_id,
-                    'group_name': taskset.group_name,
-                    'time_per_event': taskset.time_per_event,
-                    'memory': taskset.memory,
-                    'multicore': taskset.multicore,
-                    'size_per_event': taskset.size_per_event,
-                    'group_input_events': taskset.group_input_events,
-                    'execution_time': taskset.time_per_event * taskset.group_input_events
-                }
-                group_data['tasksets'].append(taskset_data)
-
-            metrics_data['simulation_results']['groups'].append(group_data)
-
-        return metrics_data
 
     def run_workflow_from_file(self, filepath: Union[str, Path]) -> Dict[str, Any]:
         """
@@ -135,10 +86,7 @@ class WorkflowRunner:
         Returns:
             Dictionary containing simulation results and metrics
         """
-        with open(filepath, 'r') as f:
-            workflow_data = json.load(f)
-
-        return self.run_workflow(workflow_data)
+        return self.run_workflow(filepath)
 
     def print_complete_summary(self, results: Dict[str, Any]) -> None:
         """Print a complete summary of simulation and metrics."""
@@ -184,19 +132,16 @@ class WorkflowRunner:
                 print(f"      {taskset.taskset_id}: {taskset.time_per_event}s/event, "
                       f"{taskset.memory}MB, {taskset.multicore} cores")
 
-        # Job statistics
+        # Job statistics using consolidated metrics calculator
         print(f"\n⚡ JOB STATISTICS:")
-        job_wall_times = [job.wallclock_time for job in simulation.jobs]
-        if job_wall_times:
-            print(f"  Average Job Wall Time: {sum(job_wall_times)/len(job_wall_times):.2f}s")
-            print(f"  Min Job Wall Time: {min(job_wall_times):.2f}s")
-            print(f"  Max Job Wall Time: {max(job_wall_times):.2f}s")
-
-        batch_sizes = [job.batch_size for job in simulation.jobs]
-        if batch_sizes:
-            print(f"  Average Batch Size: {sum(batch_sizes)/len(batch_sizes):.0f} events")
-            print(f"  Min Batch Size: {min(batch_sizes)} events")
-            print(f"  Max Batch Size: {max(batch_sizes)} events")
+        metrics_calculator = WorkflowMetricsCalculator()
+        job_stats = metrics_calculator.calculate_job_statistics(simulation)
+        print(f"  Average Job Wall Time: {job_stats['average_wall_time']:.2f}s")
+        print(f"  Min Job Wall Time: {job_stats['min_wall_time']:.2f}s")
+        print(f"  Max Job Wall Time: {job_stats['max_wall_time']:.2f}s")
+        print(f"  Average Batch Size: {job_stats['average_batch_size']:.0f} events")
+        print(f"  Min Batch Size: {job_stats['min_batch_size']} events")
+        print(f"  Max Batch Size: {job_stats['max_batch_size']} events")
 
     def write_complete_results(self, results: Dict[str, Any],
                               filepath: Union[str, Path]) -> None:

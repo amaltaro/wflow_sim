@@ -15,6 +15,7 @@ import time
 from collections import defaultdict, deque
 
 
+
 @dataclass
 class ResourceConfig:
     """Resource configuration for workflow execution."""
@@ -166,6 +167,7 @@ class WorkflowSimulator:
             self.logger.info(f"Workflow simulation completed successfully. "
                            f"Total jobs: {result.total_jobs}, "
                            f"Wall time: {result.total_wall_time:.2f}s")
+
 
             return result
 
@@ -480,6 +482,7 @@ class WorkflowSimulator:
             max_job_time = max(max_job_time, job.wallclock_time)
 
         return max_job_time
+
 
     def print_simulation_summary(self, result: SimulationResult) -> None:
         """Print a summary of the simulation results."""

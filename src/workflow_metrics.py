@@ -76,54 +76,57 @@ class WorkflowMetrics:
 
 class WorkflowMetricsCalculator:
     """
-    Calculator for workflow performance metrics.
+    Calculator for workflow performance metrics from simulation results.
 
     This class provides comprehensive metrics calculation for workflow simulations,
     including execution times, resource usage, throughput, and efficiency measures.
+
+    This is the authoritative module for all metrics calculations across the project.
+    Only works with simulation results, not raw workflow composition data.
     """
 
-    def __init__(self, workflow_data: Dict[str, Any]):
+    def __init__(self):
         """
-        Initialize the metrics calculator with workflow data.
+        Initialize the metrics calculator.
 
-        Args:
-            workflow_data: Dictionary containing workflow definition and execution results
+        No workflow data needed since we only work with simulation results.
         """
-        self.workflow_data = workflow_data
         self.metrics: Optional[WorkflowMetrics] = None
         self.logger = logging.getLogger(__name__)
 
-    def calculate_metrics(self) -> WorkflowMetrics:
+    def calculate_metrics(self, simulation_result: 'SimulationResult') -> WorkflowMetrics:
         """
-        Calculate comprehensive workflow metrics.
+        Calculate metrics directly from a SimulationResult object.
+
+        This method provides a direct interface for calculating metrics from
+        simulation results without requiring data conversion.
+
+        Args:
+            simulation_result: SimulationResult object from WorkflowSimulator
 
         Returns:
             WorkflowMetrics object containing all calculated metrics
         """
-        self.logger.info("Starting workflow metrics calculation")
+        self.logger.info("Starting workflow metrics calculation from simulation result")
 
-        # Extract basic workflow information
-        workflow_id = self.workflow_data.get('workflow_id', 'unknown')
-        composition_number = self.workflow_data.get('CompositionNumber', 0)
+        # Extract basic information from simulation result
+        workflow_id = simulation_result.workflow_id
+        composition_number = simulation_result.composition_number
 
-        # Calculate core metrics
-        total_tasksets = self._calculate_total_tasksets()
-        total_groups = self._calculate_total_groups()
-        total_jobs = self._calculate_total_jobs()
+        # Use simulation results directly
+        total_tasksets = self._count_tasksets_from_simulation(simulation_result)
+        total_groups = simulation_result.total_groups
+        total_jobs = simulation_result.total_jobs
+        total_wall_time = simulation_result.total_wall_time
+        total_turnaround_time = simulation_result.total_turnaround_time
 
-        # Calculate timing metrics
-        total_wall_time = self._calculate_total_wall_time()
-
-        # Calculate turnaround time (time of longest job)
-        total_turnaround_time = self._calculate_total_turnaround_time()
-
-        # Calculate group-level metrics
-        group_metrics = self._calculate_group_metrics()
+        # Calculate group-level metrics from simulation
+        group_metrics = self._calculate_group_metrics_from_simulation(simulation_result)
 
         # Calculate efficiency metrics
-        resource_efficiency = self._calculate_resource_efficiency()
-        throughput = self._calculate_throughput()
-        success_rate = self._calculate_success_rate()
+        resource_efficiency = self._calculate_resource_efficiency_from_simulation(simulation_result)
+        throughput = self._calculate_throughput_from_simulation(simulation_result)
+        success_rate = self._calculate_success_rate_from_simulation(simulation_result)
 
         self.metrics = WorkflowMetrics(
             workflow_id=workflow_id,
@@ -139,168 +142,8 @@ class WorkflowMetricsCalculator:
             success_rate=success_rate
         )
 
-        self.logger.info("Workflow metrics calculation completed")
+        self.logger.info("Workflow metrics calculation from simulation completed")
         return self.metrics
-
-    def _calculate_total_tasksets(self) -> int:
-        """Calculate total number of tasksets in the workflow."""
-        taskset_count = 0
-        for key in self.workflow_data.keys():
-            if key.startswith('Taskset') and key[7:].isdigit():
-                taskset_count += 1
-        return taskset_count
-
-    def _calculate_total_groups(self) -> int:
-        """Calculate total number of groups in the workflow."""
-        groups = set()
-        for key, value in self.workflow_data.items():
-            if key.startswith('Taskset') and isinstance(value, dict):
-                group_name = value.get('GroupName')
-                if group_name:
-                    groups.add(group_name)
-        return len(groups)
-
-    def _calculate_total_jobs(self) -> int:
-        """Calculate total number of jobs based on group events and scaling."""
-        total_jobs = 0
-        groups = self._get_groups_info()
-
-        for group_id, group_info in groups.items():
-            requested_events = self.workflow_data.get('RequestNumEvents', 0)
-            group_input_events = group_info.get('GroupInputEvents', requested_events)
-
-            # Calculate job scaling based on requested vs actual events
-            if group_input_events > 0:
-                jobs_for_group = max(1, math.ceil(requested_events / group_input_events))
-                total_jobs += jobs_for_group
-
-        return total_jobs
-
-    def _calculate_total_execution_time(self) -> float:
-        """Calculate total execution time across all tasksets."""
-        # Calculate time per job (sum of all taskset times in a group)
-        time_per_job = 0.0
-        for key, value in self.workflow_data.items():
-            if key.startswith('Taskset') and isinstance(value, dict):
-                time_per_event = value.get('TimePerEvent', 0)
-                input_events = value.get('GroupInputEvents', 0)
-                # Time for this taskset in one job
-                taskset_time = time_per_event * input_events
-                time_per_job += taskset_time
-
-        # Calculate exact fractional job count for wall time
-        requested_events = self.workflow_data.get('RequestNumEvents', 0)
-        groups = self._get_groups_info()
-        exact_total_jobs = 0.0
-
-        for group_id, group_info in groups.items():
-            group_input_events = group_info.get('GroupInputEvents', requested_events)
-            if group_input_events > 0:
-                exact_jobs_for_group = requested_events / group_input_events
-                exact_total_jobs += exact_jobs_for_group
-
-        # Total wall time = exact fractional jobs * time per job
-        return exact_total_jobs * time_per_job
-
-    def _calculate_total_wall_time(self) -> float:
-        """Calculate total wall time (sum of all job times)."""
-        # Use simulation results if available, otherwise calculate from workflow data
-        simulation_results = self.workflow_data.get('simulation_results', {})
-        if 'total_wall_time' in simulation_results:
-            return simulation_results['total_wall_time']
-
-        # Fallback to calculation from workflow data
-        return self._calculate_total_execution_time()
-
-    def _calculate_total_turnaround_time(self) -> float:
-        """Calculate total turnaround time (time of longest job)."""
-        # Use simulation results if available, otherwise calculate from workflow data
-        simulation_results = self.workflow_data.get('simulation_results', {})
-        if 'total_turnaround_time' in simulation_results:
-            return simulation_results['total_turnaround_time']
-
-        # Fallback: calculate time per job (since jobs run in parallel, turnaround = longest job time)
-        time_per_job = 0.0
-        for key, value in self.workflow_data.items():
-            if key.startswith('Taskset') and isinstance(value, dict):
-                time_per_event = value.get('TimePerEvent', 0)
-                input_events = value.get('GroupInputEvents', 0)
-                # Time for this taskset in one job
-                taskset_time = time_per_event * input_events
-                time_per_job += taskset_time
-
-        return time_per_job
-
-    def _calculate_group_metrics(self) -> List[GroupMetrics]:
-        """Calculate metrics for each group."""
-        group_metrics = []
-        groups = self._get_groups_info()
-
-        for group_id, group_info in groups.items():
-            # Calculate group-level metrics
-            taskset_metrics = self._calculate_taskset_metrics_for_group(group_id)
-            total_execution_time = sum(ts.execution_metrics.execution_time
-                                    for ts in taskset_metrics)
-
-            # Calculate total resource usage
-            total_resource_usage = self._calculate_total_resource_usage(taskset_metrics)
-
-            # Calculate job count for this group
-            requested_events = self.workflow_data.get('RequestNumEvents', 0)
-            group_input_events = group_info.get('GroupInputEvents', requested_events)
-            job_count = max(1, requested_events // group_input_events) if group_input_events > 0 else 1
-
-            group_metric = GroupMetrics(
-                group_id=group_id,
-                taskset_metrics=taskset_metrics,
-                total_execution_time=total_execution_time,
-                total_resource_usage=total_resource_usage,
-                job_count=job_count
-            )
-            group_metrics.append(group_metric)
-
-        return group_metrics
-
-    def _calculate_taskset_metrics_for_group(self, group_id: str) -> List[TasksetMetrics]:
-        """Calculate metrics for tasksets in a specific group."""
-        taskset_metrics = []
-
-        for key, value in self.workflow_data.items():
-            if (key.startswith('Taskset') and isinstance(value, dict)
-                and value.get('GroupName') == group_id):
-
-                # Extract taskset information
-                taskset_id = key
-                time_per_event = value.get('TimePerEvent', 0)
-                input_events = value.get('GroupInputEvents', 0)
-                memory = value.get('Memory', 0)
-                multicore = value.get('Multicore', 1)
-
-                # Calculate execution metrics
-                execution_time = time_per_event * input_events
-                execution_metrics = ExecutionMetrics(
-                    start_time=0.0,  # Would be actual start time
-                    end_time=execution_time,
-                    execution_time=execution_time
-                )
-
-                # Calculate resource usage
-                resource_usage = ResourceUsage(
-                    cpu_usage=multicore * 100.0,  # Percentage
-                    memory_usage=memory,
-                    storage_usage=value.get('SizePerEvent', 0) * input_events
-                )
-
-                taskset_metric = TasksetMetrics(
-                    taskset_id=taskset_id,
-                    execution_metrics=execution_metrics,
-                    resource_usage=resource_usage,
-                    input_events=input_events,
-                    output_events=input_events  # Assuming 1:1 for now
-                )
-                taskset_metrics.append(taskset_metric)
-
-        return taskset_metrics
 
     def _calculate_total_resource_usage(self, taskset_metrics: List[TasksetMetrics]) -> ResourceUsage:
         """Calculate total resource usage across tasksets."""
@@ -316,55 +159,154 @@ class WorkflowMetricsCalculator:
             network_usage=total_network
         )
 
-    def _calculate_resource_efficiency(self) -> float:
-        """Calculate overall resource efficiency."""
-        # This is a simplified calculation - would be more complex in practice
-        total_tasksets = self._calculate_total_tasksets()
-        if total_tasksets == 0:
+
+    def _count_tasksets_from_simulation(self, simulation_result: 'SimulationResult') -> int:
+        """Count total tasksets from simulation result."""
+        total_tasksets = 0
+        for group in simulation_result.groups:
+            total_tasksets += len(group.tasksets)
+        return total_tasksets
+
+    def _calculate_group_metrics_from_simulation(self, simulation_result: 'SimulationResult') -> List[GroupMetrics]:
+        """Calculate group metrics from simulation result."""
+        group_metrics = []
+
+        for group in simulation_result.groups:
+            # Calculate taskset metrics for this group
+            taskset_metrics = []
+            for taskset in group.tasksets:
+                execution_time = taskset.time_per_event * taskset.group_input_events
+                execution_metrics = ExecutionMetrics(
+                    start_time=0.0,
+                    end_time=execution_time,
+                    execution_time=execution_time
+                )
+
+                resource_usage = ResourceUsage(
+                    cpu_usage=taskset.multicore * 100.0,
+                    memory_usage=taskset.memory,
+                    storage_usage=taskset.size_per_event * taskset.group_input_events
+                )
+
+                taskset_metric = TasksetMetrics(
+                    taskset_id=taskset.taskset_id,
+                    execution_metrics=execution_metrics,
+                    resource_usage=resource_usage,
+                    input_events=taskset.group_input_events,
+                    output_events=taskset.group_input_events
+                )
+                taskset_metrics.append(taskset_metric)
+
+            # Calculate total execution time and resource usage for group
+            total_execution_time = sum(ts.execution_metrics.execution_time for ts in taskset_metrics)
+            total_resource_usage = self._calculate_total_resource_usage(taskset_metrics)
+
+            group_metric = GroupMetrics(
+                group_id=group.group_id,
+                taskset_metrics=taskset_metrics,
+                total_execution_time=total_execution_time,
+                total_resource_usage=total_resource_usage,
+                job_count=group.job_count
+            )
+            group_metrics.append(group_metric)
+
+        return group_metrics
+
+    def _calculate_resource_efficiency_from_simulation(self, simulation_result: 'SimulationResult') -> float:
+        """Calculate resource efficiency from simulation result."""
+        if simulation_result.total_jobs == 0:
             return 0.0
 
-        # Calculate efficiency based on resource utilization
-        total_memory = 0
+        # Calculate total resource usage across all groups
         total_cpu = 0
+        total_memory = 0
 
-        for key, value in self.workflow_data.items():
-            if key.startswith('Taskset') and isinstance(value, dict):
-                total_memory += value.get('Memory', 0)
-                total_cpu += value.get('Multicore', 1)
+        for group in simulation_result.groups:
+            for taskset in group.tasksets:
+                total_cpu += taskset.multicore
+                total_memory += taskset.memory
 
-        # Simple efficiency metric (would be more sophisticated in practice)
-        return min(1.0, (total_cpu * 100) / (total_memory + 1))
-
-    def _calculate_throughput(self) -> float:
-        """Calculate workflow throughput (events per second)."""
-        total_events = self.workflow_data.get('RequestNumEvents', 0)
-        total_time = self._calculate_total_execution_time()
-
-        if total_time > 0:
-            return total_events / total_time
+        # Simple efficiency metric based on resource utilization
+        if total_memory > 0:
+            return min(1.0, (total_cpu * 100) / total_memory)
         return 0.0
 
-    def _calculate_success_rate(self) -> float:
-        """Calculate overall success rate."""
-        # For now, assume 100% success - would be calculated from actual results
-        return 1.0
+    def _calculate_throughput_from_simulation(self, simulation_result: 'SimulationResult') -> float:
+        """Calculate throughput from simulation result."""
+        if simulation_result.total_turnaround_time > 0:
+            return simulation_result.total_events / simulation_result.total_turnaround_time
+        return 0.0
 
-    def _get_groups_info(self) -> Dict[str, Dict[str, Any]]:
-        """Extract group information from workflow data."""
-        groups = {}
+    def _calculate_success_rate_from_simulation(self, simulation_result: 'SimulationResult') -> float:
+        """Calculate success rate from simulation result."""
+        if simulation_result.success:
+            return 1.0
 
-        for key, value in self.workflow_data.items():
-            if key.startswith('Taskset') and isinstance(value, dict):
-                group_name = value.get('GroupName')
-                if group_name:
-                    if group_name not in groups:
-                        groups[group_name] = {
-                            'GroupInputEvents': value.get('GroupInputEvents', 0),
-                            'tasksets': []
-                        }
-                    groups[group_name]['tasksets'].append(key)
+    def calculate_job_statistics(self, simulation_result: 'SimulationResult') -> Dict[str, Any]:
+        """
+        Calculate comprehensive job statistics from simulation results.
 
-        return groups
+        Args:
+            simulation_result: SimulationResult object from WorkflowSimulator
+
+        Returns:
+            Dictionary containing job statistics
+        """
+        if not simulation_result.jobs:
+            return {
+                'average_wall_time': 0.0,
+                'min_wall_time': 0.0,
+                'max_wall_time': 0.0,
+                'average_batch_size': 0.0,
+                'min_batch_size': 0,
+                'max_batch_size': 0,
+                'total_jobs': 0
+            }
+
+        job_wall_times = [job.wallclock_time for job in simulation_result.jobs]
+        batch_sizes = [job.batch_size for job in simulation_result.jobs]
+
+        return {
+            'average_wall_time': sum(job_wall_times) / len(job_wall_times),
+            'min_wall_time': min(job_wall_times),
+            'max_wall_time': max(job_wall_times),
+            'average_batch_size': sum(batch_sizes) / len(batch_sizes),
+            'min_batch_size': min(batch_sizes),
+            'max_batch_size': max(batch_sizes),
+            'total_jobs': len(simulation_result.jobs)
+        }
+
+    def calculate_group_statistics(self, simulation_result: 'SimulationResult') -> Dict[str, Any]:
+        """
+        Calculate comprehensive group statistics from simulation results.
+
+        Args:
+            simulation_result: SimulationResult object from WorkflowSimulator
+
+        Returns:
+            Dictionary containing group statistics
+        """
+        group_stats = {}
+
+        for group in simulation_result.groups:
+            group_stats[group.group_id] = {
+                'job_count': group.job_count,
+                'input_events': group.input_events,
+                'total_execution_time': group.total_execution_time,
+                'taskset_count': len(group.tasksets),
+                'tasksets': [
+                    {
+                        'taskset_id': ts.taskset_id,
+                        'time_per_event': ts.time_per_event,
+                        'memory': ts.memory,
+                        'multicore': ts.multicore,
+                        'size_per_event': ts.size_per_event
+                    }
+                    for ts in group.tasksets
+                ]
+            }
+
+        return group_stats
 
     def print_metrics(self, detailed: bool = False) -> None:
         """
