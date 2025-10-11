@@ -41,6 +41,19 @@ This repository provides a **Workflow Simulator** that:
 - **Resource Efficiency**: CPU, memory, storage, and network usage
 - **Scalability Analysis**: Job scaling and parallel execution efficiency
 
+## Architecture
+
+**Three modules with distinct responsibilities:**
+
+- **`workflow_simulator.py`** - Core simulation engine (executes workflow DAGs)
+- **`workflow_metrics.py`** - Authoritative metrics calculator (simulation results only)
+- **`workflow_runner.py`** - High-level orchestrator (simulation + metrics)
+
+**Key Design:**
+- All metrics calculations consolidated in `workflow_metrics.py` (single source of truth)
+- Metrics only work with simulation results (not raw workflow data)
+- No redundant calculations across modules
+
 ## Installation
 
 ### Prerequisites
@@ -75,19 +88,19 @@ pytest tests/ -v
 ### 1. Calculate Workflow Metrics
 
 ```python
+from src.workflow_runner import WorkflowRunner
 from src.workflow_metrics import WorkflowMetricsCalculator
-import json
 
-# Load workflow template
-with open('templates/3tasks_composition_001.json', 'r') as f:
-    workflow_data = json.load(f)
+# Run simulation and get results
+runner = WorkflowRunner()
+results = runner.run_workflow('templates/3tasks_composition_001.json')
 
-# Calculate metrics
-calculator = WorkflowMetricsCalculator(workflow_data)
-metrics = calculator.calculate_metrics()
+# Calculate metrics from simulation results
+calculator = WorkflowMetricsCalculator()
+metrics = calculator.calculate_metrics(results['simulation_result'])
 
 # Display results
-calculator.print_metrics(detailed=True)
+calculator.print_metrics()
 ```
 
 ### 2. Run Example

@@ -39,14 +39,17 @@ import json
 with open('workflow_template.json', 'r') as f:
     workflow_data = json.load(f)
 
-# Create calculator
-calculator = WorkflowMetricsCalculator(workflow_data)
+# Run simulation first
+from src.workflow_runner import WorkflowRunner
+runner = WorkflowRunner()
+results = runner.run_workflow('templates/3tasks_composition_001.json')
 
-# Calculate metrics
-metrics = calculator.calculate_metrics()
+# Create calculator and calculate metrics from simulation results
+calculator = WorkflowMetricsCalculator()
+metrics = calculator.calculate_metrics(results['simulation_result'])
 
 # Print metrics
-calculator.print_metrics(detailed=True)
+calculator.print_metrics()
 
 # Save to file
 calculator.write_metrics_to_file('metrics_output.json')

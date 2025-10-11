@@ -13,6 +13,16 @@ The workflow simulation system provides:
 - **Comprehensive Metrics**: Detailed performance analysis and resource utilization
 - **Batch Job Logging**: Complete logging of job creation and execution
 
+## Module Usage
+
+**Choose your approach:**
+
+- **`workflow_runner.py`** - Complete analysis (simulation + metrics) with one call
+- **`workflow_simulator.py`** - Just simulation results for custom analysis
+- **`workflow_metrics.py`** - Metrics from existing simulation results
+
+**Data Flow:** `workflow_runner.py` → `workflow_simulator.py` → `workflow_metrics.py` → Results
+
 ## Key Concepts
 
 ### Workflow Structure
@@ -56,6 +66,23 @@ python examples/workflow_simulation_example.py
 ```
 
 ## Detailed Usage
+
+### Metrics Calculation
+
+```python
+from src.workflow_metrics import WorkflowMetricsCalculator
+
+calculator = WorkflowMetricsCalculator()
+
+# Main metrics
+metrics = calculator.calculate_metrics(simulation_result)
+
+# Job statistics
+job_stats = calculator.calculate_job_statistics(simulation_result)
+
+# Group statistics
+group_stats = calculator.calculate_group_statistics(simulation_result)
+```
 
 ### Resource Configuration
 
