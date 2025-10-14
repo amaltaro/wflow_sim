@@ -39,7 +39,30 @@ The workflow simulation system provides:
 
 ## Quick Start
 
-### Basic Usage
+### Command Line Usage
+
+The easiest way to run workflow simulations is using the command line interface:
+
+```bash
+# Basic usage with default settings
+python src/workflow_runner.py
+
+# Custom wallclock time and job slots
+python src/workflow_runner.py --target-wallclock-time 3600 --max-job-slots 10
+
+# Specify custom workflow file
+python src/workflow_runner.py --input-workflow-path templates/3tasks/seq/3tasks_001.json
+
+# Simulation only (no metrics)
+python src/workflow_simulator.py --target-wallclock-time 1800
+
+# Show all available options
+python src/workflow_runner.py --help
+```
+
+**Output Structure**: Results are automatically saved to the `results/` directory with the same structure as the input file (excluding the `templates/` prefix).
+
+### Python API Usage
 
 ```python
 from src.workflow_runner import WorkflowRunner, ResourceConfig
@@ -61,9 +84,40 @@ runner.print_complete_summary(results)
 ### Running the Example
 
 ```bash
-cd /Users/amaltar2/Master/wflow_sim
+# Command line example
+python src/workflow_runner.py --target-wallclock-time 1800
+
+# Python API example
 python examples/workflow_simulation_example.py
 ```
+
+## Command Line Interface
+
+Both `workflow_runner.py` and `workflow_simulator.py` support comprehensive command line arguments:
+
+### Available Arguments
+
+- `--target-wallclock-time`: Target wallclock time in seconds (default: 43200 = 12 hours)
+- `--max-job-slots`: Maximum number of job slots (-1 for infinite, default: -1)
+- `--input-workflow-path`: Path to input workflow JSON file (default: templates/3tasks_composition_001.json)
+
+### Usage Examples
+
+```bash
+# Show help for all options
+python src/workflow_runner.py --help
+python src/workflow_simulator.py --help
+```
+
+### Output Structure
+
+Results are automatically saved to the `results/` directory with the same structure as the input file:
+
+- **Input**: `templates/3tasks/seq/workflow.json` → **Output**: `results/3tasks/seq/workflow.json`
+- **Input**: `templates/workflow.json` → **Output**: `results/workflow.json`
+- **Input**: `custom/path/workflow.json` → **Output**: `results/custom/path/workflow.json`
+
+The system automatically creates necessary directories and preserves the file structure while removing the `templates/` prefix for cleaner organization.
 
 ## Detailed Usage
 

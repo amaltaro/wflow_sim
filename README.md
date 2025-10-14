@@ -85,7 +85,27 @@ pytest tests/ -v
 
 ## Quick Start
 
-### 1. Calculate Workflow Metrics
+### 1. Command Line Usage
+
+The easiest way to run workflow simulations is using the command line interface:
+
+```bash
+# Basic usage with default settings
+python src/workflow_runner.py
+
+# Custom wallclock time and job slots
+python src/workflow_runner.py --target-wallclock-time 3600 --max-job-slots 10
+
+# Specify custom workflow file
+python src/workflow_runner.py --input-workflow-path templates/3tasks/seq/3tasks_001.json
+
+# Show all available options
+python src/workflow_runner.py --help
+```
+
+**Output Structure**: Results are automatically saved to the `results/` directory with the same structure as the input file (excluding the `templates/` prefix).
+
+### 2. Python API Usage
 
 ```python
 from src.workflow_runner import WorkflowRunner
@@ -103,17 +123,45 @@ metrics = calculator.calculate_metrics(results['simulation_result'])
 calculator.print_metrics()
 ```
 
-### 2. Run Example
+### 3. Run Examples
 
 ```bash
+# Command line example
+python src/workflow_runner.py --target-wallclock-time 1800
+
+# Python API example
 python examples/metrics_example.py
 ```
 
-### 3. Run Tests
+### 4. Run Tests
 
 ```bash
 pytest tests/ -v
 ```
+
+## Command Line Interface
+
+Both `workflow_runner.py` and `workflow_simulator.py` support command line arguments for easy usage:
+
+### Available Arguments
+
+- `--target-wallclock-time`: Target wallclock time in seconds (default: 43200 = 12 hours)
+- `--max-job-slots`: Maximum number of job slots (-1 for infinite, default: -1)
+- `--input-workflow-path`: Path to input workflow JSON file (default: templates/3tasks_composition_001.json)
+
+### Usage Examples
+
+```bash
+# Show help
+python src/workflow_runner.py --help
+```
+
+### Output Structure
+
+Results are automatically saved to the `results/` directory with the same structure as the input file:
+
+- Input: `templates/3tasks/seq/workflow.json` → Output: `results/3tasks/seq/workflow.json`
+- Input: `templates/workflow.json` → Output: `results/workflow.json`
 
 ## Workflow Data Format
 

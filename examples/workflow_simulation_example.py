@@ -4,6 +4,10 @@ Workflow Simulation Example
 
 This example demonstrates how to use the WorkflowSimulator and WorkflowRunner
 to simulate workflow execution with group-based job scheduling.
+
+For command line usage, see the main scripts:
+- python src/workflow_runner.py --help
+- python src/workflow_simulator.py --help
 """
 
 import sys
@@ -23,6 +27,10 @@ def main():
     print("="*80)
     print("WORKFLOW SIMULATION EXAMPLE")
     print("="*80)
+    print("Note: For command line usage, run:")
+    print("  python src/workflow_runner.py --help")
+    print("  python src/workflow_simulator.py --help")
+    print()
     
     # Configure logging (optional - set to WARNING to reduce output)
     logging.basicConfig(level=logging.WARNING)
@@ -68,6 +76,8 @@ def main():
     runner.write_complete_results(results, output_file)
     
     print("\n✅ Workflow simulation completed successfully!")
+    print("\n💡 Tip: Use command line interface for easier usage:")
+    print("  python src/workflow_runner.py --target-wallclock-time 3600")
     return 0
 
 
