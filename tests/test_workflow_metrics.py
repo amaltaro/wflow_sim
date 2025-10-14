@@ -315,7 +315,8 @@ class TestWorkflowMetricsCalculator:
 
         required_keys = [
             'workflow_id', 'total_tasksets', 'total_groups', 'total_jobs',
-            'total_wall_time', 'total_turnaround_time', 'resource_efficiency', 'throughput', 'success_rate'
+            'total_wall_time', 'total_turnaround_time', 'resource_efficiency',
+            'throughput', 'success_rate'
         ]
 
         for key in required_keys:

@@ -23,6 +23,11 @@ class TestWorkflowSimulator:
         simulator = WorkflowSimulator()
         assert simulator.resource_config is not None
         assert simulator.logger is not None
+        # test default resource configs
+        assert simulator.resource_config.target_wallclock_time == 43200.0
+        assert simulator.resource_config.max_job_slots == -1
+        assert simulator.resource_config.cpu_per_slot == 1
+        assert simulator.resource_config.memory_per_slot == 1000
 
     def test_initialization_with_config(self):
         """Test simulator initialization with custom config."""
@@ -220,11 +225,13 @@ class TestWorkflowSimulator:
             dependencies=[]
         )
 
-        # Total time per event = 10 + 20 = 30 seconds
-        # Batch size = 100 events
-        # Wallclock time = 30 * 100 = 3000 seconds
-        wallclock_time = simulator._calculate_job_wallclock_time(group, 100)
-        assert wallclock_time == 3000.0
+        # Batch size as defined in the group configuration
+        wallclock_time = simulator._calculate_job_wallclock_time(group, 1000)
+        assert wallclock_time == 30000.0
+        # Simulate a last job of the group with fractional batch size (hence,
+        # less than 1000 events per job - make it 200 in this example)
+        wallclock_time = simulator._calculate_job_wallclock_time(group, 200)
+        assert wallclock_time == 6000.0
 
     def test_calculate_job_wallclock_time_empty_group(self):
         """Test job wallclock time calculation with empty group."""

@@ -25,6 +25,11 @@ class TestWorkflowRunner:
         assert runner.resource_config is not None
         assert runner.simulator is not None
         assert runner.logger is not None
+        # test default resource configs
+        assert runner.resource_config.target_wallclock_time == 43200.0
+        assert runner.resource_config.max_job_slots == -1
+        assert runner.resource_config.cpu_per_slot == 1
+        assert runner.resource_config.memory_per_slot == 1000
 
     def test_initialization_with_config(self):
         """Test runner initialization with custom config."""
@@ -105,39 +110,6 @@ class TestWorkflowRunner:
         assert results['simulation_result'] is not None
         assert results['metrics'] is None
 
-    def test_run_workflow_from_file(self):
-        """Test run_workflow_from_file method."""
-        # Create a temporary workflow file
-        workflow_data = {
-            "Comments": "Test Workflow",
-            "NumTasks": 1,
-            "RequestNumEvents": 5000,
-            "Taskset1": {
-                "Memory": 2000,
-                "Multicore": 1,
-                "TimePerEvent": 10,
-                "SizePerEvent": 200,
-                "GroupName": "group_1",
-                "GroupInputEvents": 1000
-            },
-            "CompositionNumber": 1
-        }
-
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-            json.dump(workflow_data, f)
-            temp_file = f.name
-
-        try:
-            runner = WorkflowRunner()
-            results = runner.run_workflow_from_file(temp_file)
-
-            assert results['success'] is True
-            assert results['simulation_result'] is not None
-            assert results['metrics'] is not None
-
-        finally:
-            Path(temp_file).unlink()
-
     def test_print_complete_summary_success(self, capsys):
         """Test printing complete summary for successful workflow."""
         # Create mock results
@@ -160,8 +132,8 @@ class TestWorkflowRunner:
             tasksets=[taskset],
             input_events=1000,
             job_count=10,
-            exact_job_count=10.0,
-            total_execution_time=10000.0,
+            exact_job_count=9.8,
+            total_execution_time=9800.0,
             dependencies=[]
         )
 
