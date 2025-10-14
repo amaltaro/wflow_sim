@@ -124,8 +124,8 @@ class WorkflowSimulator:
         """
         self.logger.info("Starting workflow simulation")
 
+        ### Load and setup workflow simulation
         try:
-            # Load workflow data from file
             with open(workflow_filepath, 'r') as f:
                 workflow_data = json.load(f)
 
@@ -143,11 +143,16 @@ class WorkflowSimulator:
 
             # Build dependency graph
             dependency_graph = self._build_dependency_graph(tasksets)
+            self.logger.info(f"Dependency graph: {dependency_graph}")
 
             # Calculate job counts for each group
             self._calculate_job_counts(groups, request_num_events)
+        except Exception as e:
+            self.logger.exception(f"Setup workflow simulation failed: {str(e)}")
+            raise RuntimeError(f"Setup workflow simulation failed: {str(e)}")
 
-            # Simulate execution
+        # Simulate workflow execution
+        try:
             execution_result = self._simulate_execution(groups, dependency_graph, request_num_events)
 
             # Create simulation result
@@ -169,9 +174,7 @@ class WorkflowSimulator:
                            f"Total jobs: {result.total_jobs}, "
                            f"Wall time: {result.total_wall_time:.2f}s")
 
-
             return result
-
         except Exception as e:
             self.logger.error(f"Workflow simulation failed: {str(e)}")
             return SimulationResult(
