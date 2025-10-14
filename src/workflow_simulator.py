@@ -8,6 +8,7 @@ workflow compositions following DAG processing rules with group-based job schedu
 import json
 import logging
 import math
+import argparse
 from typing import Dict, List, Any, Optional, Tuple, Set, Union
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -551,23 +552,79 @@ def load_workflow_from_file(filepath: Union[str, Path]) -> Dict[str, Any]:
         return json.load(f)
 
 
+def _get_output_path(input_path: str) -> str:
+    """
+    Generate output path based on input path structure.
+
+    Args:
+        input_path: Path to input workflow file
+
+    Returns:
+        Output path in results/ directory with same structure (excluding templates/ prefix)
+    """
+    input_path_obj = Path(input_path)
+
+    # Remove 'templates/' prefix if present
+    if input_path_obj.parts[0] == 'templates':
+        relative_path = input_path_obj.relative_to('templates')
+    else:
+        relative_path = input_path_obj
+
+    # Create output path: results/ + relative path
+    output_path = Path("results") / relative_path
+
+    # Ensure the output directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    return str(output_path)
+
+
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description='Workflow Simulator - Workflow execution simulation engine'
+    )
+    parser.add_argument(
+        '--target-wallclock-time',
+        type=int,
+        default=43200,
+        help='Target wallclock time in seconds (default: 43200 = 12 hours)'
+    )
+    parser.add_argument(
+        '--max-job-slots',
+        type=int,
+        default=-1,
+        help='Maximum number of job slots (-1 for infinite, default: -1)'
+    )
+    parser.add_argument(
+        '--input-workflow-path',
+        type=str,
+        default='templates/3tasks_composition_001.json',
+        help='Path to input workflow JSON file (default: templates/3tasks_composition_001.json)'
+    )
+    return parser.parse_args()
+
+
 def main():
-    """Example usage of the WorkflowSimulator."""
-    # Configure resources
+    """Main function with command line argument support."""
+    args = parse_arguments()
+
+    # Configure resources from command line arguments
     resource_config = ResourceConfig(
-        target_wallclock_time=43200.0,  # 12 hours
-        max_job_slots=-1  # Infinite slots
+        target_wallclock_time=args.target_wallclock_time,
+        max_job_slots=args.max_job_slots
     )
 
     # Create simulator and run simulation
     simulator = WorkflowSimulator(resource_config)
-    result = simulator.simulate_workflow('templates/3tasks_composition_001.json')
+    result = simulator.simulate_workflow(args.input_workflow_path)
 
     # Print results
     simulator.print_simulation_summary(result)
 
-    # Write results to file
-    simulator.write_simulation_result(result, 'results/simulation_result.json')
+    # Write results to file with same structure as input
+    output_path = _get_output_path(args.input_workflow_path)
+    simulator.write_simulation_result(result, output_path)
 
 
 if __name__ == "__main__":

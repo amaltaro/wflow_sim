@@ -7,6 +7,7 @@ with metrics calculation, offering a complete workflow execution and analysis pi
 
 import json
 import logging
+import argparse
 from typing import Dict, List, Any, Optional, Union
 from pathlib import Path
 import time
@@ -199,23 +200,79 @@ class WorkflowRunner:
         self.logger.info(f"Complete results written to {filepath}")
 
 
+def _get_output_path(input_path: str) -> str:
+    """
+    Generate output path based on input path structure.
+
+    Args:
+        input_path: Path to input workflow file
+
+    Returns:
+        Output path in results/ directory with same structure (excluding templates/ prefix)
+    """
+    input_path_obj = Path(input_path)
+
+    # Remove 'templates/' prefix if present
+    if input_path_obj.parts[0] == 'templates':
+        relative_path = input_path_obj.relative_to('templates')
+    else:
+        relative_path = input_path_obj
+
+    # Create output path: results/ + relative path
+    output_path = Path("results") / relative_path
+
+    # Ensure the output directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    return str(output_path)
+
+
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description='Workflow Runner - Complete workflow execution and analysis pipeline'
+    )
+    parser.add_argument(
+        '--target-wallclock-time',
+        type=int,
+        default=43200,
+        help='Target wallclock time in seconds (default: 43200 = 12 hours)'
+    )
+    parser.add_argument(
+        '--max-job-slots',
+        type=int,
+        default=-1,
+        help='Maximum number of job slots (-1 for infinite, default: -1)'
+    )
+    parser.add_argument(
+        '--input-workflow-path',
+        type=str,
+        default='templates/3tasks_composition_001.json',
+        help='Path to input workflow JSON file (default: templates/3tasks_composition_001.json)'
+    )
+    return parser.parse_args()
+
+
 def main():
-    """Example usage of the WorkflowRunner."""
-    # Configure resources
+    """Main function with command line argument support."""
+    args = parse_arguments()
+
+    # Configure resources from command line arguments
     resource_config = ResourceConfig(
-        target_wallclock_time=43200.0,  # 12 hours
-        max_job_slots=-1  # Infinite slots
+        target_wallclock_time=args.target_wallclock_time,
+        max_job_slots=args.max_job_slots
     )
 
     # Create runner and execute workflow
     runner = WorkflowRunner(resource_config)
-    results = runner.run_workflow('templates/3tasks_composition_001.json')
+    results = runner.run_workflow(args.input_workflow_path)
 
     # Print complete summary
     runner.print_complete_summary(results)
 
-    # Write results to file
-    runner.write_complete_results(results, 'results/complete_workflow_results.json')
+    # Write results to file with same structure as input
+    output_path = _get_output_path(args.input_workflow_path)
+    runner.write_complete_results(results, output_path)
 
 
 if __name__ == "__main__":
