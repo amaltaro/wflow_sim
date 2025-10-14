@@ -353,6 +353,7 @@ class WorkflowSimulator:
                     # Last job gets the remaining events (fractional)
                     remaining_events = int(request_num_events - (job_idx * group.input_events))
                     actual_batch_size = min(batch_size, remaining_events)
+                    self.logger.info(f"Group {group.group_id}: last job gets {remaining_events} events")
                 else:
                     # Regular jobs get the full batch size
                     actual_batch_size = batch_size
@@ -442,7 +443,14 @@ class WorkflowSimulator:
         return min(max_events_per_job, group.input_events)
 
     def _calculate_job_wallclock_time(self, group: GroupInfo, batch_size: int) -> float:
-        """Calculate actual wallclock time for a job."""
+        """
+        Calculate actual wallclock time for a job.
+        Args:
+            group: GroupInfo object
+            batch_size: int, number of events to process in the job
+        Returns:
+            float: Actual wallclock time for a job in seconds
+        """
         if not group.tasksets:
             return 0.0
 

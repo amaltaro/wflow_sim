@@ -75,19 +75,6 @@ class WorkflowRunner:
             'error_message': None
         }
 
-
-    def run_workflow_from_file(self, filepath: Union[str, Path]) -> Dict[str, Any]:
-        """
-        Run workflow simulation and analysis from a JSON file.
-
-        Args:
-            filepath: Path to workflow JSON file
-
-        Returns:
-            Dictionary containing simulation results and metrics
-        """
-        return self.run_workflow(filepath)
-
     def print_complete_summary(self, results: Dict[str, Any]) -> None:
         """Print a complete summary of simulation and metrics."""
         if not results['success']:
