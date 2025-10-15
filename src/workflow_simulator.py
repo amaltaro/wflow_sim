@@ -157,8 +157,21 @@ class WorkflowSimulator:
             # Calculate job counts for each group
             self._calculate_job_counts(groups, request_num_events)
         except Exception as e:
-            self.logger.exception(f"Setup workflow simulation failed: {str(e)}")
-            raise RuntimeError(f"Setup workflow simulation failed: {str(e)}")
+            self.logger.error(f"Setup workflow simulation failed: {str(e)}")
+            return SimulationResult(
+                workflow_id='unknown',
+                composition_number=0,
+                total_events=0,
+                total_groups=0,
+                total_jobs=0,
+                total_wall_time=0.0,
+                total_turnaround_time=0.0,
+                groups=[],
+                jobs=[],
+                execution_log=[],
+                success=False,
+                error_message=str(e)
+            )
 
         # Simulate workflow execution
         try:
