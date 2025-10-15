@@ -67,6 +67,15 @@ class JobInfo:
 
 
 @dataclass
+class EventBuffer:
+    """Event buffer to track available events for each group."""
+    group_id: str
+    available_events: int
+    processed_events: int
+    total_events: int
+
+
+@dataclass
 class SimulationResult:
     """Result of workflow simulation."""
     workflow_id: str
@@ -332,100 +341,94 @@ class WorkflowSimulator:
     def _simulate_execution(self, groups: List[GroupInfo],
                           dependency_graph: Dict[str, List[str]],
                           request_num_events: int) -> Dict[str, Any]:
-        """Simulate the execution of groups with dependency resolution."""
+        """Simulate the execution of groups with dependency resolution and job slot constraints."""
         execution_log = []
-        jobs = []
         current_time = 0.0
-        job_id_counter = 0
+
+        # Initialize event buffers for each group
+        event_buffers = self._initialize_event_buffers(groups, request_num_events)
+
+        # Track running jobs and available slots
+        running_jobs = []
+        all_created_jobs = []  # Track all jobs created during simulation
+        available_slots = self.resource_config.max_job_slots if self.resource_config.max_job_slots > 0 else float('inf')
+        batch_number = 0  # Track batch numbers across the entire simulation
 
         # Track group completion status
-        group_status = {group.group_id: 'pending' for group in groups}
         completed_groups = set()
 
-        # Calculate batch sizes to meet wallclock time constraints
-        for group in groups:
-            batch_size = self._calculate_batch_size(group)
-            self.logger.info(f"Group {group.group_id}: batch size {batch_size} events per job "
-                           f"(target wallclock: {self.resource_config.target_wallclock_time}s)")
-
-            # Create jobs for this group with precise batch sizes
-            for job_idx in range(group.job_count):
-                job_id = f"{group.group_id}_job_{job_idx + 1}"
-
-                # Calculate actual batch size for this job
-                if job_idx == group.job_count - 1 and group.exact_job_count != group.job_count:
-                    # Last job gets the remaining events (fractional)
-                    remaining_events = int(request_num_events - (job_idx * group.input_events))
-                    actual_batch_size = min(batch_size, remaining_events)
-                    self.logger.info(f"Group {group.group_id}: last job gets {remaining_events} events")
-                else:
-                    # Regular jobs get the full batch size
-                    actual_batch_size = batch_size
-
-                job_wallclock = self._calculate_job_wallclock_time(group, actual_batch_size)
-
-                job = JobInfo(
-                    job_id=job_id,
-                    group_id=group.group_id,
-                    batch_size=actual_batch_size,
-                    wallclock_time=job_wallclock,
-                    start_time=0.0,  # Will be set during execution
-                    end_time=0.0,    # Will be set during execution
-                    status='pending'
-                )
-                jobs.append(job)
-
-        # Simulate parallel execution of independent groups
+        # Initialize execution queue with groups that have no dependencies
         execution_queue = deque()
         for group in groups:
             if not dependency_graph.get(group.group_id, []):
                 execution_queue.append(group.group_id)
 
-        while execution_queue:
-            # Execute all ready groups in parallel
-            ready_groups = []
-            temp_queue = deque()
+        self.logger.info(f"Starting simulation with {available_slots} job slots available")
 
-            # Find all groups that can execute now
-            while execution_queue:
-                group_id = execution_queue.popleft()
-                if group_id in completed_groups:
-                    continue
-                ready_groups.append(group_id)
+        while execution_queue or running_jobs:
+            # Process completed jobs and update event buffers
+            self._process_completed_jobs(running_jobs, event_buffers, current_time, execution_log)
 
-            if not ready_groups:
+            # Check if all events have been processed
+            total_processed = sum(buffer.get('processed_events', 0) for buffer in event_buffers.values())
+            if total_processed >= request_num_events:
+                self.logger.info(f"All events processed: {total_processed}/{request_num_events}")
                 break
 
-            # Execute all ready groups in parallel
-            max_group_time = 0.0
-            for group_id in ready_groups:
-                group_jobs = [job for job in jobs if job.group_id == group_id]
-                group_execution_time = self._execute_group_jobs(
-                    group_jobs, current_time, execution_log
+            # Create new jobs based on available events and slots
+            available_slots_for_new_jobs = available_slots - len(running_jobs)
+            if available_slots_for_new_jobs > 0 and execution_queue:
+                batch_number += 1
+                self.logger.info(f"=== BATCH {batch_number} ===")
+                self.logger.debug(f"Before job creation: {len(execution_queue)} groups in queue, {available_slots_for_new_jobs} slots available")
+                new_jobs = self._create_jobs_for_ready_groups(
+                    groups, event_buffers, execution_queue, available_slots_for_new_jobs, request_num_events, running_jobs, batch_number
                 )
-                max_group_time = max(max_group_time, group_execution_time)
+                self.logger.debug(f"After job creation: {len(execution_queue)} groups in queue, {len(new_jobs)} new jobs created")
+            else:
+                new_jobs = []
+                if available_slots_for_new_jobs <= 0:
+                    self.logger.info(f"No job creation: {len(running_jobs)} jobs running, {available_slots} max slots")
+                elif not execution_queue:
+                    self.logger.info(f"No job creation: no groups in execution queue")
 
-                # Update group status
-                group_status[group_id] = 'completed'
-                completed_groups.add(group_id)
+            # Start new jobs
+            for job in new_jobs:
+                job.start_time = current_time
+                job.status = 'running'
+                running_jobs.append(job)
+                all_created_jobs.append(job)  # Track all created jobs
 
-            # Advance time by the maximum group execution time
-            current_time += max_group_time
+                log_entry = {
+                    'timestamp': current_time,
+                    'event': 'job_started',
+                    'job_id': job.job_id,
+                    'group_id': job.group_id,
+                    'batch_size': job.batch_size,
+                    'wallclock_time': job.wallclock_time
+                }
+                execution_log.append(log_entry)
 
-            # Check for groups that can now execute
-            for group_id, deps in dependency_graph.items():
-                if (group_id not in completed_groups and
-                    group_id not in execution_queue and
-                    all(dep in completed_groups for dep in deps)):
-                    execution_queue.append(group_id)
+                self.logger.debug(f"Started job {job.job_id}: {job.batch_size} events, {job.wallclock_time:.2f}s")
+
+            # If no jobs were created and no jobs are running, break
+            if not new_jobs and not running_jobs:
+                break
+
+            # Advance time to next job completion
+            if running_jobs:
+                next_completion_time = min(job.start_time + job.wallclock_time for job in running_jobs)
+                current_time = next_completion_time
+            else:
+                break
 
         # Calculate total wall time as sum of all job wallclock times
-        total_wall_time = sum(job.wallclock_time for job in jobs)
+        total_wall_time = sum(job.wallclock_time for job in all_created_jobs)
 
         return {
             'total_wall_time': total_wall_time,
             'total_turnaround_time': current_time,
-            'jobs': jobs,
+            'jobs': all_created_jobs,
             'execution_log': execution_log
         }
 
@@ -494,6 +497,223 @@ class WorkflowSimulator:
             max_job_time = max(max_job_time, job.wallclock_time)
 
         return max_job_time
+
+    def _initialize_event_buffers(self, groups: List[GroupInfo], request_num_events: int) -> Dict[str, Dict[str, Any]]:
+        """Initialize event buffers for each group."""
+        event_buffers = {}
+
+        for group in groups:
+            # Check if this group has any input tasksets (tasksets with no input_taskset)
+            has_input_tasksets = any(not ts.input_taskset for ts in group.tasksets)
+
+            if has_input_tasksets:
+                # This group has input tasksets - starts with all events
+                available_events = request_num_events
+            else:
+                # This group only has dependent tasksets - starts with no events
+                available_events = 0
+
+            event_buffers[group.group_id] = {
+                'group_id': group.group_id,
+                'available_events': available_events,
+                'processed_events': 0,
+                'total_events': request_num_events,
+                'jobs': [],
+                'job_counter': 0  # Track total jobs created for this group
+            }
+
+            self.logger.debug(f"Initialized buffer for {group.group_id}: {available_events} events available")
+
+        return event_buffers
+
+    def _process_completed_jobs(self, running_jobs: List[JobInfo],
+                               event_buffers: Dict[str, Dict[str, Any]],
+                               current_time: float,
+                               execution_log: List[Dict[str, Any]]) -> None:
+        """Process completed jobs and update event buffers."""
+        completed_jobs = []
+
+        for job in running_jobs:
+            if current_time >= job.start_time + job.wallclock_time:
+                # Job completed
+                job.end_time = current_time
+                job.status = 'completed'
+                completed_jobs.append(job)
+
+                # Update event buffer
+                if job.group_id in event_buffers:
+                    buffer = event_buffers[job.group_id]
+                    buffer['processed_events'] += job.batch_size
+                    buffer['jobs'].append(job)
+
+                    # Log job completion
+                    log_entry = {
+                        'timestamp': current_time,
+                        'event': 'job_completed',
+                        'job_id': job.job_id,
+                        'group_id': job.group_id,
+                        'batch_size': job.batch_size,
+                        'wallclock_time': job.wallclock_time,
+                        'processed_events': buffer['processed_events']
+                    }
+                    execution_log.append(log_entry)
+
+                    self.logger.debug(f"Completed job {job.job_id}: processed {job.batch_size} events")
+
+        # Remove completed jobs from running list
+        for job in completed_jobs:
+            running_jobs.remove(job)
+
+    def _create_jobs_for_ready_groups(self, groups: List[GroupInfo],
+                                     event_buffers: Dict[str, Dict[str, Any]],
+                                     execution_queue: deque,
+                                     available_slots: int,
+                                     request_num_events: int,
+                                     running_jobs: List[JobInfo],
+                                     batch_number: int) -> List[JobInfo]:
+        """Create jobs for ready groups based on available events and slots."""
+        new_jobs = []
+        slots_used = 0
+
+        self.logger.debug(f"Creating jobs: {len(execution_queue)} groups in queue, {available_slots} slots available")
+        self.logger.info(f"Job creation: {len(execution_queue)} groups in queue, {available_slots} slots available, {len(running_jobs)} jobs running")
+
+        # Process groups in queue order - create jobs in batches
+        temp_queue = deque()
+        completed_groups_in_batch = set()  # Track groups that completed in this batch
+        batch_count = 0
+
+        while execution_queue and slots_used < available_slots:
+            group_id = execution_queue.popleft()
+            group = next((g for g in groups if g.group_id == group_id), None)
+
+            if not group:
+                continue
+
+            buffer = event_buffers.get(group_id, {})
+            available_events = buffer.get('available_events', 0)
+
+            self.logger.debug(f"Group {group_id}: {available_events} events available, needs {group.input_events}")
+
+            if available_events > 0:
+                # Can create a job for this group
+                batch_size = self._calculate_batch_size(group)
+
+                # For the last job, only process remaining events
+                # If available events is less than or equal to batch size, this is the last job
+                if available_events <= batch_size:
+                    # This is the last job - process all remaining events
+                    actual_batch_size = available_events
+                    self.logger.debug(f"Group {group_id}: Last job processing {actual_batch_size} remaining events")
+                else:
+                    # Regular job - use full batch size
+                    actual_batch_size = batch_size
+
+                # Don't create a job if it would process more events than needed
+                if actual_batch_size > available_events:
+                    actual_batch_size = available_events
+
+                # Don't create a job if it would process more events than the total requested
+                # Count both processed events AND events in pending/running jobs
+                total_processed = sum(buffer.get('processed_events', 0) for buffer in event_buffers.values())
+                total_pending = sum(job.batch_size for job in new_jobs)  # Jobs created in this batch
+                total_running = sum(job.batch_size for job in running_jobs if job.group_id == group_id)  # Running jobs for this group
+                total_accounted = total_processed + total_pending + total_running
+
+                if total_accounted + actual_batch_size > request_num_events:
+                    actual_batch_size = max(0, request_num_events - total_accounted)
+
+                self.logger.debug(f"Group {group_id}: batch_size={batch_size}, actual_batch_size={actual_batch_size}")
+
+                if actual_batch_size > 0:
+                    # Use the job counter from the event buffer
+                    buffer['job_counter'] += 1
+                    job_id = f"{group_id}_job_{buffer['job_counter']}"
+                    job_wallclock = self._calculate_job_wallclock_time(group, actual_batch_size)
+
+                    job = JobInfo(
+                        job_id=job_id,
+                        group_id=group_id,
+                        batch_size=actual_batch_size,
+                        wallclock_time=job_wallclock,
+                        start_time=0.0,  # Will be set when job starts
+                        end_time=0.0,
+                        status='pending'
+                    )
+
+                    new_jobs.append(job)
+                    slots_used += 1
+                    batch_count += 1
+
+                    # Update available events
+                    buffer['available_events'] -= actual_batch_size
+
+                    self.logger.info(f"Created job {job_id}: {actual_batch_size} events, {job_wallclock:.2f}s")
+
+                    # Check if we need to create more jobs for this group
+                    # Count total events that will be processed (completed + pending + running)
+                    total_processed = sum(buf.get('processed_events', 0) for buf in event_buffers.values())
+                    total_pending = sum(job.batch_size for job in new_jobs)
+                    total_running = sum(job.batch_size for job in running_jobs if job.group_id == group_id)
+                    total_accounted = total_processed + total_pending + total_running
+
+                    self.logger.debug(f"Group {group_id}: available_events={buffer['available_events']}, input_events={group.input_events}, total_accounted={total_accounted}, request_num_events={request_num_events}")
+
+                    if buffer['available_events'] > 0 and total_accounted < request_num_events:
+                        # Still have events to process, put group back at front of queue
+                        execution_queue.appendleft(group_id)
+                        self.logger.debug(f"Group {group_id} put back in queue: {buffer['available_events']} events available")
+                    else:
+                        # This group is done, add dependent groups to queue
+                        self.logger.debug(f"Group {group_id} completed: {buffer['available_events']} events available, {total_accounted} accounted")
+                        completed_groups_in_batch.add(group_id)
+                        self._add_dependent_groups_to_queue(group_id, groups, event_buffers, execution_queue)
+                else:
+                    # Not enough events, put back in queue
+                    temp_queue.append(group_id)
+            else:
+                # Not enough events, put back in queue
+                temp_queue.append(group_id)
+
+        # Put back groups that couldn't be processed (but not completed groups)
+        for group_id in reversed(temp_queue):
+            if group_id not in completed_groups_in_batch:
+                execution_queue.appendleft(group_id)
+
+                if len(new_jobs) > 0:
+                    self.logger.info(f"Batch {batch_number} summary: {len(new_jobs)} jobs created")
+
+        return new_jobs
+
+    def _add_dependent_groups_to_queue(self, completed_group_id: str,
+                                      groups: List[GroupInfo],
+                                      event_buffers: Dict[str, Dict[str, Any]],
+                                      execution_queue: deque) -> None:
+        """Add dependent groups to execution queue when a group completes."""
+        for group in groups:
+            # Check if this group depends on the completed group
+            depends_on_completed = any(
+                ts.input_taskset and
+                any(ts2.taskset_id == ts.input_taskset for ts2 in
+                    next((g.tasksets for g in groups if g.group_id == completed_group_id), []))
+                for ts in group.tasksets
+            )
+
+            if depends_on_completed:
+                # This group depends on the completed group
+                # Add processed events from completed group to this group's available events
+                completed_buffer = event_buffers.get(completed_group_id, {})
+                processed_events = completed_buffer.get('processed_events', 0)
+
+                if processed_events > 0:
+                    current_buffer = event_buffers.get(group.group_id, {})
+                    current_buffer['available_events'] += processed_events
+
+                    # Add to execution queue if not already there
+                    if group.group_id not in execution_queue:
+                        execution_queue.append(group.group_id)
+
+                    self.logger.debug(f"Added {processed_events} events to {group.group_id} from {completed_group_id}")
 
 
     def print_simulation_summary(self, result: SimulationResult) -> None:
