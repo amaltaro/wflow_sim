@@ -88,7 +88,7 @@ class TestWorkflowSimulator:
             assert result.total_turnaround_time > 0
             assert len(result.groups) == 1
             assert len(result.jobs) == 10
-            assert len(result.execution_log) == 10
+            assert len(result.execution_log) == 20  # 10 job_started + 10 job_completed events
 
         finally:
             Path(temp_file).unlink()
