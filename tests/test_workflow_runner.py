@@ -56,7 +56,6 @@ class TestWorkflowRunner:
                 "TimePerEvent": 10,
                 "SizePerEvent": 200,
                 "GroupName": "group_1",
-                "GroupInputEvents": 1000
             },
             "Taskset2": {
                 "Memory": 4000,
@@ -65,7 +64,6 @@ class TestWorkflowRunner:
                 "SizePerEvent": 300,
                 "InputTaskset": "Taskset1",
                 "GroupName": "group_1",
-                "GroupInputEvents": 1000
             },
             "CompositionNumber": 1
         }
@@ -88,13 +86,13 @@ class TestWorkflowRunner:
             assert simulation.success is True
             assert simulation.total_events == 10000
             assert simulation.total_groups == 1
-            assert simulation.total_jobs == 10
+            assert simulation.total_jobs == 7
 
             # Check metrics
             metrics = results['metrics']
             assert metrics.total_tasksets == 2
             assert metrics.total_groups == 1
-            assert metrics.total_jobs == 10
+            assert metrics.total_jobs == 7
             assert metrics.success_rate == 1.0
 
         finally:
@@ -121,7 +119,7 @@ class TestWorkflowRunner:
             memory=2000,
             multicore=1,
             size_per_event=200,
-            group_input_events=1000,
+            group_input_events=100,
             scram_arch=["el9_amd64_gcc11"],
             requires_gpu="forbidden",
             keep_output=False
@@ -213,7 +211,7 @@ class TestWorkflowRunner:
             memory=2000,
             multicore=1,
             size_per_event=200,
-            group_input_events=1000,
+            group_input_events=100,
             scram_arch=["el9_amd64_gcc11"],
             requires_gpu="forbidden",
             keep_output=False

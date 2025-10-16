@@ -56,7 +56,6 @@ class TestWorkflowSimulator:
                 "TimePerEvent": 10,
                 "SizePerEvent": 200,
                 "GroupName": "group_1",
-                "GroupInputEvents": 1000
             },
             "Taskset2": {
                 "Memory": 4000,
@@ -65,7 +64,6 @@ class TestWorkflowSimulator:
                 "SizePerEvent": 300,
                 "InputTaskset": "Taskset1",
                 "GroupName": "group_1",
-                "GroupInputEvents": 1000
             },
             "CompositionNumber": 1
         }
@@ -83,12 +81,12 @@ class TestWorkflowSimulator:
             assert result.composition_number == 1
             assert result.total_events == 10000
             assert result.total_groups == 1
-            assert result.total_jobs == 10  # 10000 / 1000
+            assert result.total_jobs == 7  # Based on target wallclock time calculation
             assert result.total_wall_time > 0
             assert result.total_turnaround_time > 0
             assert len(result.groups) == 1
-            assert len(result.jobs) == 10
-            assert len(result.execution_log) == 20  # 10 job_started + 10 job_completed events
+            assert len(result.jobs) == 7
+            assert len(result.execution_log) == 14  # 7 job_started + 7 job_completed events
 
         finally:
             Path(temp_file).unlink()
@@ -131,7 +129,7 @@ class TestWorkflowSimulator:
             memory=2000,
             multicore=1,
             size_per_event=200,
-            group_input_events=1000,
+            group_input_events=100,
             scram_arch=["el9_amd64_gcc11"],
             requires_gpu="forbidden",
             keep_output=False
@@ -145,7 +143,7 @@ class TestWorkflowSimulator:
             memory=4000,
             multicore=2,
             size_per_event=300,
-            group_input_events=1000,
+            group_input_events=100,
             scram_arch=["el9_amd64_gcc11"],
             requires_gpu="forbidden",
             keep_output=True
@@ -195,7 +193,7 @@ class TestWorkflowSimulator:
             memory=2000,
             multicore=1,
             size_per_event=200,
-            group_input_events=1000,
+            group_input_events=100,
             scram_arch=["el9_amd64_gcc11"],
             requires_gpu="forbidden",
             keep_output=False
@@ -209,7 +207,7 @@ class TestWorkflowSimulator:
             memory=4000,
             multicore=2,
             size_per_event=300,
-            group_input_events=1000,
+            group_input_events=100,
             scram_arch=["el9_amd64_gcc11"],
             requires_gpu="forbidden",
             keep_output=True
@@ -260,7 +258,7 @@ class TestWorkflowSimulator:
             memory=2000,
             multicore=1,
             size_per_event=200,
-            group_input_events=1000,
+            group_input_events=100,
             scram_arch=["el9_amd64_gcc11"],
             requires_gpu="forbidden",
             keep_output=False
@@ -321,7 +319,7 @@ class TestWorkflowSimulator:
             memory=2000,
             multicore=1,
             size_per_event=200,
-            group_input_events=1000,
+            group_input_events=100,
             scram_arch=["el9_amd64_gcc11"],
             requires_gpu="forbidden",
             keep_output=False

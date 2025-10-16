@@ -34,7 +34,7 @@ class TestWorkflowMetricsCalculator:
             memory=2000,
             multicore=1,
             size_per_event=200,
-            group_input_events=1080,
+            group_input_events=1000,
             scram_arch=["el9_amd64_gcc11"],
             requires_gpu="forbidden",
             keep_output=False
@@ -48,7 +48,7 @@ class TestWorkflowMetricsCalculator:
             memory=4000,
             multicore=2,
             size_per_event=300,
-            group_input_events=1080,
+            group_input_events=1000,
             scram_arch=["el9_amd64_gcc11"],
             requires_gpu="forbidden",
             keep_output=True
