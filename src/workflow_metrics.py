@@ -175,7 +175,9 @@ class WorkflowMetricsCalculator:
             # Calculate taskset metrics for this group
             taskset_metrics = []
             for taskset in group.tasksets:
-                execution_time = taskset.time_per_event * taskset.group_input_events
+                # Use group input_events (batch size) for calculations
+                batch_size = group.input_events
+                execution_time = taskset.time_per_event * batch_size
                 execution_metrics = ExecutionMetrics(
                     start_time=0.0,
                     end_time=execution_time,
@@ -185,15 +187,15 @@ class WorkflowMetricsCalculator:
                 resource_usage = ResourceUsage(
                     cpu_usage=taskset.multicore * 100.0,
                     memory_usage=taskset.memory,
-                    storage_usage=taskset.size_per_event * taskset.group_input_events
+                    storage_usage=taskset.size_per_event * batch_size
                 )
 
                 taskset_metric = TasksetMetrics(
                     taskset_id=taskset.taskset_id,
                     execution_metrics=execution_metrics,
                     resource_usage=resource_usage,
-                    input_events=taskset.group_input_events,
-                    output_events=taskset.group_input_events
+                    input_events=batch_size,
+                    output_events=batch_size
                 )
                 taskset_metrics.append(taskset_metric)
 

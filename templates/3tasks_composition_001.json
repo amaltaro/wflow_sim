@@ -12,8 +12,7 @@
     ],
     "SizePerEvent": 200,
     "TimePerEvent": 10,
-    "GroupName": "group_5",
-    "GroupInputEvents": 1080
+    "GroupName": "group_5"
   },
   "Taskset2": {
     "KeepOutput": true,
@@ -26,8 +25,7 @@
     "SizePerEvent": 300,
     "TimePerEvent": 20,
     "InputTaskset": "Taskset1",
-    "GroupName": "group_5",
-    "GroupInputEvents": 1080
+    "GroupName": "group_5"
   },
   "Taskset3": {
     "KeepOutput": true,
@@ -40,8 +38,7 @@
     "SizePerEvent": 50,
     "TimePerEvent": 10,
     "InputTaskset": "Taskset2",
-    "GroupName": "group_5",
-    "GroupInputEvents": 1080
+    "GroupName": "group_5"
   },
   "CompositionNumber": 1
 }

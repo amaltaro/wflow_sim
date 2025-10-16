@@ -336,16 +336,21 @@ class WorkflowSimulator:
 
     def _calculate_job_counts(self, groups: List[GroupInfo],
                              request_num_events: int) -> None:
-        """Calculate job count for each group based on event scaling."""
+        """Calculate job count for each group based on target wallclock time."""
         for group in groups:
-            if group.input_events > 0:
+            # Calculate how many events can fit in target wallclock time
+            batch_size = self._calculate_batch_size(group)
+
+            if batch_size > 0:
                 # Calculate exact number of jobs needed (including fractional)
-                exact_job_count = request_num_events / group.input_events
+                exact_job_count = request_num_events / batch_size
                 group.job_count = math.ceil(exact_job_count)
                 group.exact_job_count = exact_job_count  # Store fractional value
+                group.input_events = batch_size  # Store batch size for this group
             else:
                 group.job_count = 1
                 group.exact_job_count = 1.0
+                group.input_events = request_num_events
 
             self.logger.info(f"Group {group.group_id}: {group.job_count} jobs "
                            f"({request_num_events} events / {group.input_events} per job, "
@@ -448,19 +453,19 @@ class WorkflowSimulator:
     def _calculate_batch_size(self, group: GroupInfo) -> int:
         """Calculate batch size to meet wallclock time constraints."""
         if not group.tasksets:
-            return group.input_events
+            return 1000  # Default batch size if no tasksets
 
         # Calculate time per event for the group
         total_time_per_event = sum(ts.time_per_event for ts in group.tasksets)
 
         if total_time_per_event <= 0:
-            return group.input_events
+            return 1000  # Default batch size if no time per event
 
         # Calculate how many events can fit in target wallclock time
         max_events_per_job = int(self.resource_config.target_wallclock_time / total_time_per_event)
 
-        # Don't exceed the group's input events
-        return min(max_events_per_job, group.input_events)
+        # Ensure we have at least 1 event per job
+        return max(1, max_events_per_job)
 
     def _calculate_job_wallclock_time(self, group: GroupInfo, batch_size: int) -> float:
         """
@@ -596,6 +601,8 @@ class WorkflowSimulator:
         completed_groups_in_batch = set()  # Track groups that completed in this batch
         batch_count = 0
 
+        # Create jobs only for groups that are ready and have events available
+        # Don't force job creation based on available slots
         while execution_queue and slots_used < available_slots:
             group_id = execution_queue.popleft()
             group = next((g for g in groups if g.group_id == group_id), None)
