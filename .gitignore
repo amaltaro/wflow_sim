@@ -29,8 +29,6 @@ htmlcov/
 .tox/
 
 # Project specific
-results/*.json
-!results/.gitkeep
 *.log
 
 # Local development environment (keep local, don't push to upstream)
