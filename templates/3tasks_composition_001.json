@@ -1,7 +1,7 @@
 {
   "Comments": "Workflow Composition 1 - 1 groups",
   "NumTasks": 3,
-  "RequestNumEvents": 100000,
+  "RequestNumEvents": 1000000,
   "Taskset1": {
     "KeepOutput": false,
     "Memory": 2000,
