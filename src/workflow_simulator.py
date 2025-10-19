@@ -15,6 +15,11 @@ from pathlib import Path
 import time
 from collections import defaultdict, deque
 
+try:
+    from .job_metrics import JobMetricsCalculator
+except ImportError:
+    from job_metrics import JobMetricsCalculator
+
 
 
 @dataclass
@@ -64,6 +69,10 @@ class JobInfo:
     start_time: float
     end_time: float
     status: str  # 'pending', 'running', 'completed', 'failed'
+    total_cpu_time: float = 0.0
+    total_write_local_mb: float = 0.0
+    total_write_remote_mb: float = 0.0
+    total_network_transfer_mb: float = 0.0
 
 
 @dataclass
@@ -111,6 +120,7 @@ class WorkflowSimulator:
             resource_config: Resource configuration for simulation
         """
         self.resource_config = resource_config or ResourceConfig()
+        self.job_metrics_calculator = JobMetricsCalculator()
         self.logger = logging.getLogger(__name__)
         self._setup_logging()
 
@@ -482,6 +492,7 @@ class WorkflowSimulator:
         total_time_per_event = sum(ts.time_per_event for ts in group.tasksets)
         return total_time_per_event * batch_size
 
+
     def _execute_group_jobs(self, group_jobs: List[JobInfo],
                            start_time: float,
                            execution_log: List[Dict[str, Any]]) -> float:
@@ -651,6 +662,9 @@ class WorkflowSimulator:
                     job_id = f"{group_id}_job_{buffer['job_counter']}"
                     job_wallclock = self._calculate_job_wallclock_time(group, actual_batch_size)
 
+                    # Calculate job metrics using the dedicated calculator
+                    job_metrics = self.job_metrics_calculator.calculate_job_metrics(group.tasksets, actual_batch_size)
+
                     job = JobInfo(
                         job_id=job_id,
                         group_id=group_id,
@@ -658,7 +672,11 @@ class WorkflowSimulator:
                         wallclock_time=job_wallclock,
                         start_time=0.0,  # Will be set when job starts
                         end_time=0.0,
-                        status='pending'
+                        status='pending',
+                        total_cpu_time=job_metrics.total_cpu_time,
+                        total_write_local_mb=job_metrics.total_write_local_mb,
+                        total_write_remote_mb=job_metrics.total_write_remote_mb,
+                        total_network_transfer_mb=job_metrics.total_network_transfer_mb
                     )
 
                     new_jobs.append(job)

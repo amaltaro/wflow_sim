@@ -13,6 +13,11 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 import time
 
+try:
+    from .job_metrics import JobMetricsCalculator
+except ImportError:
+    from job_metrics import JobMetricsCalculator
+
 
 @dataclass
 class ResourceUsage:
@@ -94,6 +99,7 @@ class WorkflowMetricsCalculator:
         No workflow data needed since we only work with simulation results.
         """
         self.metrics: Optional[WorkflowMetrics] = None
+        self.job_metrics_calculator = JobMetricsCalculator()
         self.logger = logging.getLogger(__name__)
 
     def calculate_metrics(self, simulation_result: 'SimulationResult') -> WorkflowMetrics:
@@ -274,11 +280,19 @@ class WorkflowMetricsCalculator:
                 'average_batch_size': 0.0,
                 'min_batch_size': 0,
                 'max_batch_size': 0,
-                'total_jobs': 0
+                'total_jobs': 0,
+                'total_cpu_time': 0.0,
+                'total_write_local_mb': 0.0,
+                'total_write_remote_mb': 0.0,
+                'total_network_transfer_mb': 0.0
             }
 
+        # Calculate basic job statistics
         job_wall_times = [job.wallclock_time for job in simulation_result.jobs]
         batch_sizes = [job.batch_size for job in simulation_result.jobs]
+
+        # Use JobMetricsCalculator for aggregated job metrics
+        job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
 
         return {
             'average_wall_time': sum(job_wall_times) / len(job_wall_times),
@@ -287,7 +301,11 @@ class WorkflowMetricsCalculator:
             'average_batch_size': sum(batch_sizes) / len(batch_sizes),
             'min_batch_size': min(batch_sizes),
             'max_batch_size': max(batch_sizes),
-            'total_jobs': len(simulation_result.jobs)
+            'total_jobs': len(simulation_result.jobs),
+            'total_cpu_time': job_metrics_stats['total_cpu_time'],
+            'total_write_local_mb': job_metrics_stats['total_write_local_mb'],
+            'total_write_remote_mb': job_metrics_stats['total_write_remote_mb'],
+            'total_network_transfer_mb': job_metrics_stats['total_network_transfer_mb']
         }
 
     def calculate_group_statistics(self, simulation_result: 'SimulationResult') -> Dict[str, Any]:
