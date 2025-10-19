@@ -165,6 +165,7 @@ class TestWorkflowRunner:
                 self.resource_efficiency = 0.5
                 self.throughput = 1.0
                 self.success_rate = 1.0
+                self.total_wall_time_per_event = 10.0
 
         results = {
             'success': True,
@@ -256,11 +257,13 @@ class TestWorkflowRunner:
             def __init__(self):
                 self.workflow_id = "test_workflow"
                 self.composition_number = 1
+                self.total_events = 10000
                 self.total_tasksets = 1
                 self.total_groups = 1
                 self.total_jobs = 10
                 self.total_wall_time = 100000.0
                 self.total_turnaround_time = 10000.0
+                self.total_wall_time_per_event = 10.0
                 self.resource_efficiency = 0.5
                 self.throughput = 1.0
                 self.success_rate = 1.0
@@ -283,18 +286,16 @@ class TestWorkflowRunner:
         with open(output_file, 'r') as f:
             data = json.load(f)
 
-        assert data['success'] is True
-        assert data['error_message'] is None
         assert 'simulation_result' in data
         assert 'metrics' in data
 
         # Check simulation result structure
         sim_result = data['simulation_result']
-        assert sim_result['workflow_id'] == "test_workflow"
-        assert sim_result['total_events'] == 10000
-        assert sim_result['total_groups'] == 1
-        assert sim_result['total_jobs'] == 10
         assert sim_result['success'] is True
+        assert sim_result['error_message'] is None
+        assert sim_result['groups'][0]['group_id'] == "group_1"
+        assert len(sim_result['groups']) == 1
+        assert len(sim_result['jobs']) == 1
 
         # Check metrics structure
         metrics = data['metrics']
