@@ -99,6 +99,9 @@ class WorkflowRunner:
         print(f"  Total Wall Time: {simulation.total_wall_time:.2f}s ({simulation.total_wall_time/3600:.2f}h)")
         print(f"  Total Turnaround Time: {simulation.total_turnaround_time:.2f}s ({simulation.total_turnaround_time/3600:.2f}h)")
 
+        # Display wall time per event from metrics
+        print(f"  Wall Time per Event: {metrics.total_wall_time_per_event:.6f}s/event")
+
         # Metrics summary
         print(f"\n📈 PERFORMANCE METRICS:")
         print(f"  Resource Efficiency: {metrics.resource_efficiency:.2f}")
@@ -134,35 +137,55 @@ class WorkflowRunner:
     def write_complete_results(self, results: Dict[str, Any],
                               filepath: Union[str, Path]) -> None:
         """Write complete results (simulation + metrics) to a JSON file."""
+        simulation = results['simulation_result']
+        metrics = results['metrics']
+
         output_data = {
+            'metrics': {
+                'workflow_id': metrics.workflow_id,
+                'composition_number': metrics.composition_number,
+                'total_events': metrics.total_events,
+                'total_tasksets': metrics.total_tasksets,
+                'total_groups': metrics.total_groups,
+                'total_jobs': metrics.total_jobs,
+                'total_wall_time': metrics.total_wall_time,
+                'total_turnaround_time': metrics.total_turnaround_time,
+                'total_wall_time_per_event': metrics.total_wall_time_per_event,
+                'resource_efficiency': metrics.resource_efficiency,
+                'throughput': metrics.throughput,
+                'success_rate': metrics.success_rate,
+                'timestamp': metrics.timestamp
+            },
             'simulation_result': {
-                'workflow_id': results['simulation_result'].workflow_id,
-                'composition_number': results['simulation_result'].composition_number,
-                'total_events': results['simulation_result'].total_events,
-                'total_groups': results['simulation_result'].total_groups,
-                'total_jobs': results['simulation_result'].total_jobs,
-                'total_wall_time': results['simulation_result'].total_wall_time,
-                'total_turnaround_time': results['simulation_result'].total_turnaround_time,
-                'success': results['simulation_result'].success,
-                'error_message': results['simulation_result'].error_message,
+                # Only include raw simulation data not available in metrics
+                'success': simulation.success,
+                'error_message': simulation.error_message,
                 'groups': [
                     {
                         'group_id': group.group_id,
                         'job_count': group.job_count,
                         'input_events': group.input_events,
                         'total_execution_time': group.total_execution_time,
+                        'exact_job_count': group.exact_job_count,
+                        'dependencies': group.dependencies,
                         'tasksets': [
                             {
                                 'taskset_id': ts.taskset_id,
+                                'group_name': ts.group_name,
+                                'input_taskset': ts.input_taskset,
                                 'time_per_event': ts.time_per_event,
                                 'memory': ts.memory,
                                 'multicore': ts.multicore,
-                                'size_per_event': ts.size_per_event
+                                'size_per_event': ts.size_per_event,
+                                'group_input_events': ts.group_input_events,
+                                'scram_arch': ts.scram_arch,
+                                'requires_gpu': ts.requires_gpu,
+                                'keep_output': ts.keep_output
                             }
                             for ts in group.tasksets
                         ]
                     }
-                    for group in results['simulation_result'].groups
+                    for group in simulation.groups
                 ],
                 'jobs': [
                     {
@@ -174,24 +197,10 @@ class WorkflowRunner:
                         'end_time': job.end_time,
                         'status': job.status
                     }
-                    for job in results['simulation_result'].jobs
-                ]
-            },
-            'metrics': {
-                'workflow_id': results['metrics'].workflow_id,
-                'composition_number': results['metrics'].composition_number,
-                'total_tasksets': results['metrics'].total_tasksets,
-                'total_groups': results['metrics'].total_groups,
-                'total_jobs': results['metrics'].total_jobs,
-                'total_wall_time': results['metrics'].total_wall_time,
-                'total_turnaround_time': results['metrics'].total_turnaround_time,
-                'resource_efficiency': results['metrics'].resource_efficiency,
-                'throughput': results['metrics'].throughput,
-                'success_rate': results['metrics'].success_rate,
-                'timestamp': results['metrics'].timestamp
-            },
-            'success': results['success'],
-            'error_message': results['error_message']
+                    for job in simulation.jobs
+                ],
+                'execution_log': simulation.execution_log
+            }
         }
 
         with open(filepath, 'w') as f:

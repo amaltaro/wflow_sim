@@ -62,11 +62,13 @@ class WorkflowMetrics:
     """Comprehensive workflow execution metrics."""
     workflow_id: str
     composition_number: int
+    total_events: int
     total_tasksets: int
     total_groups: int
     total_jobs: int
     total_wall_time: float
     total_turnaround_time: float
+    total_wall_time_per_event: float
     group_metrics: List[GroupMetrics]
     resource_efficiency: float
     throughput: float
@@ -112,6 +114,7 @@ class WorkflowMetricsCalculator:
         # Extract basic information from simulation result
         workflow_id = simulation_result.workflow_id
         composition_number = simulation_result.composition_number
+        total_events = simulation_result.total_events
 
         # Use simulation results directly
         total_tasksets = self._count_tasksets_from_simulation(simulation_result)
@@ -127,15 +130,18 @@ class WorkflowMetricsCalculator:
         resource_efficiency = self._calculate_resource_efficiency_from_simulation(simulation_result)
         throughput = self._calculate_throughput_from_simulation(simulation_result)
         success_rate = self._calculate_success_rate_from_simulation(simulation_result)
+        total_wall_time_per_event = self._calculate_wall_time_per_event_from_simulation(simulation_result)
 
         self.metrics = WorkflowMetrics(
             workflow_id=workflow_id,
             composition_number=composition_number,
+            total_events=total_events,
             total_tasksets=total_tasksets,
             total_groups=total_groups,
             total_jobs=total_jobs,
             total_wall_time=total_wall_time,
             total_turnaround_time=total_turnaround_time,
+            total_wall_time_per_event=total_wall_time_per_event,
             group_metrics=group_metrics,
             resource_efficiency=resource_efficiency,
             throughput=throughput,
@@ -243,6 +249,12 @@ class WorkflowMetricsCalculator:
         """Calculate success rate from simulation result."""
         if simulation_result.success:
             return 1.0
+
+    def _calculate_wall_time_per_event_from_simulation(self, simulation_result: 'SimulationResult') -> float:
+        """Calculate wall time per event from simulation result."""
+        if simulation_result.total_events > 0:
+            return simulation_result.total_wall_time / simulation_result.total_events
+        return 0.0
 
     def calculate_job_statistics(self, simulation_result: 'SimulationResult') -> Dict[str, Any]:
         """
