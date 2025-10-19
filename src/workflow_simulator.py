@@ -391,6 +391,9 @@ class WorkflowSimulator:
             if not dependency_graph.get(group.group_id, []):
                 execution_queue.append(group.group_id)
 
+        # Calculate input tasksets for other groups (needed for precise job metrics)
+        input_tasksets_for_other_groups = self._get_input_tasksets_for_other_groups(groups)
+
         self.logger.info(f"Starting simulation with {available_slots} job slots available")
 
         while execution_queue or running_jobs:
@@ -410,7 +413,7 @@ class WorkflowSimulator:
                 self.logger.info(f"=== BATCH {batch_number} ===")
                 self.logger.debug(f"Before job creation: {len(execution_queue)} groups in queue, {available_slots_for_new_jobs} slots available")
                 new_jobs = self._create_jobs_for_ready_groups(
-                    groups, event_buffers, execution_queue, available_slots_for_new_jobs, request_num_events, running_jobs, batch_number
+                    groups, event_buffers, execution_queue, available_slots_for_new_jobs, request_num_events, running_jobs, batch_number, input_tasksets_for_other_groups
                 )
                 self.logger.debug(f"After job creation: {len(execution_queue)} groups in queue, {len(new_jobs)} new jobs created")
             else:
@@ -491,6 +494,34 @@ class WorkflowSimulator:
 
         total_time_per_event = sum(ts.time_per_event for ts in group.tasksets)
         return total_time_per_event * batch_size
+
+    def _get_input_tasksets_for_other_groups(self, all_groups: List[GroupInfo]) -> Set[str]:
+        """
+        Identify tasksets that are input tasksets for other groups.
+
+        Args:
+            all_groups: List of all groups in the workflow
+
+        Returns:
+            Set of taskset IDs that are input tasksets for other groups
+        """
+        input_tasksets = set()
+
+        # Create a mapping of all taskset IDs to their group
+        taskset_to_group = {}
+        for group in all_groups:
+            for taskset in group.tasksets:
+                taskset_to_group[taskset.taskset_id] = group.group_id
+
+        # Find tasksets that are referenced as input_taskset by tasksets in different groups
+        for group in all_groups:
+            for taskset in group.tasksets:
+                if taskset.input_taskset and taskset.input_taskset in taskset_to_group:
+                    input_group = taskset_to_group[taskset.input_taskset]
+                    if input_group != group.group_id:
+                        input_tasksets.add(taskset.input_taskset)
+
+        return input_tasksets
 
 
     def _execute_group_jobs(self, group_jobs: List[JobInfo],
@@ -599,7 +630,8 @@ class WorkflowSimulator:
                                      available_slots: int,
                                      request_num_events: int,
                                      running_jobs: List[JobInfo],
-                                     batch_number: int) -> List[JobInfo]:
+                                     batch_number: int,
+                                     input_tasksets_for_other_groups: Optional[Set[str]] = None) -> List[JobInfo]:
         """Create jobs for ready groups based on available events and slots."""
         new_jobs = []
         slots_used = 0
@@ -663,7 +695,11 @@ class WorkflowSimulator:
                     job_wallclock = self._calculate_job_wallclock_time(group, actual_batch_size)
 
                     # Calculate job metrics using the dedicated calculator
-                    job_metrics = self.job_metrics_calculator.calculate_job_metrics(group.tasksets, actual_batch_size)
+                    job_metrics = self.job_metrics_calculator.calculate_job_metrics(
+                        group.tasksets,
+                        actual_batch_size,
+                        input_tasksets_for_other_groups
+                    )
 
                     job = JobInfo(
                         job_id=job_id,
