@@ -136,6 +136,7 @@ class WorkflowRunner:
         print(f"  Total CPU Time: {job_stats['total_cpu_time']:.2f}s")
         print(f"  Total Write Local: {job_stats['total_write_local_mb']:.2f} MB")
         print(f"  Total Write Remote: {job_stats['total_write_remote_mb']:.2f} MB")
+        print(f"  Total Read Remote: {job_stats['total_read_remote_mb']:.2f} MB")
         print(f"  Total Network Transfer: {job_stats['total_network_transfer_mb']:.2f} MB")
 
     def write_complete_results(self, results: Dict[str, Any],
@@ -203,6 +204,7 @@ class WorkflowRunner:
                         'total_cpu_time': job.total_cpu_time,
                         'total_write_local_mb': job.total_write_local_mb,
                         'total_write_remote_mb': job.total_write_remote_mb,
+                        'total_read_remote_mb': job.total_read_remote_mb,
                         'total_network_transfer_mb': job.total_network_transfer_mb
                     }
                     for job in simulation.jobs

@@ -72,6 +72,7 @@ class JobInfo:
     total_cpu_time: float = 0.0
     total_write_local_mb: float = 0.0
     total_write_remote_mb: float = 0.0
+    total_read_remote_mb: float = 0.0
     total_network_transfer_mb: float = 0.0
 
 
@@ -523,6 +524,39 @@ class WorkflowSimulator:
 
         return input_tasksets
 
+    def _get_input_taskset_size_per_event(self, group: GroupInfo, all_groups: List[GroupInfo]) -> Optional[int]:
+        """
+        Get the SizePerEvent of the input taskset for a group.
+
+        Only considers the first taskset of the group to determine if there's a remote read.
+        Input tasksets within the same group are considered local reads, not remote reads.
+
+        Args:
+            group: GroupInfo object for the current group
+            all_groups: List of all groups in the workflow
+
+        Returns:
+            SizePerEvent of the input taskset (in KB) if found, None otherwise
+        """
+        # Only check the first taskset of the group for input taskset
+        if not group.tasksets:
+            return None
+
+        first_taskset = group.tasksets[0]
+        input_taskset_id = first_taskset.input_taskset
+
+        if not input_taskset_id:
+            return None
+
+        # Find the input taskset in OTHER groups (not the current group)
+        for other_group in all_groups:
+            if other_group.group_id == group.group_id:
+                continue  # Skip the current group
+            for taskset in other_group.tasksets:
+                if taskset.taskset_id == input_taskset_id:
+                    return taskset.size_per_event
+
+        return None
 
     def _execute_group_jobs(self, group_jobs: List[JobInfo],
                            start_time: float,
@@ -694,11 +728,15 @@ class WorkflowSimulator:
                     job_id = f"{group_id}_job_{buffer['job_counter']}"
                     job_wallclock = self._calculate_job_wallclock_time(group, actual_batch_size)
 
+                    # Get input taskset size for remote read calculation
+                    input_taskset_size = self._get_input_taskset_size_per_event(group, groups)
+
                     # Calculate job metrics using the dedicated calculator
                     job_metrics = self.job_metrics_calculator.calculate_job_metrics(
                         group.tasksets,
                         actual_batch_size,
-                        input_tasksets_for_other_groups
+                        input_tasksets_for_other_groups,
+                        input_taskset_size
                     )
 
                     job = JobInfo(
@@ -712,6 +750,7 @@ class WorkflowSimulator:
                         total_cpu_time=job_metrics.total_cpu_time,
                         total_write_local_mb=job_metrics.total_write_local_mb,
                         total_write_remote_mb=job_metrics.total_write_remote_mb,
+                        total_read_remote_mb=job_metrics.total_read_remote_mb,
                         total_network_transfer_mb=job_metrics.total_network_transfer_mb
                     )
 
