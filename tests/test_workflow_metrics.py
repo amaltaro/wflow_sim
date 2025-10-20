@@ -109,6 +109,10 @@ class TestWorkflowMetricsCalculator:
         assert metrics.group_metrics[0].group_id == "group_1"
         assert metrics.group_metrics[0].job_count == 926
 
+        # Test per-event metrics
+        assert metrics.wall_time_per_event == 30.024  # 30024000.0 / 1000000
+        assert metrics.cpu_time_per_event == 0.0324  # 32400.0 / 1000000
+
         # Test aggregated job-level metrics
         assert metrics.total_cpu_time == 32400.0
         assert metrics.total_write_local_mb == 216.0
@@ -346,8 +350,8 @@ class TestWorkflowMetricsCalculator:
 
         required_keys = [
             'workflow_id', 'total_tasksets', 'total_groups', 'total_jobs',
-            'total_wall_time', 'total_turnaround_time', 'resource_efficiency',
-            'throughput', 'success_rate', 'total_cpu_time', 'total_write_local_mb',
+            'total_wall_time', 'total_turnaround_time', 'wall_time_per_event', 'cpu_time_per_event',
+            'resource_efficiency', 'throughput', 'success_rate', 'total_cpu_time', 'total_write_local_mb',
             'total_write_remote_mb', 'total_read_remote_mb', 'total_network_transfer_mb'
         ]
 
@@ -403,6 +407,8 @@ class TestWorkflowMetricsCalculator:
         assert "WORKFLOW EXECUTION METRICS" in captured.out
         assert "Total Tasksets: 1" in captured.out
         assert "Total Groups: 1" in captured.out
+        assert "Wall Time per Event:" in captured.out
+        assert "CPU Time per Event:" in captured.out
         assert "AGGREGATED JOB METRICS" in captured.out
         assert "Total CPU Time:" in captured.out
         assert "Total Write Local:" in captured.out

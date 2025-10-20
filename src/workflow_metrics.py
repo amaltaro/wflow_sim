@@ -74,6 +74,7 @@ class WorkflowMetrics:
     total_wall_time: float
     total_turnaround_time: float
     wall_time_per_event: float
+    cpu_time_per_event: float
     group_metrics: List[GroupMetrics]
     resource_efficiency: float
     throughput: float
@@ -142,6 +143,7 @@ class WorkflowMetricsCalculator:
         throughput = self._calculate_throughput_from_simulation(simulation_result)
         success_rate = self._calculate_success_rate_from_simulation(simulation_result)
         wall_time_per_event = self._calculate_wall_time_per_event_from_simulation(simulation_result)
+        cpu_time_per_event = self._calculate_cpu_time_per_event_from_simulation(simulation_result)
 
         # Calculate aggregated job-level metrics
         job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
@@ -156,6 +158,7 @@ class WorkflowMetricsCalculator:
             total_wall_time=total_wall_time,
             total_turnaround_time=total_turnaround_time,
             wall_time_per_event=wall_time_per_event,
+            cpu_time_per_event=cpu_time_per_event,
             group_metrics=group_metrics,
             resource_efficiency=resource_efficiency,
             throughput=throughput,
@@ -275,6 +278,15 @@ class WorkflowMetricsCalculator:
             return simulation_result.total_wall_time / simulation_result.total_events
         return 0.0
 
+    def _calculate_cpu_time_per_event_from_simulation(self, simulation_result: 'SimulationResult') -> float:
+        """Calculate CPU time per event from simulation result."""
+        if simulation_result.total_events > 0:
+            # Calculate total CPU time from job metrics
+            job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
+            total_cpu_time = job_metrics_stats['total_cpu_time']
+            return total_cpu_time / simulation_result.total_events
+        return 0.0
+
     def calculate_job_statistics(self, simulation_result: 'SimulationResult') -> Dict[str, Any]:
         """
         Calculate comprehensive job statistics from simulation results.
@@ -376,6 +388,8 @@ class WorkflowMetricsCalculator:
         print(f"Total Jobs: {self.metrics.total_jobs}")
         print(f"Total Turnaround Time: {self.metrics.total_turnaround_time:.2f} seconds")
         print(f"Total Wall Time: {self.metrics.total_wall_time:.2f} seconds")
+        print(f"Wall Time per Event: {self.metrics.wall_time_per_event:.6f} seconds")
+        print(f"CPU Time per Event: {self.metrics.cpu_time_per_event:.6f} seconds")
         print(f"Resource Efficiency: {self.metrics.resource_efficiency:.2f}")
         print(f"Throughput: {self.metrics.throughput:.2f} events/second")
         print(f"Success Rate: {self.metrics.success_rate:.2f}")
@@ -441,6 +455,8 @@ class WorkflowMetricsCalculator:
             'total_jobs': self.metrics.total_jobs,
             'total_wall_time': self.metrics.total_wall_time,
             'total_turnaround_time': self.metrics.total_turnaround_time,
+            'wall_time_per_event': self.metrics.wall_time_per_event,
+            'cpu_time_per_event': self.metrics.cpu_time_per_event,
             'resource_efficiency': self.metrics.resource_efficiency,
             'throughput': self.metrics.throughput,
             'success_rate': self.metrics.success_rate,
