@@ -1,5 +1,5 @@
 {
-  "Comments": "Workflow Composition 1 - 1 groups",
+  "Comments": "Workflow Composition 2 - 2 groups",
   "NumTasks": 3,
   "RequestNumEvents": 1000000,
   "Taskset1": {
@@ -12,7 +12,8 @@
     ],
     "SizePerEvent": 200,
     "TimePerEvent": 10,
-    "GroupName": "group_5"
+    "GroupName": "group_0",
+    "GroupInputEvents": 4320
   },
   "Taskset2": {
     "KeepOutput": true,
@@ -25,7 +26,8 @@
     "SizePerEvent": 300,
     "TimePerEvent": 20,
     "InputTaskset": "Taskset1",
-    "GroupName": "group_5"
+    "GroupName": "group_4",
+    "GroupInputEvents": 1440
   },
   "Taskset3": {
     "KeepOutput": true,
@@ -38,7 +40,8 @@
     "SizePerEvent": 50,
     "TimePerEvent": 10,
     "InputTaskset": "Taskset2",
-    "GroupName": "group_5"
+    "GroupName": "group_4",
+    "GroupInputEvents": 1440
   },
-  "CompositionNumber": 1
+  "CompositionNumber": 2
 }
