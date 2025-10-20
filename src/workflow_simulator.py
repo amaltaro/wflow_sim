@@ -381,6 +381,12 @@ class WorkflowSimulator:
         # Track group completion status
         completed_groups = set()
 
+        # Build reverse dependency map: parent_group -> list of dependent groups
+        reverse_dependencies: Dict[str, List[str]] = defaultdict(list)
+        for child_group, parents in dependency_graph.items():
+            for parent in parents:
+                reverse_dependencies[parent].append(child_group)
+
         # Initialize execution queue with groups that have no dependencies
         execution_queue = deque()
         for group in groups:
@@ -393,8 +399,27 @@ class WorkflowSimulator:
         self.logger.info(f"Starting simulation with {available_slots} job slots available")
 
         while execution_queue or running_jobs:
-            # Process completed jobs and update event buffers
+            # Process completed jobs and update event buffers; propagate to dependents
             self._process_completed_jobs(running_jobs, event_buffers, current_time)
+            # After processing completions, move produced events to dependent groups and enqueue them
+            for parent_group_id, buffer in event_buffers.items():
+                produced = buffer.get('processed_events', 0)
+                if produced <= 0:
+                    continue
+                for child_group_id in reverse_dependencies.get(parent_group_id, []):
+                    child_buffer = event_buffers.get(child_group_id)
+                    if child_buffer is None:
+                        continue
+                    # Transfer newly available events to child
+                    # We only want to transfer the delta since last transfer; keep a watermark
+                    transferred_key = f"_transferred_from_{parent_group_id}"
+                    already_transferred = child_buffer.get(transferred_key, 0)
+                    delta = produced - already_transferred
+                    if delta > 0:
+                        child_buffer['available_events'] += delta
+                        child_buffer[transferred_key] = produced
+                        if child_group_id not in execution_queue:
+                            execution_queue.append(child_group_id)
 
             # Do not use a global processed-events cap across groups; allow all groups to complete
 
@@ -733,7 +758,6 @@ class WorkflowSimulator:
                         # This group is done, add dependent groups to queue
                         self.logger.debug(f"Group {group_id} completed: {buffer['available_events']} events available, {total_accounted} accounted")
                         completed_groups_in_batch.add(group_id)
-                        self._add_dependent_groups_to_queue(group_id, groups, event_buffers, execution_queue)
                 else:
                     # Not enough events, put back in queue
                     temp_queue.append(group_id)
@@ -750,37 +774,6 @@ class WorkflowSimulator:
                     self.logger.info(f"Batch {batch_number} summary: {len(new_jobs)} jobs created")
 
         return new_jobs
-
-    def _add_dependent_groups_to_queue(self, completed_group_id: str,
-                                      groups: List[GroupInfo],
-                                      event_buffers: Dict[str, Dict[str, Any]],
-                                      execution_queue: deque) -> None:
-        """Add dependent groups to execution queue when a group completes."""
-        for group in groups:
-            # Check if this group depends on the completed group
-            depends_on_completed = any(
-                ts.input_taskset and
-                any(ts2.taskset_id == ts.input_taskset for ts2 in
-                    next((g.tasksets for g in groups if g.group_id == completed_group_id), []))
-                for ts in group.tasksets
-            )
-
-            if depends_on_completed:
-                # This group depends on the completed group
-                # Add processed events from completed group to this group's available events
-                completed_buffer = event_buffers.get(completed_group_id, {})
-                processed_events = completed_buffer.get('processed_events', 0)
-
-                if processed_events > 0:
-                    current_buffer = event_buffers.get(group.group_id, {})
-                    current_buffer['available_events'] += processed_events
-
-                    # Add to execution queue if not already there
-                    if group.group_id not in execution_queue:
-                        execution_queue.append(group.group_id)
-
-                    self.logger.debug(f"Added {processed_events} events to {group.group_id} from {completed_group_id}")
-
 
     def print_simulation_summary(self, result: SimulationResult) -> None:
         """Print a summary of the simulation results."""
