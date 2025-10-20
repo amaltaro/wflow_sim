@@ -167,6 +167,7 @@ class TestWorkflowRunner:
                 self.success_rate = 1.0
                 self.wall_time_per_event = 10.0
                 self.cpu_time_per_event = 5.0
+                self.network_transfer_per_event_mb = 0.1
 
         results = {
             'success': True,
@@ -186,6 +187,7 @@ class TestWorkflowRunner:
         assert "Total Jobs: 10" in captured.out
         assert "Resource Efficiency: 0.50" in captured.out
         assert "Event Throughput: 1.000000 events/CPU-second" in captured.out
+        assert "Network Transfer per Event: 0.100000 MB/event" in captured.out
 
     def test_print_complete_summary_failure(self, capsys):
         """Test printing complete summary for failed workflow."""
@@ -266,6 +268,7 @@ class TestWorkflowRunner:
                 self.total_turnaround_time = 10000.0
                 self.wall_time_per_event = 10.0
                 self.cpu_time_per_event = 5.0
+                self.network_transfer_per_event_mb = 0.1
                 self.resource_efficiency = 0.5
                 self.event_throughput = 1.0
                 self.success_rate = 1.0
@@ -311,6 +314,7 @@ class TestWorkflowRunner:
         assert metrics['total_jobs'] == 10
         assert metrics['resource_efficiency'] == 0.5
         assert metrics['event_throughput'] == 1.0
+        assert metrics['network_transfer_per_event_mb'] == 0.1
         assert metrics['success_rate'] == 1.0
 
         # Check new aggregated job-level metrics
