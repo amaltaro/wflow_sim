@@ -71,7 +71,12 @@ class TestWorkflowMetricsCalculator:
             wallclock_time=32400.0,
             start_time=0.0,
             end_time=32400.0,
-            status="completed"
+            status="completed",
+            total_cpu_time=32400.0,
+            total_write_local_mb=216.0,  # (200 + 300) * 1080 / 1024 / 2
+            total_write_remote_mb=158.2,  # 300 * 1080 / 1024 / 2 (only keep_output=True)
+            total_read_remote_mb=0.0,  # No input taskset from other groups
+            total_network_transfer_mb=158.2  # remote_write + remote_read
         )
 
         simulation_result = SimulationResult(
@@ -103,6 +108,13 @@ class TestWorkflowMetricsCalculator:
         assert len(metrics.group_metrics) == 1
         assert metrics.group_metrics[0].group_id == "group_1"
         assert metrics.group_metrics[0].job_count == 926
+
+        # Test aggregated job-level metrics
+        assert metrics.total_cpu_time == 32400.0
+        assert metrics.total_write_local_mb == 216.0
+        assert metrics.total_write_remote_mb == 158.2
+        assert metrics.total_read_remote_mb == 0.0
+        assert metrics.total_network_transfer_mb == 158.2
 
     def test_calculate_job_statistics(self):
         """Test job statistics calculation."""
@@ -141,7 +153,12 @@ class TestWorkflowMetricsCalculator:
                 wallclock_time=10000.0 + i * 1000,  # Different wall times
                 start_time=0.0,
                 end_time=10000.0 + i * 1000,
-                status="completed"
+                status="completed",
+                total_cpu_time=10000.0 + i * 1000,  # Same as wallclock time for simplicity
+                total_write_local_mb=195.3 + i * 19.5,  # 200 * batch_size / 1024
+                total_write_remote_mb=0.0,  # keep_output=False
+                total_read_remote_mb=0.0,  # No input taskset
+                total_network_transfer_mb=0.0  # No remote operations
             )
             jobs.append(job)
 
@@ -170,6 +187,13 @@ class TestWorkflowMetricsCalculator:
         assert job_stats['min_batch_size'] == 1000
         assert job_stats['max_batch_size'] == 1200
 
+        # Test aggregated job-level metrics
+        assert job_stats['total_cpu_time'] == 33000.0  # 10000 + 11000 + 12000
+        assert abs(job_stats['total_write_local_mb'] - 644.4) < 0.1  # 195.3 + 214.8 + 234.4
+        assert job_stats['total_write_remote_mb'] == 0.0
+        assert job_stats['total_read_remote_mb'] == 0.0
+        assert job_stats['total_network_transfer_mb'] == 0.0
+
     def test_calculate_job_statistics_empty(self):
         """Test job statistics calculation with no jobs."""
         simulation_result = SimulationResult(
@@ -193,6 +217,13 @@ class TestWorkflowMetricsCalculator:
         assert job_stats['average_wall_time'] == 0.0
         assert job_stats['min_wall_time'] == 0.0
         assert job_stats['max_wall_time'] == 0.0
+
+        # Test aggregated job-level metrics for empty case
+        assert job_stats['total_cpu_time'] == 0.0
+        assert job_stats['total_write_local_mb'] == 0.0
+        assert job_stats['total_write_remote_mb'] == 0.0
+        assert job_stats['total_read_remote_mb'] == 0.0
+        assert job_stats['total_network_transfer_mb'] == 0.0
 
     def test_calculate_group_statistics(self):
         """Test group statistics calculation."""
@@ -316,7 +347,8 @@ class TestWorkflowMetricsCalculator:
         required_keys = [
             'workflow_id', 'total_tasksets', 'total_groups', 'total_jobs',
             'total_wall_time', 'total_turnaround_time', 'resource_efficiency',
-            'throughput', 'success_rate'
+            'throughput', 'success_rate', 'total_cpu_time', 'total_write_local_mb',
+            'total_write_remote_mb', 'total_read_remote_mb', 'total_network_transfer_mb'
         ]
 
         for key in required_keys:
@@ -371,6 +403,12 @@ class TestWorkflowMetricsCalculator:
         assert "WORKFLOW EXECUTION METRICS" in captured.out
         assert "Total Tasksets: 1" in captured.out
         assert "Total Groups: 1" in captured.out
+        assert "AGGREGATED JOB METRICS" in captured.out
+        assert "Total CPU Time:" in captured.out
+        assert "Total Write Local:" in captured.out
+        assert "Total Write Remote:" in captured.out
+        assert "Total Read Remote:" in captured.out
+        assert "Total Network Transfer:" in captured.out
 
     def test_write_metrics_to_file(self, tmp_path):
         """Test writing metrics to file."""
@@ -428,6 +466,113 @@ class TestWorkflowMetricsCalculator:
         assert data['total_tasksets'] == 1
         assert data['total_groups'] == 1
         assert data['total_jobs'] == 100
+
+    def test_aggregated_job_level_metrics(self):
+        """Test comprehensive aggregated job-level metrics calculation."""
+        # Create tasksets with different characteristics
+        taskset1 = TasksetInfo(
+            taskset_id="Taskset1",
+            group_name="group_1",
+            input_taskset=None,
+            time_per_event=5.0,
+            memory=1000,
+            multicore=2,
+            size_per_event=100,  # 100 KB
+            group_input_events=1000,
+            scram_arch=["el9_amd64_gcc11"],
+            requires_gpu="forbidden",
+            keep_output=False  # Local write only
+        )
+
+        taskset2 = TasksetInfo(
+            taskset_id="Taskset2",
+            group_name="group_1",
+            input_taskset="Taskset1",
+            time_per_event=10.0,
+            memory=2000,
+            multicore=1,
+            size_per_event=200,  # 200 KB
+            group_input_events=1000,
+            scram_arch=["el9_amd64_gcc11"],
+            requires_gpu="forbidden",
+            keep_output=True  # Remote write
+        )
+
+        group = GroupInfo(
+            group_id="group_1",
+            tasksets=[taskset1, taskset2],
+            input_events=500,
+            job_count=2,
+            exact_job_count=2.0,
+            total_execution_time=7500.0,  # (5 + 10) * 500
+            dependencies=[]
+        )
+
+        # Create jobs with different batch sizes
+        jobs = []
+        for i in range(2):
+            batch_size = 500 + i * 100  # 500, 600
+            job = JobInfo(
+                job_id=f"group_1_job_{i+1}",
+                group_id="group_1",
+                batch_size=batch_size,
+                wallclock_time=15.0 * batch_size,  # (5 + 10) * batch_size
+                start_time=0.0,
+                end_time=15.0 * batch_size,
+                status="completed",
+                # Calculate expected metrics
+                total_cpu_time=15.0 * batch_size,  # (5 * 2 + 10 * 1) * batch_size
+                total_write_local_mb=(100 + 200) * batch_size / 1024.0,  # Both tasksets write locally
+                total_write_remote_mb=200 * batch_size / 1024.0,  # Only taskset2 (keep_output=True)
+                total_read_remote_mb=0.0,  # No input from other groups
+                total_network_transfer_mb=200 * batch_size / 1024.0  # remote_write + remote_read
+            )
+            jobs.append(job)
+
+        simulation_result = SimulationResult(
+            workflow_id="test_workflow",
+            composition_number=1,
+            total_events=1000,
+            total_groups=1,
+            total_jobs=2,
+            total_wall_time=16500.0,  # 15 * 500 + 15 * 600
+            total_turnaround_time=9000.0,  # Max of the two jobs
+            groups=[group],
+            jobs=jobs,
+            execution_log=[],
+            success=True
+        )
+
+        calculator = WorkflowMetricsCalculator()
+        metrics = calculator.calculate_metrics(simulation_result)
+
+        # Test aggregated job-level metrics
+        expected_cpu_time = 15.0 * 500 + 15.0 * 600  # 16500.0
+        expected_write_local = (100 + 200) * 500 / 1024.0 + (100 + 200) * 600 / 1024.0  # ~439.45
+        expected_write_remote = 200 * 500 / 1024.0 + 200 * 600 / 1024.0  # ~214.84
+        expected_read_remote = 0.0
+        expected_network_transfer = expected_write_remote + expected_read_remote  # ~214.84
+
+        assert abs(metrics.total_cpu_time - expected_cpu_time) < 0.01
+        assert abs(metrics.total_write_local_mb - expected_write_local) < 0.01
+        assert abs(metrics.total_write_remote_mb - expected_write_remote) < 0.01
+        assert metrics.total_read_remote_mb == expected_read_remote
+        assert abs(metrics.total_network_transfer_mb - expected_network_transfer) < 0.01
+
+        # Test that metrics are included in summary
+        summary = calculator.get_metrics_summary()
+        assert 'total_cpu_time' in summary
+        assert 'total_write_local_mb' in summary
+        assert 'total_write_remote_mb' in summary
+        assert 'total_read_remote_mb' in summary
+        assert 'total_network_transfer_mb' in summary
+
+        # Test that values match
+        assert abs(summary['total_cpu_time'] - expected_cpu_time) < 0.01
+        assert abs(summary['total_write_local_mb'] - expected_write_local) < 0.01
+        assert abs(summary['total_write_remote_mb'] - expected_write_remote) < 0.01
+        assert summary['total_read_remote_mb'] == expected_read_remote
+        assert abs(summary['total_network_transfer_mb'] - expected_network_transfer) < 0.01
 
 
 if __name__ == "__main__":
