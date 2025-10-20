@@ -2,7 +2,7 @@
 Job Metrics Calculator
 
 This module provides job-level metrics calculation for workflow simulation,
-handling individual job resource usage, I/O operations, and performance metrics.
+handling individual job resource usage, I/O operations, and complete network transfer metrics.
 """
 
 import logging
@@ -17,7 +17,7 @@ class JobMetrics:
     total_write_local_mb: float
     total_write_remote_mb: float
     total_read_remote_mb: float
-    total_network_transfer_mb: float
+    total_network_transfer_mb: float  # remote_write + remote_read
 
 
 class JobMetricsCalculator:
@@ -80,8 +80,8 @@ class JobMetricsCalculator:
             if is_remote_write:
                 total_write_remote_mb += write_mb
 
-        # For now, network transfer equals remote write
-        total_network_transfer_mb = total_write_remote_mb
+        # Network transfer includes both remote write and remote read
+        total_network_transfer_mb = total_write_remote_mb + total_read_remote_mb
 
         return JobMetrics(
             total_cpu_time=total_cpu_time,
