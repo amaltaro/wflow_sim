@@ -267,6 +267,11 @@ class TestWorkflowRunner:
                 self.resource_efficiency = 0.5
                 self.throughput = 1.0
                 self.success_rate = 1.0
+                self.total_cpu_time = 50000.0
+                self.total_write_local_mb = 1000.0
+                self.total_write_remote_mb = 500.0
+                self.total_read_remote_mb = 200.0
+                self.total_network_transfer_mb = 700.0
                 self.timestamp = 1234567890.0
 
         results = {
@@ -306,6 +311,13 @@ class TestWorkflowRunner:
         assert metrics['resource_efficiency'] == 0.5
         assert metrics['throughput'] == 1.0
         assert metrics['success_rate'] == 1.0
+
+        # Check new aggregated job-level metrics
+        assert metrics['total_cpu_time'] == 50000.0
+        assert metrics['total_write_local_mb'] == 1000.0
+        assert metrics['total_write_remote_mb'] == 500.0
+        assert metrics['total_read_remote_mb'] == 200.0
+        assert metrics['total_network_transfer_mb'] == 700.0
 
 
 if __name__ == "__main__":
