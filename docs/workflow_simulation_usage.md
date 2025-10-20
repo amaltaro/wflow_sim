@@ -19,9 +19,10 @@ The workflow simulation system provides:
 
 - **`workflow_runner.py`** - Complete analysis (simulation + metrics) with one call
 - **`workflow_simulator.py`** - Just simulation results for custom analysis
-- **`workflow_metrics.py`** - Metrics from existing simulation results
+- **`job_metrics.py`** - Job-level metrics calculation (CPU, I/O, network)
+- **`workflow_metrics.py`** - Workflow-level metrics aggregation
 
-**Data Flow:** `workflow_runner.py` → `workflow_simulator.py` → `workflow_metrics.py` → Results
+**Data Flow:** `workflow_runner.py` → `workflow_simulator.py` → `job_metrics.py` → `workflow_metrics.py` → Results
 
 ## Key Concepts
 
@@ -125,17 +126,18 @@ The system automatically creates necessary directories and preserves the file st
 
 ```python
 from src.workflow_metrics import WorkflowMetricsCalculator
+from src.job_metrics import JobMetricsCalculator
 
-calculator = WorkflowMetricsCalculator()
+# Workflow-level metrics
+workflow_calculator = WorkflowMetricsCalculator()
+metrics = workflow_calculator.calculate_metrics(simulation_result)
 
-# Main metrics
-metrics = calculator.calculate_metrics(simulation_result)
-
-# Job statistics
-job_stats = calculator.calculate_job_statistics(simulation_result)
+# Job-level metrics
+job_calculator = JobMetricsCalculator()
+job_stats = job_calculator.calculate_job_statistics(simulation_result.jobs)
 
 # Group statistics
-group_stats = calculator.calculate_group_statistics(simulation_result)
+group_stats = workflow_calculator.calculate_group_statistics(simulation_result)
 ```
 
 ### Resource Configuration
@@ -257,9 +259,10 @@ The simulation provides detailed information about:
 
 ### Metrics Analysis
 
-The integrated metrics calculator provides:
+The integrated metrics system provides:
 
-- **Performance Metrics**: Throughput, efficiency, success rate
+- **Job-Level Metrics**: CPU time, I/O operations, complete network transfers per job
+- **Workflow-Level Metrics**: Throughput, efficiency, success rate
 - **Resource Utilization**: CPU, memory, storage usage patterns
 - **Timing Analysis**: Execution times, wall times, queue times
 - **Group Statistics**: Per-group performance breakdown
@@ -303,6 +306,11 @@ COMPLETE WORKFLOW EXECUTION SUMMARY
   Average Batch Size: 1080 events
   Min Batch Size: 1080 events
   Max Batch Size: 1080 events
+  Total CPU Time: 70000000.00s
+  Total Write Local: 537109.38 MB
+  Total Write Remote: 341796.88 MB
+  Total Read Remote: 0.00 MB
+  Total Network Transfer: 341796.88 MB
 ```
 
 ## Advanced Features

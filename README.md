@@ -37,22 +37,26 @@ This repository provides a **Workflow Simulator** that:
 
 ### Comprehensive Metrics
 - **Execution Metrics**: Runtime, throughput, resource utilization
+- **Job-Level Metrics**: CPU time, local/remote I/O, network transfers per job
 - **Group-Level Analysis**: Performance metrics for each group
 - **Resource Efficiency**: CPU, memory, storage, and network usage
 - **Scalability Analysis**: Job scaling and parallel execution efficiency
 
 ## Architecture
 
-**Three modules with distinct responsibilities:**
+**Four modules with distinct responsibilities:**
 
 - **`workflow_simulator.py`** - Core simulation engine (executes workflow DAGs)
-- **`workflow_metrics.py`** - Authoritative metrics calculator (simulation results only)
+- **`job_metrics.py`** - Job-level metrics calculator (CPU time, I/O operations, network transfers)
+- **`workflow_metrics.py`** - Authoritative workflow metrics calculator (aggregates job metrics)
 - **`workflow_runner.py`** - High-level orchestrator (simulation + metrics)
 
 **Key Design:**
-- All metrics calculations consolidated in `workflow_metrics.py` (single source of truth)
-- Metrics only work with simulation results (not raw workflow data)
-- No redundant calculations across modules
+- **Clear Separation of Concerns**: Each module has a single, well-defined responsibility
+- **Job-Level Metrics**: `job_metrics.py` handles individual job resource calculations
+- **Workflow-Level Metrics**: `workflow_metrics.py` aggregates job metrics into workflow-level insights
+- **Simulation Results Only**: All metrics work with simulation results (not raw workflow data)
+- **No Redundancy**: Each calculation happens in exactly one place
 
 ## Installation
 
@@ -186,7 +190,7 @@ Workflows are defined in JSON format with the following structure:
 
 ## Metrics Calculated
 
-### Core Metrics
+### Core Workflow Metrics
 - **Total Tasksets**: Number of computational units
 - **Total Groups**: Number of job submission units
 - **Total Jobs**: Number of grid jobs (scaled by events)
@@ -194,6 +198,13 @@ Workflows are defined in JSON format with the following structure:
 - **Resource Efficiency**: Overall resource utilization
 - **Throughput**: Events processed per second
 - **Success Rate**: Percentage of successful executions
+
+### Job-Level Metrics
+- **CPU Time**: Total CPU time per job (time_per_event × events × multicore)
+- **Local I/O**: Data written to local disk per job
+- **Remote I/O**: Data written to shared storage per job
+- **Network Transfer**: Complete network data transfer per job (remote writes + remote reads)
+- **Remote Read**: Data read from shared storage per job (cross-group dependencies)
 
 ### Group-Level Metrics
 - **Group Execution Time**: Time per group
@@ -247,7 +258,9 @@ git push origin v1.0.0
 
 ## Documentation
 
-- [Workflow Metrics Usage](docs/workflow_metrics_usage.md) - Detailed metrics documentation
+- [Workflow Simulation Usage](docs/workflow_simulation_usage.md) - Complete simulation guide
+- [Workflow Metrics Usage](docs/workflow_metrics_usage.md) - Workflow-level metrics documentation
+- [Job Metrics Usage](docs/job_metrics_usage.md) - Job-level metrics documentation
 - [Release Process](docs/release-process.md) - Automated release notes system
 - [Agent Instructions](AGENTS.md) - AI agent development guidelines
 - [Contributing Guidelines](CONTRIBUTING.md) - How to contribute to the project
