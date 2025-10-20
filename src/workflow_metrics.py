@@ -77,7 +77,7 @@ class WorkflowMetrics:
     cpu_time_per_event: float
     group_metrics: List[GroupMetrics]
     resource_efficiency: float
-    throughput: float
+    event_throughput: float
     success_rate: float
     # Aggregated job-level metrics
     total_cpu_time: float = 0.0
@@ -140,7 +140,7 @@ class WorkflowMetricsCalculator:
 
         # Calculate efficiency metrics
         resource_efficiency = self._calculate_resource_efficiency_from_simulation(simulation_result)
-        throughput = self._calculate_throughput_from_simulation(simulation_result)
+        event_throughput = self._calculate_event_throughput_from_simulation(simulation_result)
         success_rate = self._calculate_success_rate_from_simulation(simulation_result)
         wall_time_per_event = self._calculate_wall_time_per_event_from_simulation(simulation_result)
         cpu_time_per_event = self._calculate_cpu_time_per_event_from_simulation(simulation_result)
@@ -161,7 +161,7 @@ class WorkflowMetricsCalculator:
             cpu_time_per_event=cpu_time_per_event,
             group_metrics=group_metrics,
             resource_efficiency=resource_efficiency,
-            throughput=throughput,
+            event_throughput=event_throughput,
             success_rate=success_rate,
             total_cpu_time=job_metrics_stats['total_cpu_time'],
             total_write_local_mb=job_metrics_stats['total_write_local_mb'],
@@ -261,10 +261,14 @@ class WorkflowMetricsCalculator:
             return min(1.0, (total_cpu * 100) / total_memory)
         return 0.0
 
-    def _calculate_throughput_from_simulation(self, simulation_result: 'SimulationResult') -> float:
-        """Calculate throughput from simulation result."""
-        if simulation_result.total_turnaround_time > 0:
-            return simulation_result.total_events / simulation_result.total_turnaround_time
+    def _calculate_event_throughput_from_simulation(self, simulation_result: 'SimulationResult') -> float:
+        """Calculate event throughput from simulation result."""
+        if simulation_result.total_events > 0:
+            # Calculate total CPU time from job metrics
+            job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
+            total_cpu_time = job_metrics_stats['total_cpu_time']
+            if total_cpu_time > 0:
+                return simulation_result.total_events / total_cpu_time
         return 0.0
 
     def _calculate_success_rate_from_simulation(self, simulation_result: 'SimulationResult') -> float:
@@ -391,7 +395,7 @@ class WorkflowMetricsCalculator:
         print(f"Wall Time per Event: {self.metrics.wall_time_per_event:.6f} seconds")
         print(f"CPU Time per Event: {self.metrics.cpu_time_per_event:.6f} seconds")
         print(f"Resource Efficiency: {self.metrics.resource_efficiency:.2f}")
-        print(f"Throughput: {self.metrics.throughput:.2f} events/second")
+        print(f"Event Throughput: {self.metrics.event_throughput:.6f} events/CPU-second")
         print(f"Success Rate: {self.metrics.success_rate:.2f}")
 
         # Print aggregated job-level metrics
@@ -458,7 +462,7 @@ class WorkflowMetricsCalculator:
             'wall_time_per_event': self.metrics.wall_time_per_event,
             'cpu_time_per_event': self.metrics.cpu_time_per_event,
             'resource_efficiency': self.metrics.resource_efficiency,
-            'throughput': self.metrics.throughput,
+            'event_throughput': self.metrics.event_throughput,
             'success_rate': self.metrics.success_rate,
             'total_cpu_time': self.metrics.total_cpu_time,
             'total_write_local_mb': self.metrics.total_write_local_mb,
