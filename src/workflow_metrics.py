@@ -73,7 +73,7 @@ class WorkflowMetrics:
     total_jobs: int
     total_wall_time: float
     total_turnaround_time: float
-    total_wall_time_per_event: float
+    wall_time_per_event: float
     group_metrics: List[GroupMetrics]
     resource_efficiency: float
     throughput: float
@@ -142,7 +142,7 @@ class WorkflowMetricsCalculator:
         resource_efficiency = self._calculate_resource_efficiency_from_simulation(simulation_result)
         throughput = self._calculate_throughput_from_simulation(simulation_result)
         success_rate = self._calculate_success_rate_from_simulation(simulation_result)
-        total_wall_time_per_event = self._calculate_wall_time_per_event_from_simulation(simulation_result)
+        wall_time_per_event = self._calculate_wall_time_per_event_from_simulation(simulation_result)
 
         # Calculate aggregated job-level metrics
         job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
@@ -156,7 +156,7 @@ class WorkflowMetricsCalculator:
             total_jobs=total_jobs,
             total_wall_time=total_wall_time,
             total_turnaround_time=total_turnaround_time,
-            total_wall_time_per_event=total_wall_time_per_event,
+            wall_time_per_event=wall_time_per_event,
             group_metrics=group_metrics,
             resource_efficiency=resource_efficiency,
             throughput=throughput,

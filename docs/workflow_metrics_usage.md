@@ -74,7 +74,7 @@ summary = calculator.get_metrics_summary()
 
 # Access individual workflow metrics
 print(f"Total execution time: {metrics.total_turnaround_time}")
-print(f"Wall time per event: {metrics.total_wall_time_per_event:.6f}s/event")
+print(f"Wall time per event: {metrics.wall_time_per_event:.6f}s/event")
 print(f"Resource efficiency: {metrics.resource_efficiency}")
 print(f"Throughput: {metrics.throughput} events/second")
 

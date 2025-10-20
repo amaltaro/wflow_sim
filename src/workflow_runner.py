@@ -100,7 +100,7 @@ class WorkflowRunner:
         print(f"  Total Turnaround Time: {simulation.total_turnaround_time:.2f}s ({simulation.total_turnaround_time/3600:.2f}h)")
 
         # Display wall time per event from metrics
-        print(f"  Wall Time per Event: {metrics.total_wall_time_per_event:.6f}s/event")
+        print(f"  Wall Time per Event: {metrics.wall_time_per_event:.6f}s/event")
 
         # Metrics summary
         print(f"\n📈 PERFORMANCE METRICS:")
@@ -155,7 +155,7 @@ class WorkflowRunner:
                 'total_jobs': metrics.total_jobs,
                 'total_wall_time': metrics.total_wall_time,
                 'total_turnaround_time': metrics.total_turnaround_time,
-                'total_wall_time_per_event': metrics.total_wall_time_per_event,
+                'wall_time_per_event': metrics.wall_time_per_event,
                 'resource_efficiency': metrics.resource_efficiency,
                 'throughput': metrics.throughput,
                 'success_rate': metrics.success_rate,

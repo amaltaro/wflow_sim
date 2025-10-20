@@ -165,7 +165,7 @@ class TestWorkflowRunner:
                 self.resource_efficiency = 0.5
                 self.throughput = 1.0
                 self.success_rate = 1.0
-                self.total_wall_time_per_event = 10.0
+                self.wall_time_per_event = 10.0
 
         results = {
             'success': True,
@@ -263,7 +263,7 @@ class TestWorkflowRunner:
                 self.total_jobs = 10
                 self.total_wall_time = 100000.0
                 self.total_turnaround_time = 10000.0
-                self.total_wall_time_per_event = 10.0
+                self.wall_time_per_event = 10.0
                 self.resource_efficiency = 0.5
                 self.throughput = 1.0
                 self.success_rate = 1.0
