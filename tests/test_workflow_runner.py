@@ -155,7 +155,6 @@ class TestWorkflowRunner:
             total_turnaround_time=10000.0,
             groups=[group],
             jobs=[job],
-            execution_log=[],
             success=True
         )
 
@@ -251,7 +250,6 @@ class TestWorkflowRunner:
             total_turnaround_time=10000.0,
             groups=[group],
             jobs=[job],
-            execution_log=[],
             success=True
         )
 

@@ -97,7 +97,6 @@ class SimulationResult:
     total_turnaround_time: float  # Time from workflow start to completion
     groups: List[GroupInfo]
     jobs: List[JobInfo]
-    execution_log: List[Dict[str, Any]]
     success: bool
     error_message: Optional[str] = None
 
@@ -179,7 +178,6 @@ class WorkflowSimulator:
                 total_turnaround_time=0.0,
                 groups=[],
                 jobs=[],
-                execution_log=[],
                 success=False,
                 error_message=str(e)
             )
@@ -199,7 +197,6 @@ class WorkflowSimulator:
                 total_turnaround_time=execution_result['total_turnaround_time'],
                 groups=groups,
                 jobs=execution_result['jobs'],
-                execution_log=execution_result['execution_log'],
                 success=True
             )
 
@@ -220,7 +217,6 @@ class WorkflowSimulator:
                 total_turnaround_time=0.0,
                 groups=[],
                 jobs=[],
-                execution_log=[],
                 success=False,
                 error_message=str(e)
             )
@@ -371,7 +367,6 @@ class WorkflowSimulator:
                           dependency_graph: Dict[str, List[str]],
                           request_num_events: int) -> Dict[str, Any]:
         """Simulate the execution of groups with dependency resolution and job slot constraints."""
-        execution_log = []
         current_time = 0.0
 
         # Initialize event buffers for each group
@@ -399,13 +394,9 @@ class WorkflowSimulator:
 
         while execution_queue or running_jobs:
             # Process completed jobs and update event buffers
-            self._process_completed_jobs(running_jobs, event_buffers, current_time, execution_log)
+            self._process_completed_jobs(running_jobs, event_buffers, current_time)
 
-            # Check if all events have been processed
-            total_processed = sum(buffer.get('processed_events', 0) for buffer in event_buffers.values())
-            if total_processed >= request_num_events:
-                self.logger.info(f"All events processed: {total_processed}/{request_num_events}")
-                break
+            # Do not use a global processed-events cap across groups; allow all groups to complete
 
             # Create new jobs based on available events and slots
             available_slots_for_new_jobs = available_slots - len(running_jobs)
@@ -431,16 +422,6 @@ class WorkflowSimulator:
                 running_jobs.append(job)
                 all_created_jobs.append(job)  # Track all created jobs
 
-                log_entry = {
-                    'timestamp': current_time,
-                    'event': 'job_started',
-                    'job_id': job.job_id,
-                    'group_id': job.group_id,
-                    'batch_size': job.batch_size,
-                    'wallclock_time': job.wallclock_time
-                }
-                execution_log.append(log_entry)
-
                 self.logger.debug(f"Started job {job.job_id}: {job.batch_size} events, {job.wallclock_time:.2f}s")
 
             # If no jobs were created and no jobs are running, break
@@ -460,8 +441,7 @@ class WorkflowSimulator:
         return {
             'total_wall_time': total_wall_time,
             'total_turnaround_time': current_time,
-            'jobs': all_created_jobs,
-            'execution_log': execution_log
+            'jobs': all_created_jobs
         }
 
     def _calculate_batch_size(self, group: GroupInfo) -> int:
@@ -560,7 +540,7 @@ class WorkflowSimulator:
 
     def _execute_group_jobs(self, group_jobs: List[JobInfo],
                            start_time: float,
-                           execution_log: List[Dict[str, Any]]) -> float:
+                           ) -> float:
         """Execute all jobs in a group in parallel and return total execution time."""
         if not group_jobs:
             return 0.0
@@ -572,19 +552,6 @@ class WorkflowSimulator:
             job.start_time = start_time
             job.end_time = start_time + job.wallclock_time
             job.status = 'completed'
-
-            # Log job execution
-            log_entry = {
-                'timestamp': start_time,
-                'event': 'job_started',
-                'job_id': job.job_id,
-                'group_id': job.group_id,
-                'batch_size': job.batch_size,
-                'wallclock_time': job.wallclock_time,
-                'start_time': job.start_time,
-                'end_time': job.end_time
-            }
-            execution_log.append(log_entry)
 
             self.logger.debug(f"Job {job.job_id}: {job.batch_size} events, {job.wallclock_time:.2f}s wallclock")
 
@@ -622,8 +589,7 @@ class WorkflowSimulator:
 
     def _process_completed_jobs(self, running_jobs: List[JobInfo],
                                event_buffers: Dict[str, Dict[str, Any]],
-                               current_time: float,
-                               execution_log: List[Dict[str, Any]]) -> None:
+                               current_time: float) -> None:
         """Process completed jobs and update event buffers."""
         completed_jobs = []
 
@@ -639,18 +605,6 @@ class WorkflowSimulator:
                     buffer = event_buffers[job.group_id]
                     buffer['processed_events'] += job.batch_size
                     buffer['jobs'].append(job)
-
-                    # Log job completion
-                    log_entry = {
-                        'timestamp': current_time,
-                        'event': 'job_completed',
-                        'job_id': job.job_id,
-                        'group_id': job.group_id,
-                        'batch_size': job.batch_size,
-                        'wallclock_time': job.wallclock_time,
-                        'processed_events': buffer['processed_events']
-                    }
-                    execution_log.append(log_entry)
 
                     self.logger.debug(f"Completed job {job.job_id}: processed {job.batch_size} events")
 
@@ -710,12 +664,12 @@ class WorkflowSimulator:
                 if actual_batch_size > available_events:
                     actual_batch_size = available_events
 
-                # Don't create a job if it would process more events than the total requested
-                # Count both processed events AND events in pending/running jobs
-                total_processed = sum(buffer.get('processed_events', 0) for buffer in event_buffers.values())
-                total_pending = sum(job.batch_size for job in new_jobs)  # Jobs created in this batch
-                total_running = sum(job.batch_size for job in running_jobs if job.group_id == group_id)  # Running jobs for this group
-                total_accounted = total_processed + total_pending + total_running
+                # Don't create a job if it would process more events than the total requested for THIS group
+                # Count processed events AND events in pending/running jobs for the current group only
+                group_processed = buffer.get('processed_events', 0)
+                group_pending = sum(job.batch_size for job in new_jobs if job.group_id == group_id)
+                group_running = sum(job.batch_size for job in running_jobs if job.group_id == group_id)
+                total_accounted = group_processed + group_pending + group_running
 
                 if total_accounted + actual_batch_size > request_num_events:
                     actual_batch_size = max(0, request_num_events - total_accounted)
@@ -763,12 +717,11 @@ class WorkflowSimulator:
 
                     self.logger.info(f"Created job {job_id}: {actual_batch_size} events, {job_wallclock:.2f}s")
 
-                    # Check if we need to create more jobs for this group
-                    # Count total events that will be processed (completed + pending + running)
-                    total_processed = sum(buf.get('processed_events', 0) for buf in event_buffers.values())
-                    total_pending = sum(job.batch_size for job in new_jobs)
-                    total_running = sum(job.batch_size for job in running_jobs if job.group_id == group_id)
-                    total_accounted = total_processed + total_pending + total_running
+                    # Check if we need to create more jobs for this group (completed + pending + running, per group)
+                    group_processed = buffer.get('processed_events', 0)
+                    group_pending = sum(job.batch_size for job in new_jobs if job.group_id == group_id)
+                    group_running = sum(job.batch_size for job in running_jobs if job.group_id == group_id)
+                    total_accounted = group_processed + group_pending + group_running
 
                     self.logger.debug(f"Group {group_id}: available_events={buffer['available_events']}, input_events={group.input_events}, total_accounted={total_accounted}, request_num_events={request_num_events}")
 
@@ -862,14 +815,7 @@ class WorkflowSimulator:
                 print(f"    {taskset.taskset_id}: {taskset.time_per_event}s/event, "
                       f"{taskset.memory}MB, {taskset.multicore} cores")
 
-        print("\n" + "-"*40)
-        print("JOB EXECUTION LOG (last 10 jobs)")
-        print("-"*40)
-
-        for log_entry in result.execution_log[-10:]:  # Show last 10 jobs
-            print(f"Time {log_entry['timestamp']:.2f}s: {log_entry['event']} - "
-                  f"{log_entry['job_id']} ({log_entry['batch_size']} events, "
-                  f"{log_entry['wallclock_time']:.2f}s)")
+        # Removed execution_log display; detailed job info is in result.jobs
 
     def write_simulation_result(self, result: SimulationResult,
                                filepath: Union[str, Path]) -> None:

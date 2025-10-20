@@ -86,7 +86,7 @@ class TestWorkflowSimulator:
             assert result.total_turnaround_time > 0
             assert len(result.groups) == 1
             assert len(result.jobs) == 7
-            assert len(result.execution_log) == 14  # 7 job_started + 7 job_completed events
+            # execution_log removed
 
         finally:
             Path(temp_file).unlink()
@@ -294,7 +294,6 @@ class TestWorkflowSimulator:
             total_turnaround_time=10000.0,
             groups=[group],
             jobs=[job],
-            execution_log=[],
             success=True
         )
 
@@ -345,7 +344,6 @@ class TestWorkflowSimulator:
             total_turnaround_time=10000.0,
             groups=[group],
             jobs=[],
-            execution_log=[],
             success=True
         )
 
@@ -364,6 +362,76 @@ class TestWorkflowSimulator:
         assert data['total_groups'] == 1
         assert data['total_jobs'] == 10
         assert data['success'] is True
+
+    def test_simulate_workflow_multigroup_jobs_persisted(self):
+        """Ensure jobs from multiple independent groups are all persisted."""
+        # Two independent groups (no dependencies), both should process full RequestNumEvents
+        # Configure time such that batch size is predictable (10 events/job)
+        workflow_data = {
+            "Comments": "Multi-group test",
+            "NumTasks": 2,
+            "RequestNumEvents": 2000,
+            # Group A
+            "Taskset1": {
+                "Memory": 1000,
+                "Multicore": 1,
+                "TimePerEvent": 100,  # seconds
+                "SizePerEvent": 100,
+                "GroupName": "group_A"
+            },
+            # Group B
+            "Taskset2": {
+                "Memory": 1000,
+                "Multicore": 4,
+                "TimePerEvent": 150,  # seconds
+                "SizePerEvent": 100,
+                "GroupName": "group_B"
+            },
+            "CompositionNumber": 2
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(workflow_data, f)
+            temp_file = f.name
+
+        try:
+            # Use default ResourceConfig (target_wallclock_time=43200s) to minimize job count
+            simulator = WorkflowSimulator(ResourceConfig())
+            result = simulator.simulate_workflow(temp_file)
+
+            assert result.success is True
+            assert result.total_groups == 2
+            # Default target 43200s:
+            # Group A: 100 s/event -> batch size 432 -> ceil(2000/432)=5 jobs
+            # Group B: 150 s/event -> batch size 288 -> ceil(2000/288)=7 jobs
+            expected_jobs_group_a = 5
+            expected_jobs_group_b = 7
+            assert result.total_groups == 2
+            assert sum(g.job_count for g in result.groups) == expected_jobs_group_a + expected_jobs_group_b
+            assert result.total_jobs == expected_jobs_group_a + expected_jobs_group_b
+            assert len(result.jobs) == expected_jobs_group_a + expected_jobs_group_b
+
+            # Verify batch sizes per group (all but the final job have full batch size)
+            jobs_group_a = [j for j in result.jobs if j.group_id == "group_A"]
+            jobs_group_b = [j for j in result.jobs if j.group_id == "group_B"]
+
+            # Expected batch sizes
+            expected_batch_a = 432  # 43200 / 100 s per event
+            expected_batch_b = 288  # 43200 / 150 s per event
+
+            # Group A: 4 full-size jobs and 1 remainder of 272
+            assert sum(1 for j in jobs_group_a if j.batch_size == expected_batch_a) == 4
+            assert sum(1 for j in jobs_group_a if j.batch_size == 272) == 1
+
+            # Group B: 6 full-size jobs and 1 remainder of 272
+            assert sum(1 for j in jobs_group_b if j.batch_size == expected_batch_b) == 6
+            assert sum(1 for j in jobs_group_b if j.batch_size == 272) == 1
+
+            # Ensure jobs from both groups exist
+            group_ids = {job.group_id for job in result.jobs}
+            assert "group_A" in group_ids and "group_B" in group_ids
+        finally:
+            Path(temp_file).unlink()
 
 
 if __name__ == "__main__":

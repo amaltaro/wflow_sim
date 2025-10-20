@@ -217,7 +217,6 @@ class WorkflowRunner:
                     }
                     for job in simulation.jobs
                 ],
-                'execution_log': simulation.execution_log
             }
         }
 

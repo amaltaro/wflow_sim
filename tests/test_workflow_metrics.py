@@ -89,7 +89,6 @@ class TestWorkflowMetricsCalculator:
             total_turnaround_time=32400.0,
             groups=[group],
             jobs=[job],
-            execution_log=[],
             success=True
         )
 
@@ -177,7 +176,6 @@ class TestWorkflowMetricsCalculator:
             total_turnaround_time=12000.0,
             groups=[group],
             jobs=jobs,
-            execution_log=[],
             success=True
         )
 
@@ -211,7 +209,6 @@ class TestWorkflowMetricsCalculator:
             total_turnaround_time=0.0,
             groups=[],
             jobs=[],
-            execution_log=[],
             success=True
         )
 
@@ -280,7 +277,6 @@ class TestWorkflowMetricsCalculator:
             total_turnaround_time=30000.0,
             groups=[group],
             jobs=[],
-            execution_log=[],
             success=True
         )
 
@@ -341,7 +337,6 @@ class TestWorkflowMetricsCalculator:
             total_turnaround_time=10000.0,
             groups=[group],
             jobs=[],
-            execution_log=[],
             success=True
         )
 
@@ -396,7 +391,6 @@ class TestWorkflowMetricsCalculator:
             total_turnaround_time=10000.0,
             groups=[group],
             jobs=[],
-            execution_log=[],
             success=True
         )
 
@@ -455,7 +449,6 @@ class TestWorkflowMetricsCalculator:
             total_turnaround_time=10000.0,
             groups=[group],
             jobs=[],
-            execution_log=[],
             success=True
         )
 
@@ -547,7 +540,6 @@ class TestWorkflowMetricsCalculator:
             total_turnaround_time=9000.0,  # Max of the two jobs
             groups=[group],
             jobs=jobs,
-            execution_log=[],
             success=True
         )
 
