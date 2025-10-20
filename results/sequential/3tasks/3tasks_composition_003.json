@@ -8,11 +8,17 @@
     "total_jobs": 927,
     "total_wall_time": 30000000,
     "total_turnaround_time": 43200.0,
-    "total_wall_time_per_event": 30.0,
+    "wall_time_per_event": 30.0,
+    "cpu_time_per_event": 50.0,
+    "network_transfer_per_event_mb": 0.29296875,
     "resource_efficiency": 0.05555555555555555,
-    "throughput": 23.14814814814815,
+    "event_throughput": 0.02,
     "success_rate": 1.0,
-    "timestamp": 1760923988.844394
+    "total_cpu_time": 50000000.0,
+    "total_write_local_mb": 488281.25,
+    "total_write_remote_mb": 292968.75,
+    "total_read_remote_mb": 0.0,
+    "total_network_transfer_mb": 292968.75
   },
   "simulation_result": {
     "success": true,

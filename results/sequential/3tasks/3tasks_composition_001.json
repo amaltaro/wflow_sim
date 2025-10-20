@@ -8,11 +8,17 @@
     "total_jobs": 926,
     "total_wall_time": 40000000,
     "total_turnaround_time": 43200.0,
-    "total_wall_time_per_event": 40.0,
+    "wall_time_per_event": 40.0,
+    "cpu_time_per_event": 70.0,
+    "network_transfer_per_event_mb": 0.341796875,
     "resource_efficiency": 0.05555555555555555,
-    "throughput": 23.14814814814815,
+    "event_throughput": 0.014285714285714285,
     "success_rate": 1.0,
-    "timestamp": 1760923993.072924
+    "total_cpu_time": 70000000.0,
+    "total_write_local_mb": 537109.375,
+    "total_write_remote_mb": 341796.875,
+    "total_read_remote_mb": 0.0,
+    "total_network_transfer_mb": 341796.875
   },
   "simulation_result": {
     "success": true,
@@ -25,8 +31,8 @@
         "total_execution_time": 43200,
         "exact_job_count": 925.925925925926,
         "dependencies": [
-          "Taskset2",
-          "Taskset1"
+          "Taskset1",
+          "Taskset2"
         ],
         "tasksets": [
           {
