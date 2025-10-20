@@ -78,6 +78,12 @@ class WorkflowMetrics:
     resource_efficiency: float
     throughput: float
     success_rate: float
+    # Aggregated job-level metrics
+    total_cpu_time: float = 0.0
+    total_write_local_mb: float = 0.0
+    total_write_remote_mb: float = 0.0
+    total_read_remote_mb: float = 0.0
+    total_network_transfer_mb: float = 0.0
     timestamp: float = time.time()
 
 
@@ -138,6 +144,9 @@ class WorkflowMetricsCalculator:
         success_rate = self._calculate_success_rate_from_simulation(simulation_result)
         total_wall_time_per_event = self._calculate_wall_time_per_event_from_simulation(simulation_result)
 
+        # Calculate aggregated job-level metrics
+        job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
+
         self.metrics = WorkflowMetrics(
             workflow_id=workflow_id,
             composition_number=composition_number,
@@ -151,7 +160,12 @@ class WorkflowMetricsCalculator:
             group_metrics=group_metrics,
             resource_efficiency=resource_efficiency,
             throughput=throughput,
-            success_rate=success_rate
+            success_rate=success_rate,
+            total_cpu_time=job_metrics_stats['total_cpu_time'],
+            total_write_local_mb=job_metrics_stats['total_write_local_mb'],
+            total_write_remote_mb=job_metrics_stats['total_write_remote_mb'],
+            total_read_remote_mb=job_metrics_stats['total_read_remote_mb'],
+            total_network_transfer_mb=job_metrics_stats['total_network_transfer_mb']
         )
 
         self.logger.info("Workflow metrics calculation from simulation completed")
@@ -367,6 +381,16 @@ class WorkflowMetricsCalculator:
         print(f"Throughput: {self.metrics.throughput:.2f} events/second")
         print(f"Success Rate: {self.metrics.success_rate:.2f}")
 
+        # Print aggregated job-level metrics
+        print(f"\n" + "-"*40)
+        print("AGGREGATED JOB METRICS")
+        print("-"*40)
+        print(f"Total CPU Time: {self.metrics.total_cpu_time:.2f} seconds")
+        print(f"Total Write Local: {self.metrics.total_write_local_mb:.2f} MB")
+        print(f"Total Write Remote: {self.metrics.total_write_remote_mb:.2f} MB")
+        print(f"Total Read Remote: {self.metrics.total_read_remote_mb:.2f} MB")
+        print(f"Total Network Transfer: {self.metrics.total_network_transfer_mb:.2f} MB")
+
         if detailed:
             print("\n" + "-"*40)
             print("GROUP DETAILS")
@@ -420,5 +444,10 @@ class WorkflowMetricsCalculator:
             'total_turnaround_time': self.metrics.total_turnaround_time,
             'resource_efficiency': self.metrics.resource_efficiency,
             'throughput': self.metrics.throughput,
-            'success_rate': self.metrics.success_rate
+            'success_rate': self.metrics.success_rate,
+            'total_cpu_time': self.metrics.total_cpu_time,
+            'total_write_local_mb': self.metrics.total_write_local_mb,
+            'total_write_remote_mb': self.metrics.total_write_remote_mb,
+            'total_read_remote_mb': self.metrics.total_read_remote_mb,
+            'total_network_transfer_mb': self.metrics.total_network_transfer_mb
         }
