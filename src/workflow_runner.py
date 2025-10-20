@@ -159,6 +159,11 @@ class WorkflowRunner:
                 'resource_efficiency': metrics.resource_efficiency,
                 'throughput': metrics.throughput,
                 'success_rate': metrics.success_rate,
+                'total_cpu_time': metrics.total_cpu_time,
+                'total_write_local_mb': metrics.total_write_local_mb,
+                'total_write_remote_mb': metrics.total_write_remote_mb,
+                'total_read_remote_mb': metrics.total_read_remote_mb,
+                'total_network_transfer_mb': metrics.total_network_transfer_mb,
                 'timestamp': metrics.timestamp
             },
             'simulation_result': {
