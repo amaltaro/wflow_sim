@@ -84,7 +84,6 @@ class WorkflowMetrics:
     total_write_remote_mb: float = 0.0
     total_read_remote_mb: float = 0.0
     total_network_transfer_mb: float = 0.0
-    timestamp: float = time.time()
 
 
 class WorkflowMetricsCalculator:

@@ -163,8 +163,7 @@ class WorkflowRunner:
                 'total_write_local_mb': metrics.total_write_local_mb,
                 'total_write_remote_mb': metrics.total_write_remote_mb,
                 'total_read_remote_mb': metrics.total_read_remote_mb,
-                'total_network_transfer_mb': metrics.total_network_transfer_mb,
-                'timestamp': metrics.timestamp
+                'total_network_transfer_mb': metrics.total_network_transfer_mb
             },
             'simulation_result': {
                 # Only include raw simulation data not available in metrics

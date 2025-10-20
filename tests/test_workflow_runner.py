@@ -272,7 +272,6 @@ class TestWorkflowRunner:
                 self.total_write_remote_mb = 500.0
                 self.total_read_remote_mb = 200.0
                 self.total_network_transfer_mb = 700.0
-                self.timestamp = 1234567890.0
 
         results = {
             'success': True,
