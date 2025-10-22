@@ -111,7 +111,7 @@ class TestWorkflowMetricsCalculator:
         # Test per-event metrics
         assert metrics.wall_time_per_event == 30.024  # 30024000.0 / 1000000
         assert metrics.cpu_time_per_event == 0.0324  # 32400.0 / 1000000
-        assert metrics.network_transfer_per_event_mb == 0.0001582  # 158.2 / 1000000
+        assert metrics.network_transfer_mb_per_event == 0.0001582  # 158.2 / 1000000
 
         # Test aggregated job-level metrics
         assert metrics.total_cpu_time == 32400.0
@@ -346,7 +346,7 @@ class TestWorkflowMetricsCalculator:
 
         required_keys = [
             'workflow_id', 'total_tasksets', 'total_groups', 'total_jobs',
-            'total_wall_time', 'total_turnaround_time', 'wall_time_per_event', 'cpu_time_per_event', 'network_transfer_per_event_mb',
+            'total_wall_time', 'total_turnaround_time', 'wall_time_per_event', 'cpu_time_per_event', 'network_transfer_mb_per_event',
             'resource_efficiency', 'event_throughput', 'success_rate', 'total_cpu_time', 'total_write_local_mb',
             'total_write_remote_mb', 'total_read_remote_mb', 'total_network_transfer_mb'
         ]

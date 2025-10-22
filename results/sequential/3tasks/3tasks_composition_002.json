@@ -10,7 +10,7 @@
     "total_turnaround_time": 86400.0,
     "wall_time_per_event": 40.0,
     "cpu_time_per_event": 70.0,
-    "network_transfer_per_event_mb": 0.732421875,
+    "network_transfer_mb_per_event": 0.732421875,
     "resource_efficiency": 0.05555555555555555,
     "event_throughput": 0.014285714285714285,
     "success_rate": 1.0,

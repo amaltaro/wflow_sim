@@ -75,7 +75,7 @@ class WorkflowMetrics:
     total_turnaround_time: float
     wall_time_per_event: float
     cpu_time_per_event: float
-    network_transfer_per_event_mb: float
+    network_transfer_mb_per_event: float
     group_metrics: List[GroupMetrics]
     resource_efficiency: float
     event_throughput: float
@@ -145,7 +145,7 @@ class WorkflowMetricsCalculator:
         success_rate = self._calculate_success_rate_from_simulation(simulation_result)
         wall_time_per_event = self._calculate_wall_time_per_event_from_simulation(simulation_result)
         cpu_time_per_event = self._calculate_cpu_time_per_event_from_simulation(simulation_result)
-        network_transfer_per_event_mb = self._calculate_network_transfer_per_event_from_simulation(simulation_result)
+        network_transfer_mb_per_event = self._calculate_network_transfer_per_event_from_simulation(simulation_result)
 
         # Calculate aggregated job-level metrics
         job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
@@ -161,7 +161,7 @@ class WorkflowMetricsCalculator:
             total_turnaround_time=total_turnaround_time,
             wall_time_per_event=wall_time_per_event,
             cpu_time_per_event=cpu_time_per_event,
-            network_transfer_per_event_mb=network_transfer_per_event_mb,
+            network_transfer_mb_per_event=network_transfer_mb_per_event,
             group_metrics=group_metrics,
             resource_efficiency=resource_efficiency,
             event_throughput=event_throughput,
@@ -406,7 +406,7 @@ class WorkflowMetricsCalculator:
         print(f"Total Wall Time: {self.metrics.total_wall_time:.2f} seconds")
         print(f"Wall Time per Event: {self.metrics.wall_time_per_event:.6f} seconds")
         print(f"CPU Time per Event: {self.metrics.cpu_time_per_event:.6f} seconds")
-        print(f"Network Transfer per Event: {self.metrics.network_transfer_per_event_mb:.6f} MB")
+        print(f"Network Transfer per Event: {self.metrics.network_transfer_mb_per_event:.6f} MB")
         print(f"Resource Efficiency: {self.metrics.resource_efficiency:.2f}")
         print(f"Event Throughput: {self.metrics.event_throughput:.6f} events/CPU-second")
         print(f"Success Rate: {self.metrics.success_rate:.2f}")
@@ -474,7 +474,7 @@ class WorkflowMetricsCalculator:
             'total_turnaround_time': self.metrics.total_turnaround_time,
             'wall_time_per_event': self.metrics.wall_time_per_event,
             'cpu_time_per_event': self.metrics.cpu_time_per_event,
-            'network_transfer_per_event_mb': self.metrics.network_transfer_per_event_mb,
+            'network_transfer_mb_per_event': self.metrics.network_transfer_mb_per_event,
             'resource_efficiency': self.metrics.resource_efficiency,
             'event_throughput': self.metrics.event_throughput,
             'success_rate': self.metrics.success_rate,

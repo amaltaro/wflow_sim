@@ -102,7 +102,7 @@ class WorkflowRunner:
         # Display wall time per event from metrics
         print(f"  Wall Time per Event: {metrics.wall_time_per_event:.6f}s/event")
         print(f"  CPU Time per Event: {metrics.cpu_time_per_event:.6f}s/event")
-        print(f"  Network Transfer per Event: {metrics.network_transfer_per_event_mb:.6f} MB/event")
+        print(f"  Network Transfer per Event: {metrics.network_transfer_mb_per_event:.6f} MB/event")
 
         # Metrics summary
         print(f"\n📈 PERFORMANCE METRICS:")
@@ -159,7 +159,7 @@ class WorkflowRunner:
                 'total_turnaround_time': metrics.total_turnaround_time,
                 'wall_time_per_event': metrics.wall_time_per_event,
                 'cpu_time_per_event': metrics.cpu_time_per_event,
-                'network_transfer_per_event_mb': metrics.network_transfer_per_event_mb,
+                'network_transfer_mb_per_event': metrics.network_transfer_mb_per_event,
                 'resource_efficiency': metrics.resource_efficiency,
                 'event_throughput': metrics.event_throughput,
                 'success_rate': metrics.success_rate,
