@@ -17,6 +17,7 @@ class JobMetrics:
     total_write_local_mb: float
     total_write_remote_mb: float
     total_read_remote_mb: float
+    total_read_local_mb: float
     total_network_transfer_mb: float  # remote_write + remote_read
 
 
@@ -54,11 +55,15 @@ class JobMetricsCalculator:
         total_write_local_mb = 0.0
         total_write_remote_mb = 0.0
         total_read_remote_mb = 0.0
+        total_read_local_mb = 0.0
 
         # Calculate remote read: if job has input taskset, read data from shared storage
         if input_taskset_size_per_event is not None:
             # SizePerEvent is in KB, convert to MB
             total_read_remote_mb = (input_taskset_size_per_event * batch_size) / 1024.0
+
+        # Create a mapping of taskset_id to size_per_event for local read calculation
+        taskset_size_map = {ts.taskset_id: ts.size_per_event for ts in tasksets}
 
         for taskset in tasksets:
             # Calculate CPU time: time_per_event * input_events * multicore
@@ -80,6 +85,13 @@ class JobMetricsCalculator:
             if is_remote_write:
                 total_write_remote_mb += write_mb
 
+            # Calculate local read: if taskset has input_taskset within the same group
+            if taskset.input_taskset and taskset.input_taskset in taskset_size_map:
+                # This is a local read from another taskset in the same group
+                input_size_per_event = taskset_size_map[taskset.input_taskset]
+                local_read_mb = (input_size_per_event * batch_size) / 1024.0
+                total_read_local_mb += local_read_mb
+
         # Network transfer includes both remote write and remote read
         total_network_transfer_mb = total_write_remote_mb + total_read_remote_mb
 
@@ -88,6 +100,7 @@ class JobMetricsCalculator:
             total_write_local_mb=total_write_local_mb,
             total_write_remote_mb=total_write_remote_mb,
             total_read_remote_mb=total_read_remote_mb,
+            total_read_local_mb=total_read_local_mb,
             total_network_transfer_mb=total_network_transfer_mb
         )
 
@@ -107,11 +120,13 @@ class JobMetricsCalculator:
                 'total_write_local_mb': 0.0,
                 'total_write_remote_mb': 0.0,
                 'total_read_remote_mb': 0.0,
+                'total_read_local_mb': 0.0,
                 'total_network_transfer_mb': 0.0,
                 'average_cpu_time_per_job': 0.0,
                 'average_write_local_mb_per_job': 0.0,
                 'average_write_remote_mb_per_job': 0.0,
                 'average_read_remote_mb_per_job': 0.0,
+                'average_read_local_mb_per_job': 0.0,
                 'average_network_transfer_mb_per_job': 0.0
             }
 
@@ -119,6 +134,7 @@ class JobMetricsCalculator:
         total_write_local_mb = sum(job.total_write_local_mb for job in jobs)
         total_write_remote_mb = sum(job.total_write_remote_mb for job in jobs)
         total_read_remote_mb = sum(job.total_read_remote_mb for job in jobs)
+        total_read_local_mb = sum(job.total_read_local_mb for job in jobs)
         total_network_transfer_mb = sum(job.total_network_transfer_mb for job in jobs)
 
         job_count = len(jobs)
@@ -128,10 +144,12 @@ class JobMetricsCalculator:
             'total_write_local_mb': total_write_local_mb,
             'total_write_remote_mb': total_write_remote_mb,
             'total_read_remote_mb': total_read_remote_mb,
+            'total_read_local_mb': total_read_local_mb,
             'total_network_transfer_mb': total_network_transfer_mb,
             'average_cpu_time_per_job': total_cpu_time / job_count,
             'average_write_local_mb_per_job': total_write_local_mb / job_count,
             'average_write_remote_mb_per_job': total_write_remote_mb / job_count,
             'average_read_remote_mb_per_job': total_read_remote_mb / job_count,
+            'average_read_local_mb_per_job': total_read_local_mb / job_count,
             'average_network_transfer_mb_per_job': total_network_transfer_mb / job_count
         }

@@ -73,6 +73,7 @@ class JobInfo:
     total_write_local_mb: float = 0.0
     total_write_remote_mb: float = 0.0
     total_read_remote_mb: float = 0.0
+    total_read_local_mb: float = 0.0
     total_network_transfer_mb: float = 0.0
 
 
@@ -733,6 +734,7 @@ class WorkflowSimulator:
                         total_write_local_mb=job_metrics.total_write_local_mb,
                         total_write_remote_mb=job_metrics.total_write_remote_mb,
                         total_read_remote_mb=job_metrics.total_read_remote_mb,
+                        total_read_local_mb=job_metrics.total_read_local_mb,
                         total_network_transfer_mb=job_metrics.total_network_transfer_mb
                     )
 

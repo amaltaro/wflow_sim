@@ -85,11 +85,13 @@ class WorkflowMetrics:
     total_write_local_mb: float = 0.0
     total_write_remote_mb: float = 0.0
     total_read_remote_mb: float = 0.0
+    total_read_local_mb: float = 0.0
     total_network_transfer_mb: float = 0.0
     # Per-event metrics
     total_write_local_mb_per_event: float = 0.0
     total_write_remote_mb_per_event: float = 0.0
     total_read_remote_mb_per_event: float = 0.0
+    total_read_local_mb_per_event: float = 0.0
 
 
 class WorkflowMetricsCalculator:
@@ -153,6 +155,7 @@ class WorkflowMetricsCalculator:
         total_write_local_mb_per_event = self._calculate_write_local_per_event_from_simulation(simulation_result)
         total_write_remote_mb_per_event = self._calculate_write_remote_per_event_from_simulation(simulation_result)
         total_read_remote_mb_per_event = self._calculate_read_remote_per_event_from_simulation(simulation_result)
+        total_read_local_mb_per_event = self._calculate_read_local_per_event_from_simulation(simulation_result)
 
         # Calculate aggregated job-level metrics
         job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
@@ -177,10 +180,12 @@ class WorkflowMetricsCalculator:
             total_write_local_mb=job_metrics_stats['total_write_local_mb'],
             total_write_remote_mb=job_metrics_stats['total_write_remote_mb'],
             total_read_remote_mb=job_metrics_stats['total_read_remote_mb'],
+            total_read_local_mb=job_metrics_stats['total_read_local_mb'],
             total_network_transfer_mb=job_metrics_stats['total_network_transfer_mb'],
             total_write_local_mb_per_event=total_write_local_mb_per_event,
             total_write_remote_mb_per_event=total_write_remote_mb_per_event,
-            total_read_remote_mb_per_event=total_read_remote_mb_per_event
+            total_read_remote_mb_per_event=total_read_remote_mb_per_event,
+            total_read_local_mb_per_event=total_read_local_mb_per_event
         )
 
         self.logger.info("Workflow metrics calculation from simulation completed")
@@ -340,6 +345,15 @@ class WorkflowMetricsCalculator:
             return total_read_remote_mb / simulation_result.total_events
         return 0.0
 
+    def _calculate_read_local_per_event_from_simulation(self, simulation_result: 'SimulationResult') -> float:
+        """Calculate read local per event from simulation result."""
+        if simulation_result.total_events > 0:
+            # Calculate total read local from job metrics
+            job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
+            total_read_local_mb = job_metrics_stats['total_read_local_mb']
+            return total_read_local_mb / simulation_result.total_events
+        return 0.0
+
     def calculate_job_statistics(self, simulation_result: 'SimulationResult') -> Dict[str, Any]:
         """
         Calculate comprehensive job statistics from simulation results.
@@ -362,6 +376,7 @@ class WorkflowMetricsCalculator:
                 'total_cpu_time': 0.0,
                 'total_write_local_mb': 0.0,
                 'total_write_remote_mb': 0.0,
+                'total_read_local_mb': 0.0,
                 'total_read_remote_mb': 0.0,
                 'total_network_transfer_mb': 0.0
             }
@@ -384,6 +399,7 @@ class WorkflowMetricsCalculator:
             'total_cpu_time': job_metrics_stats['total_cpu_time'],
             'total_write_local_mb': job_metrics_stats['total_write_local_mb'],
             'total_write_remote_mb': job_metrics_stats['total_write_remote_mb'],
+            'total_read_local_mb': job_metrics_stats['total_read_local_mb'],
             'total_read_remote_mb': job_metrics_stats['total_read_remote_mb'],
             'total_network_transfer_mb': job_metrics_stats['total_network_transfer_mb']
         }
@@ -455,6 +471,7 @@ class WorkflowMetricsCalculator:
         print(f"Total CPU Time: {self.metrics.total_cpu_time:.2f} seconds")
         print(f"Total Write Local: {self.metrics.total_write_local_mb:.2f} MB")
         print(f"Total Write Remote: {self.metrics.total_write_remote_mb:.2f} MB")
+        print(f"Total Read Local: {self.metrics.total_read_local_mb:.2f} MB")
         print(f"Total Read Remote: {self.metrics.total_read_remote_mb:.2f} MB")
         print(f"Total Network Transfer: {self.metrics.total_network_transfer_mb:.2f} MB")
 
@@ -519,8 +536,10 @@ class WorkflowMetricsCalculator:
             'total_write_local_mb': self.metrics.total_write_local_mb,
             'total_write_remote_mb': self.metrics.total_write_remote_mb,
             'total_read_remote_mb': self.metrics.total_read_remote_mb,
+            'total_read_local_mb': self.metrics.total_read_local_mb,
             'total_network_transfer_mb': self.metrics.total_network_transfer_mb,
             'total_write_local_mb_per_event': self.metrics.total_write_local_mb_per_event,
             'total_write_remote_mb_per_event': self.metrics.total_write_remote_mb_per_event,
-            'total_read_remote_mb_per_event': self.metrics.total_read_remote_mb_per_event
+            'total_read_remote_mb_per_event': self.metrics.total_read_remote_mb_per_event,
+            'total_read_local_mb_per_event': self.metrics.total_read_local_mb_per_event
         }
