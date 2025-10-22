@@ -24,6 +24,7 @@ class TestJobMetrics:
             total_write_local_mb=500.0,
             total_write_remote_mb=200.0,
             total_read_remote_mb=150.0,
+            total_read_local_mb=100.0,
             total_network_transfer_mb=350.0
         )
 
@@ -31,6 +32,7 @@ class TestJobMetrics:
         assert metrics.total_write_local_mb == 500.0
         assert metrics.total_write_remote_mb == 200.0
         assert metrics.total_read_remote_mb == 150.0
+        assert metrics.total_read_local_mb == 100.0
         assert metrics.total_network_transfer_mb == 350.0
 
     def test_job_metrics_default_values(self):
@@ -40,6 +42,7 @@ class TestJobMetrics:
             total_write_local_mb=0.0,
             total_write_remote_mb=0.0,
             total_read_remote_mb=0.0,
+            total_read_local_mb=0.0,
             total_network_transfer_mb=0.0
         )
 
@@ -47,6 +50,7 @@ class TestJobMetrics:
         assert metrics.total_write_local_mb == 0.0
         assert metrics.total_write_remote_mb == 0.0
         assert metrics.total_read_remote_mb == 0.0
+        assert metrics.total_read_local_mb == 0.0
         assert metrics.total_network_transfer_mb == 0.0
 
 
@@ -357,6 +361,7 @@ class TestJobMetricsCalculator:
                 self.total_write_local_mb = 500.0
                 self.total_write_remote_mb = 200.0
                 self.total_read_remote_mb = 150.0
+                self.total_read_local_mb = 100.0
                 self.total_network_transfer_mb = 350.0
 
         job = MockJob()
@@ -366,11 +371,13 @@ class TestJobMetricsCalculator:
         assert stats['total_write_local_mb'] == 500.0
         assert stats['total_write_remote_mb'] == 200.0
         assert stats['total_read_remote_mb'] == 150.0
+        assert stats['total_read_local_mb'] == 100.0
         assert stats['total_network_transfer_mb'] == 350.0
         assert stats['average_cpu_time_per_job'] == 1000.0
         assert stats['average_write_local_mb_per_job'] == 500.0
         assert stats['average_write_remote_mb_per_job'] == 200.0
         assert stats['average_read_remote_mb_per_job'] == 150.0
+        assert stats['average_read_local_mb_per_job'] == 100.0
         assert stats['average_network_transfer_mb_per_job'] == 350.0
 
     def test_calculate_job_statistics_multiple_jobs(self):
@@ -379,17 +386,18 @@ class TestJobMetricsCalculator:
 
         # Create mock jobs with different metrics
         class MockJob:
-            def __init__(self, cpu_time, local_mb, remote_mb, read_mb, network_mb):
+            def __init__(self, cpu_time, local_mb, remote_mb, read_mb, read_local_mb, network_mb):
                 self.total_cpu_time = cpu_time
                 self.total_write_local_mb = local_mb
                 self.total_write_remote_mb = remote_mb
                 self.total_read_remote_mb = read_mb
+                self.total_read_local_mb = read_local_mb
                 self.total_network_transfer_mb = network_mb
 
         jobs = [
-            MockJob(1000.0, 500.0, 200.0, 150.0, 350.0),
-            MockJob(2000.0, 800.0, 300.0, 100.0, 400.0),
-            MockJob(1500.0, 600.0, 250.0, 200.0, 450.0)
+            MockJob(1000.0, 500.0, 200.0, 150.0, 100.0, 350.0),
+            MockJob(2000.0, 800.0, 300.0, 100.0, 150.0, 400.0),
+            MockJob(1500.0, 600.0, 250.0, 200.0, 120.0, 450.0)
         ]
 
         stats = calculator.calculate_job_statistics(jobs)
@@ -399,6 +407,7 @@ class TestJobMetricsCalculator:
         assert stats['total_write_local_mb'] == 1900.0
         assert stats['total_write_remote_mb'] == 750.0
         assert stats['total_read_remote_mb'] == 450.0
+        assert stats['total_read_local_mb'] == 370.0
         assert stats['total_network_transfer_mb'] == 1200.0
 
         # Averages
@@ -406,6 +415,7 @@ class TestJobMetricsCalculator:
         assert abs(stats['average_write_local_mb_per_job'] - 633.33) < 0.01
         assert stats['average_write_remote_mb_per_job'] == 250.0
         assert stats['average_read_remote_mb_per_job'] == 150.0
+        assert abs(stats['average_read_local_mb_per_job'] - 123.33) < 0.01
         assert stats['average_network_transfer_mb_per_job'] == 400.0
 
     def test_calculate_job_metrics_size_conversion(self):
