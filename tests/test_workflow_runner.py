@@ -275,6 +275,9 @@ class TestWorkflowRunner:
                 self.total_write_remote_mb = 500.0
                 self.total_read_remote_mb = 200.0
                 self.total_network_transfer_mb = 700.0
+                self.total_write_local_mb_per_event = 0.1
+                self.total_write_remote_mb_per_event = 0.05
+                self.total_read_remote_mb_per_event = 0.02
 
         results = {
             'success': True,

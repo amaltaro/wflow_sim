@@ -18,7 +18,10 @@
     "total_write_local_mb": 537109.375,
     "total_write_remote_mb": 341796.875,
     "total_read_remote_mb": 292968.75,
-    "total_network_transfer_mb": 634765.625
+    "total_network_transfer_mb": 634765.625,
+    "total_write_local_mb_per_event": 0.537109375,
+    "total_write_remote_mb_per_event": 0.341796875,
+    "total_read_remote_mb_per_event": 0.29296875
   },
   "simulation_result": {
     "success": true,
