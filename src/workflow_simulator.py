@@ -424,8 +424,9 @@ class WorkflowSimulator:
             # Do not use a global processed-events cap across groups; allow all groups to complete
 
             # Create new jobs based on available events and slots
+            # Only create a new batch when there are no running jobs (all previous jobs completed)
             available_slots_for_new_jobs = available_slots - len(running_jobs)
-            if available_slots_for_new_jobs > 0 and execution_queue:
+            if available_slots_for_new_jobs > 0 and execution_queue and len(running_jobs) == 0:
                 batch_number += 1
                 self.logger.info(f"=== BATCH {batch_number} ===")
                 self.logger.debug(f"Before job creation: {len(execution_queue)} groups in queue, {available_slots_for_new_jobs} slots available")
@@ -439,6 +440,8 @@ class WorkflowSimulator:
                     self.logger.info(f"No job creation: {len(running_jobs)} jobs running, {available_slots} max slots")
                 elif not execution_queue:
                     self.logger.info(f"No job creation: no groups in execution queue")
+                elif len(running_jobs) > 0:
+                    self.logger.debug(f"No job creation: {len(running_jobs)} jobs still running, waiting for completion")
 
             # Start new jobs
             for job in new_jobs:
