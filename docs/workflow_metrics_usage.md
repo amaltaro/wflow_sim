@@ -29,7 +29,14 @@ The `WorkflowMetricsCalculator` class provides comprehensive workflow-level metr
 - **Total Write Local**: Sum of local disk writes across all jobs
 - **Total Write Remote**: Sum of remote storage writes across all jobs
 - **Total Read Remote**: Sum of remote storage reads across all jobs
+- **Total Read Local**: Sum of local disk reads across all jobs (within same group)
 - **Total Network Transfer**: Sum of complete network transfers across all jobs (remote writes + remote reads)
+
+### Per-Event Metrics
+- **Total Write Local per Event**: Average local disk writes per event processed
+- **Total Write Remote per Event**: Average remote storage writes per event processed
+- **Total Read Remote per Event**: Average remote storage reads per event processed
+- **Total Read Local per Event**: Average local disk reads per event processed
 
 ### Group-Level Metrics
 - **Group Execution Time**: Time for each group to complete
@@ -84,6 +91,13 @@ print(f"Total CPU Time: {job_stats['total_cpu_time']:.2f}s")
 print(f"Total Write Local: {job_stats['total_write_local_mb']:.2f} MB")
 print(f"Total Write Remote: {job_stats['total_write_remote_mb']:.2f} MB")
 print(f"Total Read Remote: {job_stats['total_read_remote_mb']:.2f} MB")
+print(f"Total Read Local: {job_stats['total_read_local_mb']:.2f} MB")
+
+# Access per-event metrics
+print(f"Write Local per Event: {metrics.total_write_local_mb_per_event:.6f} MB/event")
+print(f"Write Remote per Event: {metrics.total_write_remote_mb_per_event:.6f} MB/event")
+print(f"Read Remote per Event: {metrics.total_read_remote_mb_per_event:.6f} MB/event")
+print(f"Read Local per Event: {metrics.total_read_local_mb_per_event:.6f} MB/event")
 
 # Access group-level details
 for group in metrics.group_metrics:
@@ -141,6 +155,7 @@ The calculator integrates job-level metrics through `JobMetricsCalculator`:
 - **Remote I/O**: Sum of remote storage writes across all jobs  
 - **Network Transfer**: Sum of complete network transfers across all jobs (remote writes + remote reads)
 - **Remote Read**: Sum of cross-group data reads across all jobs
+- **Local Read**: Sum of within-group data reads across all jobs
 
 ### Calculation Flow
 1. **Job Creation**: `WorkflowSimulator` creates jobs with basic metrics
@@ -172,6 +187,7 @@ Success Rate: 1.00
   Total Write Local: 20000.00 MB
   Total Write Remote: 15000.00 MB
   Total Read Remote: 0.00 MB
+  Total Read Local: 5000.00 MB
   Total Network Transfer: 15000.00 MB
 ```
 

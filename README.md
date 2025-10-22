@@ -205,6 +205,7 @@ Workflows are defined in JSON format with the following structure:
 - **Remote I/O**: Data written to shared storage per job
 - **Network Transfer**: Complete network data transfer per job (remote writes + remote reads)
 - **Remote Read**: Data read from shared storage per job (cross-group dependencies)
+- **Local Read**: Data read from local disk per job (within-group dependencies)
 
 ### Group-Level Metrics
 - **Group Execution Time**: Time per group
