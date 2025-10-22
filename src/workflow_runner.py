@@ -180,7 +180,7 @@ class WorkflowRunner:
                         'input_events': group.input_events,
                         'total_execution_time': group.total_execution_time,
                         'exact_job_count': group.exact_job_count,
-                        'dependencies': group.dependencies,
+                        'dependencies': list(sorted(group.dependencies)),
                         'tasksets': [
                             {
                                 'taskset_id': ts.taskset_id,
