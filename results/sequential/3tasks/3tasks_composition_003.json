@@ -9828,16 +9828,16 @@
       {
         "job_id": "group_2_job_1",
         "group_id": "group_2",
-        "batch_size": 640,
-        "wallclock_time": 6400,
-        "start_time": 19200.0,
-        "end_time": 25600.0,
+        "batch_size": 4320,
+        "wallclock_time": 43200,
+        "start_time": 43200.0,
+        "end_time": 86400.0,
         "status": "completed",
-        "total_cpu_time": 12800.0,
-        "total_write_local_mb": 31.25,
-        "total_write_remote_mb": 31.25,
-        "total_read_remote_mb": 187.5,
-        "total_network_transfer_mb": 218.75
+        "total_cpu_time": 86400.0,
+        "total_write_local_mb": 210.9375,
+        "total_write_remote_mb": 210.9375,
+        "total_read_remote_mb": 1265.625,
+        "total_network_transfer_mb": 1476.5625
       },
       {
         "job_id": "group_2_job_2",
@@ -13062,30 +13062,16 @@
       {
         "job_id": "group_2_job_232",
         "group_id": "group_2",
-        "batch_size": 4320,
-        "wallclock_time": 43200,
+        "batch_size": 2080,
+        "wallclock_time": 20800,
         "start_time": 43200.0,
-        "end_time": 86400.0,
+        "end_time": 64000.0,
         "status": "completed",
-        "total_cpu_time": 86400.0,
-        "total_write_local_mb": 210.9375,
-        "total_write_remote_mb": 210.9375,
-        "total_read_remote_mb": 1265.625,
-        "total_network_transfer_mb": 1476.5625
-      },
-      {
-        "job_id": "group_2_job_233",
-        "group_id": "group_2",
-        "batch_size": 1440,
-        "wallclock_time": 14400,
-        "start_time": 43200.0,
-        "end_time": 57600.0,
-        "status": "completed",
-        "total_cpu_time": 28800.0,
-        "total_write_local_mb": 70.3125,
-        "total_write_remote_mb": 70.3125,
-        "total_read_remote_mb": 421.875,
-        "total_network_transfer_mb": 492.1875
+        "total_cpu_time": 41600.0,
+        "total_write_local_mb": 101.5625,
+        "total_write_remote_mb": 101.5625,
+        "total_read_remote_mb": 609.375,
+        "total_network_transfer_mb": 710.9375
       }
     ]
   }

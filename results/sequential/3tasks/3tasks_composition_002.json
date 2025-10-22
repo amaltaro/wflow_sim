@@ -3347,8 +3347,8 @@
         "group_id": "group_4",
         "batch_size": 1440,
         "wallclock_time": 43200,
-        "start_time": 20800.0,
-        "end_time": 64000.0,
+        "start_time": 43200.0,
+        "end_time": 86400.0,
         "status": "completed",
         "total_cpu_time": 86400.0,
         "total_write_local_mb": 492.1875,
@@ -3359,16 +3359,16 @@
       {
         "job_id": "group_4_job_2",
         "group_id": "group_4",
-        "batch_size": 640,
-        "wallclock_time": 19200,
-        "start_time": 20800.0,
-        "end_time": 40000.0,
+        "batch_size": 1440,
+        "wallclock_time": 43200,
+        "start_time": 43200.0,
+        "end_time": 86400.0,
         "status": "completed",
-        "total_cpu_time": 38400.0,
-        "total_write_local_mb": 218.75,
-        "total_write_remote_mb": 218.75,
-        "total_read_remote_mb": 125.0,
-        "total_network_transfer_mb": 343.75
+        "total_cpu_time": 86400.0,
+        "total_write_local_mb": 492.1875,
+        "total_write_remote_mb": 492.1875,
+        "total_read_remote_mb": 281.25,
+        "total_network_transfer_mb": 773.4375
       },
       {
         "job_id": "group_4_job_3",
@@ -13061,16 +13061,16 @@
       {
         "job_id": "group_4_job_695",
         "group_id": "group_4",
-        "batch_size": 1440,
-        "wallclock_time": 43200,
+        "batch_size": 640,
+        "wallclock_time": 19200,
         "start_time": 43200.0,
-        "end_time": 86400.0,
+        "end_time": 62400.0,
         "status": "completed",
-        "total_cpu_time": 86400.0,
-        "total_write_local_mb": 492.1875,
-        "total_write_remote_mb": 492.1875,
-        "total_read_remote_mb": 281.25,
-        "total_network_transfer_mb": 773.4375
+        "total_cpu_time": 38400.0,
+        "total_write_local_mb": 218.75,
+        "total_write_remote_mb": 218.75,
+        "total_read_remote_mb": 125.0,
+        "total_network_transfer_mb": 343.75
       }
     ]
   }
