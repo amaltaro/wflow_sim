@@ -81,7 +81,6 @@ class WorkflowMetrics:
     cpu_time_per_event: float
     network_transfer_mb_per_event: float
     group_metrics: List[GroupMetrics]
-    resource_efficiency: float
     event_throughput: float
     success_rate: float
     # Aggregated job-level metrics
@@ -152,7 +151,6 @@ class WorkflowMetricsCalculator:
         group_metrics = self._calculate_group_metrics_from_simulation(simulation_result)
 
         # Calculate efficiency metrics
-        resource_efficiency = self._calculate_resource_efficiency_from_simulation(simulation_result)
         event_throughput = self._calculate_event_throughput_from_simulation(simulation_result)
         success_rate = self._calculate_success_rate_from_simulation(simulation_result)
         wall_time_per_event = self._calculate_wall_time_per_event_from_simulation(simulation_result)
@@ -182,7 +180,6 @@ class WorkflowMetricsCalculator:
             cpu_time_per_event=cpu_time_per_event,
             network_transfer_mb_per_event=network_transfer_mb_per_event,
             group_metrics=group_metrics,
-            resource_efficiency=resource_efficiency,
             event_throughput=event_throughput,
             success_rate=success_rate,
             total_cpu_time=job_metrics_stats['total_cpu_time'],
@@ -270,24 +267,6 @@ class WorkflowMetricsCalculator:
 
         return group_metrics
 
-    def _calculate_resource_efficiency_from_simulation(self, simulation_result: 'SimulationResult') -> float:
-        """Calculate resource efficiency from simulation result."""
-        if simulation_result.total_jobs == 0:
-            return 0.0
-
-        # Calculate total resource usage across all groups
-        total_cpu = 0
-        total_memory = 0
-
-        for group in simulation_result.groups:
-            for taskset in group.tasksets:
-                total_cpu += taskset.multicore
-                total_memory += taskset.memory
-
-        # Simple efficiency metric based on resource utilization
-        if total_memory > 0:
-            return min(1.0, (total_cpu * 100) / total_memory)
-        return 0.0
 
     def _calculate_event_throughput_from_simulation(self, simulation_result: 'SimulationResult') -> float:
         """Calculate event throughput from simulation result."""
@@ -522,7 +501,6 @@ class WorkflowMetricsCalculator:
         print(f"Wall Time per Event: {self.metrics.wall_time_per_event:.6f} seconds")
         print(f"CPU Time per Event: {self.metrics.cpu_time_per_event:.6f} seconds")
         print(f"Network Transfer per Event: {self.metrics.network_transfer_mb_per_event:.6f} MB")
-        print(f"Resource Efficiency: {self.metrics.resource_efficiency:.2f}")
         print(f"Event Throughput: {self.metrics.event_throughput:.6f} events/CPU-second")
         print(f"Success Rate: {self.metrics.success_rate:.2f}")
         if self.metrics.resource_utilization:
@@ -594,7 +572,6 @@ class WorkflowMetricsCalculator:
             'wall_time_per_event': self.metrics.wall_time_per_event,
             'cpu_time_per_event': self.metrics.cpu_time_per_event,
             'network_transfer_mb_per_event': self.metrics.network_transfer_mb_per_event,
-            'resource_efficiency': self.metrics.resource_efficiency,
             'event_throughput': self.metrics.event_throughput,
             'success_rate': self.metrics.success_rate,
             'total_cpu_time': self.metrics.total_cpu_time,
