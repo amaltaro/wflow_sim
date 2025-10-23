@@ -8,6 +8,7 @@ results, supporting performance analysis and comparison of different workflow co
 import json
 import logging
 import math
+import statistics
 from typing import Dict, List, Any, Optional, Union
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -22,10 +23,13 @@ except ImportError:
 @dataclass
 class ResourceUsage:
     """Resource usage metrics for a single execution unit."""
-    cpu_usage: float
-    memory_usage: float
-    storage_usage: float
-    network_usage: float = 0.0
+    cpu_usage: float  # CPU cores used
+    memory_usage: float  # Memory used in MB
+    storage_usage: float  # Storage used in MB
+    network_usage: float = 0.0  # Network usage in MB
+    # Utilization ratios (0.0 to 1.0)
+    cpu_utilization: float = 0.0  # Ratio of CPU used vs allocated
+    memory_occupancy: float = 0.0  # Ratio of memory used vs allocated
 
 
 @dataclass
@@ -92,6 +96,8 @@ class WorkflowMetrics:
     total_write_remote_mb_per_event: float = 0.0
     total_read_remote_mb_per_event: float = 0.0
     total_read_local_mb_per_event: float = 0.0
+    # Resource utilization metrics (aggregated from all jobs)
+    resource_utilization: ResourceUsage = None
 
 
 class WorkflowMetricsCalculator:
@@ -157,6 +163,9 @@ class WorkflowMetricsCalculator:
         total_read_remote_mb_per_event = self._calculate_read_remote_per_event_from_simulation(simulation_result)
         total_read_local_mb_per_event = self._calculate_read_local_per_event_from_simulation(simulation_result)
 
+        # Calculate resource utilization metrics
+        resource_utilization = self._calculate_resource_utilization_from_simulation(simulation_result)
+
         # Calculate aggregated job-level metrics
         job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
 
@@ -185,7 +194,8 @@ class WorkflowMetricsCalculator:
             total_write_local_mb_per_event=total_write_local_mb_per_event,
             total_write_remote_mb_per_event=total_write_remote_mb_per_event,
             total_read_remote_mb_per_event=total_read_remote_mb_per_event,
-            total_read_local_mb_per_event=total_read_local_mb_per_event
+            total_read_local_mb_per_event=total_read_local_mb_per_event,
+            resource_utilization=resource_utilization
         )
 
         self.logger.info("Workflow metrics calculation from simulation completed")
@@ -354,6 +364,58 @@ class WorkflowMetricsCalculator:
             return total_read_local_mb / simulation_result.total_events
         return 0.0
 
+    def _calculate_resource_utilization_from_simulation(self, simulation_result: 'SimulationResult') -> ResourceUsage:
+        """Calculate resource utilization from simulation result."""
+        if simulation_result.total_wall_time <= 0:
+            return ResourceUsage(cpu_usage=0.0, memory_usage=0.0, storage_usage=0.0,
+                               cpu_utilization=0.0, memory_occupancy=0.0)
+
+        # Calculate utilization per group and then average across groups
+        group_cpu_utilizations = []
+        group_memory_occupancies = []
+        total_cpu_cores_used = 0
+        total_memory_used = 0
+
+        # Get job metrics for total usage
+        job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
+        total_cpu_time_used = job_metrics_stats['total_cpu_time']
+
+        for group in simulation_result.groups:
+            # find allocated resources per job/group
+            max_group_cores = max(taskset.multicore for taskset in group.tasksets)
+            max_group_memory = max(taskset.memory for taskset in group.tasksets)
+
+            # calculate actual CPU utilization ratio
+            group_time_per_event = sum(taskset.time_per_event for taskset in group.tasksets)
+            group_cpu_utilization = sum(group.input_events * taskset.time_per_event * taskset.multicore for taskset in group.tasksets)
+            group_cpu_utilization /= group.input_events * group_time_per_event * max_group_cores
+            # calculate actual Memory utilization ratio
+            group_memory_utilization = sum(group.input_events * taskset.time_per_event * taskset.memory for taskset in group.tasksets)
+            group_memory_utilization /= group.input_events * group_time_per_event * max_group_memory
+
+            # append to overall workflow calculation
+            group_cpu_utilizations.append(group_cpu_utilization)
+            group_memory_occupancies.append(group_memory_utilization)
+
+            # Find jobs for this group
+            for job in simulation_result.jobs:
+                if job.group_id == group.group_id:
+                    total_cpu_cores_used += max_group_cores
+                    total_memory_used += max_group_memory
+
+        # Calculate average utilization across all groups
+        cpu_utilization = statistics.mean(group_cpu_utilizations) if group_cpu_utilizations else 0.0
+        memory_occupancy = statistics.mean(group_memory_occupancies) if group_memory_occupancies else 0.0
+
+        return ResourceUsage(
+            cpu_usage=total_cpu_cores_used,
+            memory_usage=total_memory_used,
+            storage_usage=0.0,  # Could be calculated from I/O metrics if needed
+            network_usage=job_metrics_stats['total_network_transfer_mb'],
+            cpu_utilization=cpu_utilization,
+            memory_occupancy=memory_occupancy
+        )
+
     def calculate_job_statistics(self, simulation_result: 'SimulationResult') -> Dict[str, Any]:
         """
         Calculate comprehensive job statistics from simulation results.
@@ -463,6 +525,9 @@ class WorkflowMetricsCalculator:
         print(f"Resource Efficiency: {self.metrics.resource_efficiency:.2f}")
         print(f"Event Throughput: {self.metrics.event_throughput:.6f} events/CPU-second")
         print(f"Success Rate: {self.metrics.success_rate:.2f}")
+        if self.metrics.resource_utilization:
+            print(f"CPU Utilization: {self.metrics.resource_utilization.cpu_utilization:.2%}")
+            print(f"Memory Occupancy: {self.metrics.resource_utilization.memory_occupancy:.2%}")
 
         # Print aggregated job-level metrics
         print(f"\n" + "-"*40)
@@ -541,5 +606,7 @@ class WorkflowMetricsCalculator:
             'total_write_local_mb_per_event': self.metrics.total_write_local_mb_per_event,
             'total_write_remote_mb_per_event': self.metrics.total_write_remote_mb_per_event,
             'total_read_remote_mb_per_event': self.metrics.total_read_remote_mb_per_event,
-            'total_read_local_mb_per_event': self.metrics.total_read_local_mb_per_event
+            'total_read_local_mb_per_event': self.metrics.total_read_local_mb_per_event,
+            'cpu_utilization': self.metrics.resource_utilization.cpu_utilization if self.metrics.resource_utilization else 0.0,
+            'memory_occupancy': self.metrics.resource_utilization.memory_occupancy if self.metrics.resource_utilization else 0.0
         }

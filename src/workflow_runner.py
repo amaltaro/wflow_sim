@@ -173,7 +173,9 @@ class WorkflowRunner:
                 'total_write_local_mb_per_event': metrics.total_write_local_mb_per_event,
                 'total_write_remote_mb_per_event': metrics.total_write_remote_mb_per_event,
                 'total_read_remote_mb_per_event': metrics.total_read_remote_mb_per_event,
-                'total_read_local_mb_per_event': metrics.total_read_local_mb_per_event
+                'total_read_local_mb_per_event': metrics.total_read_local_mb_per_event,
+                'cpu_utilization': metrics.resource_utilization.cpu_utilization if metrics.resource_utilization else 0.0,
+                'memory_occupancy': metrics.resource_utilization.memory_occupancy if metrics.resource_utilization else 0.0
             },
             'simulation_result': {
                 # Only include raw simulation data not available in metrics
