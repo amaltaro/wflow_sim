@@ -11,7 +11,6 @@
     "wall_time_per_event": 40.0,
     "cpu_time_per_event": 70.0,
     "network_transfer_mb_per_event": 1.025390625,
-    "resource_efficiency": 0.05555555555555555,
     "event_throughput": 0.014285714285714285,
     "success_rate": 1.0,
     "total_cpu_time": 70000000.0,
@@ -23,7 +22,13 @@
     "total_write_local_mb_per_event": 0.537109375,
     "total_write_remote_mb_per_event": 0.537109375,
     "total_read_remote_mb_per_event": 0.48828125,
-    "total_read_local_mb_per_event": 0.0
+    "total_read_local_mb_per_event": 0.0,
+    "cpu_utilization": 1.0,
+    "memory_occupancy": 1.0,
+    "total_cpu_cores_used": 1622,
+    "total_memory_used_mb": 3012000,
+    "cpu_cores_per_event": 0.001622,
+    "memory_mb_per_event": 3.012
   },
   "simulation_result": {
     "success": true,
