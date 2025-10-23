@@ -159,13 +159,22 @@ class TestWorkflowRunner:
         )
 
         # Create mock metrics (simplified)
+        class MockResourceUtilization:
+            def __init__(self):
+                self.cpu_utilization = 0.875
+                self.memory_occupancy = 0.8125
+                self.cpu_usage = 1852.0
+                self.memory_usage = 3704000.0
+
         class MockMetrics:
             def __init__(self):
+                self.total_events = 10000
                 self.event_throughput = 1.0
                 self.success_rate = 1.0
                 self.wall_time_per_event = 10.0
                 self.cpu_time_per_event = 5.0
                 self.network_transfer_mb_per_event = 0.1
+                self.resource_utilization = MockResourceUtilization()
 
         results = {
             'success': True,
@@ -183,6 +192,8 @@ class TestWorkflowRunner:
         assert "Total Events: 10,000" in captured.out
         assert "Total Groups: 1" in captured.out
         assert "Total Jobs: 10" in captured.out
+        assert "CPU Utilization: 87.50%" in captured.out
+        assert "Memory Occupancy: 81.25%" in captured.out
         assert "Event Throughput: 1.000000 events/CPU-second" in captured.out
         assert "Network Transfer per Event: 0.100000 MB/event" in captured.out
 
@@ -254,8 +265,10 @@ class TestWorkflowRunner:
         # Create mock metrics
         class MockResourceUtilization:
             def __init__(self):
-                self.cpu_utilization = 0.8
-                self.memory_occupancy = 0.9
+                self.cpu_utilization = 0.875
+                self.memory_occupancy = 0.8125
+                self.cpu_usage = 1852.0
+                self.memory_usage = 3704000.0
 
         class MockMetrics:
             def __init__(self):
@@ -318,6 +331,8 @@ class TestWorkflowRunner:
         assert metrics['total_tasksets'] == 1
         assert metrics['total_groups'] == 1
         assert metrics['total_jobs'] == 10
+        assert metrics['cpu_utilization'] == 0.875
+        assert metrics['memory_occupancy'] == 0.8125
         assert metrics['event_throughput'] == 1.0
         assert metrics['network_transfer_mb_per_event'] == 0.1
         assert metrics['success_rate'] == 1.0
