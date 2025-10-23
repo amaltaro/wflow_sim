@@ -39,7 +39,7 @@ This repository provides a **Workflow Simulator** that:
 - **Execution Metrics**: Runtime, throughput, resource utilization
 - **Job-Level Metrics**: CPU time, local/remote I/O, network transfers per job
 - **Group-Level Analysis**: Performance metrics for each group
-- **Resource Efficiency**: CPU, memory, storage, and network usage
+- **Resource Utilization**: CPU utilization and memory occupancy ratios
 - **Scalability Analysis**: Job scaling and parallel execution efficiency
 
 ## Architecture
@@ -195,7 +195,8 @@ Workflows are defined in JSON format with the following structure:
 - **Total Groups**: Number of job submission units
 - **Total Jobs**: Number of grid jobs (scaled by events)
 - **Execution Time**: Total computational time
-- **Resource Efficiency**: Overall resource utilization
+- **CPU Utilization**: Ratio of CPU used vs allocated
+- **Memory Occupancy**: Ratio of memory used vs allocated
 - **Throughput**: Events processed per second
 - **Success Rate**: Percentage of successful executions
 
