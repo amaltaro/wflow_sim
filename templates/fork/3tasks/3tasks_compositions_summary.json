@@ -1,0 +1,100 @@
+{
+  "template_name": "3tasks",
+  "total_compositions": 3,
+  "compositions": [
+    {
+      "composition_number": 1,
+      "num_groups": 2,
+      "groups": [
+        "group_3",
+        "group_2"
+      ],
+      "total_cpu_time": 80000000.0,
+      "event_throughput": 0.0125,
+      "total_memory_mb": 3476000,
+      "total_jobs": 925.925925925926,
+      "group_details": [
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset1",
+            "Taskset2"
+          ],
+          "events_per_task": 1440
+        },
+        {
+          "group_id": "group_2",
+          "tasks": [
+            "Taskset3"
+          ],
+          "events_per_task": 4320
+        }
+      ]
+    },
+    {
+      "composition_number": 2,
+      "num_groups": 2,
+      "groups": [
+        "group_4",
+        "group_1"
+      ],
+      "total_cpu_time": 80000000.0,
+      "event_throughput": 0.0125,
+      "total_memory_mb": 3241000,
+      "total_jobs": 925.925925925926,
+      "group_details": [
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset1",
+            "Taskset3"
+          ],
+          "events_per_task": 2160
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ],
+          "events_per_task": 2160
+        }
+      ]
+    },
+    {
+      "composition_number": 3,
+      "num_groups": 3,
+      "groups": [
+        "group_0",
+        "group_1",
+        "group_2"
+      ],
+      "total_cpu_time": 70000000.0,
+      "event_throughput": 0.014285714285714285,
+      "total_memory_mb": 3012000,
+      "total_jobs": 925.925925925926,
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ],
+          "events_per_task": 4320
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ],
+          "events_per_task": 2160
+        },
+        {
+          "group_id": "group_2",
+          "tasks": [
+            "Taskset3"
+          ],
+          "events_per_task": 4320
+        }
+      ]
+    }
+  ]
+}
