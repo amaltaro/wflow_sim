@@ -20,8 +20,7 @@ The `WorkflowMetricsCalculator` class provides comprehensive workflow-level metr
 - **Execution Time**: Total computational time
 - **Wall Time**: Real elapsed time
 - **Wall Time per Event**: Average wall time per event processed
-- **CPU Utilization**: Ratio of CPU used vs allocated (0.0 to 1.0)
-- **Memory Occupancy**: Ratio of memory used vs allocated (0.0 to 1.0)
+- **Resource Efficiency**: Overall resource utilization efficiency
 - **Throughput**: Events processed per second
 - **Success Rate**: Percentage of successful executions
 
@@ -83,6 +82,7 @@ summary = calculator.get_metrics_summary()
 # Access individual workflow metrics
 print(f"Total execution time: {metrics.total_turnaround_time}")
 print(f"Wall time per event: {metrics.wall_time_per_event:.6f}s/event")
+print(f"Resource efficiency: {metrics.resource_efficiency}")
 print(f"Throughput: {metrics.throughput} events/second")
 
 # Access aggregated job metrics
@@ -92,11 +92,6 @@ print(f"Total Write Local: {job_stats['total_write_local_mb']:.2f} MB")
 print(f"Total Write Remote: {job_stats['total_write_remote_mb']:.2f} MB")
 print(f"Total Read Remote: {job_stats['total_read_remote_mb']:.2f} MB")
 print(f"Total Read Local: {job_stats['total_read_local_mb']:.2f} MB")
-
-# Access resource utilization metrics
-if metrics.resource_utilization:
-    print(f"CPU Utilization: {metrics.resource_utilization.cpu_utilization:.2%}")
-    print(f"Memory Occupancy: {metrics.resource_utilization.memory_occupancy:.2%}")
 
 # Access per-event metrics
 print(f"Write Local per Event: {metrics.total_write_local_mb_per_event:.6f} MB/event")
@@ -183,8 +178,7 @@ Total Jobs: 1000
 Total Execution Time: 50000.00 seconds
 Total Wall Time: 50000.00 seconds
 Wall Time per Event: 0.050000s/event
-CPU Utilization: 87.50%
-Memory Occupancy: 81.25%
+Resource Efficiency: 0.85
 Throughput: 20.00 events/second
 Success Rate: 1.00
 
@@ -207,6 +201,7 @@ Success Rate: 1.00
   "total_jobs": 1000,
   "total_execution_time": 50000.0,
   "total_wall_time": 50000.0,
+  "resource_efficiency": 0.85,
   "throughput": 20.0,
   "success_rate": 1.0,
   "group_metrics": [...]
