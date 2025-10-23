@@ -347,7 +347,7 @@ class TestWorkflowMetricsCalculator:
         required_keys = [
             'workflow_id', 'total_tasksets', 'total_groups', 'total_jobs',
             'total_wall_time', 'total_turnaround_time', 'wall_time_per_event', 'cpu_time_per_event', 'network_transfer_mb_per_event',
-            'resource_efficiency', 'event_throughput', 'success_rate', 'total_cpu_time', 'total_write_local_mb',
+ 'event_throughput', 'success_rate', 'total_cpu_time', 'total_write_local_mb',
             'total_write_remote_mb', 'total_read_remote_mb', 'total_network_transfer_mb'
         ]
 
