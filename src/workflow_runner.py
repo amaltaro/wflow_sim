@@ -110,6 +110,16 @@ class WorkflowRunner:
         print(f"  Success Rate: {metrics.success_rate:.2f}")
         print(f"  Total Execution Time: {simulation.total_turnaround_time:.2f}s")
 
+        # Resource usage summary
+        if metrics.resource_utilization:
+            print(f"\n💻 RESOURCE USAGE:")
+            print(f"  Total CPU Cores Used: {metrics.resource_utilization.cpu_usage:.0f} cores")
+            print(f"  Total Memory Used: {metrics.resource_utilization.memory_usage:.0f} MB")
+            print(f"  CPU Cores per Event: {metrics.resource_utilization.cpu_usage / metrics.total_events:.6f} cores/event")
+            print(f"  Memory per Event: {metrics.resource_utilization.memory_usage / metrics.total_events:.6f} MB/event")
+            print(f"  CPU Utilization: {metrics.resource_utilization.cpu_utilization:.2%}")
+            print(f"  Memory Occupancy: {metrics.resource_utilization.memory_occupancy:.2%}")
+
         # Group details
         print(f"\n🏗️  GROUP BREAKDOWN:")
         for group in simulation.groups:
@@ -173,7 +183,11 @@ class WorkflowRunner:
                 'total_read_remote_mb_per_event': metrics.total_read_remote_mb_per_event,
                 'total_read_local_mb_per_event': metrics.total_read_local_mb_per_event,
                 'cpu_utilization': metrics.resource_utilization.cpu_utilization if metrics.resource_utilization else 0.0,
-                'memory_occupancy': metrics.resource_utilization.memory_occupancy if metrics.resource_utilization else 0.0
+                'memory_occupancy': metrics.resource_utilization.memory_occupancy if metrics.resource_utilization else 0.0,
+                'total_cpu_cores_used': metrics.resource_utilization.cpu_usage if metrics.resource_utilization else 0.0,
+                'total_memory_used_mb': metrics.resource_utilization.memory_usage if metrics.resource_utilization else 0.0,
+                'cpu_cores_per_event': (metrics.resource_utilization.cpu_usage / metrics.total_events) if metrics.resource_utilization and metrics.total_events > 0 else 0.0,
+                'memory_mb_per_event': (metrics.resource_utilization.memory_usage / metrics.total_events) if metrics.resource_utilization and metrics.total_events > 0 else 0.0
             },
             'simulation_result': {
                 # Only include raw simulation data not available in metrics

@@ -503,10 +503,17 @@ class WorkflowMetricsCalculator:
         print(f"Network Transfer per Event: {self.metrics.network_transfer_mb_per_event:.6f} MB")
         print(f"Event Throughput: {self.metrics.event_throughput:.6f} events/CPU-second")
         print(f"Success Rate: {self.metrics.success_rate:.2f}")
+        # Print total resource usage metrics
         if self.metrics.resource_utilization:
+            print(f"\n" + "-"*40)
+            print("TOTAL RESOURCE USAGE")
+            print("-"*40)
+            print(f"Total CPU Cores Used: {self.metrics.resource_utilization.cpu_usage:.0f} cores")
+            print(f"Total Memory Used: {self.metrics.resource_utilization.memory_usage:.0f} MB")
+            print(f"CPU Cores per Event: {self.metrics.resource_utilization.cpu_usage / self.metrics.total_events:.6f} cores/event")
+            print(f"Memory per Event: {self.metrics.resource_utilization.memory_usage / self.metrics.total_events:.6f} MB/event")
             print(f"CPU Utilization: {self.metrics.resource_utilization.cpu_utilization:.2%}")
             print(f"Memory Occupancy: {self.metrics.resource_utilization.memory_occupancy:.2%}")
-
         # Print aggregated job-level metrics
         print(f"\n" + "-"*40)
         print("AGGREGATED JOB METRICS")
@@ -585,5 +592,9 @@ class WorkflowMetricsCalculator:
             'total_read_remote_mb_per_event': self.metrics.total_read_remote_mb_per_event,
             'total_read_local_mb_per_event': self.metrics.total_read_local_mb_per_event,
             'cpu_utilization': self.metrics.resource_utilization.cpu_utilization if self.metrics.resource_utilization else 0.0,
-            'memory_occupancy': self.metrics.resource_utilization.memory_occupancy if self.metrics.resource_utilization else 0.0
+            'memory_occupancy': self.metrics.resource_utilization.memory_occupancy if self.metrics.resource_utilization else 0.0,
+            'total_cpu_cores_used': self.metrics.resource_utilization.cpu_usage if self.metrics.resource_utilization else 0.0,
+            'total_memory_used_mb': self.metrics.resource_utilization.memory_usage if self.metrics.resource_utilization else 0.0,
+            'cpu_cores_per_event': (self.metrics.resource_utilization.cpu_usage / self.metrics.total_events) if self.metrics.resource_utilization and self.metrics.total_events > 0 else 0.0,
+            'memory_mb_per_event': (self.metrics.resource_utilization.memory_usage / self.metrics.total_events) if self.metrics.resource_utilization and self.metrics.total_events > 0 else 0.0
         }
