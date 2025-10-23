@@ -574,6 +574,300 @@ class TestWorkflowMetricsCalculator:
         assert summary['total_read_remote_mb'] == expected_read_remote
         assert abs(summary['total_network_transfer_mb'] - expected_network_transfer) < 0.01
 
+    def test_calculate_resource_utilization_from_simulation(self):
+        """Test resource utilization calculation from simulation result."""
+        # Create mock tasksets with different resource requirements
+        taskset1 = TasksetInfo(
+            taskset_id="Taskset1",
+            group_name="group_1",
+            input_taskset=None,
+            time_per_event=10.0,
+            memory=2000,
+            multicore=1,
+            size_per_event=200,
+            group_input_events=1080,
+            scram_arch=["el9_amd64_gcc11"],
+            requires_gpu="forbidden",
+            keep_output=False
+        )
+
+        taskset2 = TasksetInfo(
+            taskset_id="Taskset2",
+            group_name="group_1",
+            input_taskset="Taskset1",
+            time_per_event=20.0,
+            memory=4000,
+            multicore=2,
+            size_per_event=300,
+            group_input_events=1080,
+            scram_arch=["el9_amd64_gcc11"],
+            requires_gpu="forbidden",
+            keep_output=True
+        )
+
+        taskset3 = TasksetInfo(
+            taskset_id="Taskset3",
+            group_name="group_1",
+            input_taskset="Taskset2",
+            time_per_event=10.0,
+            memory=1000,
+            multicore=2,
+            size_per_event=150,
+            group_input_events=1080,
+            scram_arch=["el9_amd64_gcc11"],
+            requires_gpu="forbidden",
+            keep_output=False
+        )
+
+        group = GroupInfo(
+            group_id="group_1",
+            tasksets=[taskset1, taskset2, taskset3],
+            input_events=1080,
+            job_count=2,
+            exact_job_count=2.0,
+            total_execution_time=43200.0,  # (10 + 20 + 10) * 1080
+            dependencies=[]
+        )
+
+        # Create mock jobs with different batch sizes
+        job1 = JobInfo(
+            job_id="group_1_job_1",
+            group_id="group_1",
+            batch_size=1080,
+            wallclock_time=43200.0,  # (10 + 20 + 10) * 1080
+            start_time=0.0,
+            end_time=43200.0,
+            status="completed",
+            total_cpu_time=75600.0,  # (1080*10*1) + (1080*20*2) + (1080*10*2) = 10800 + 43200 + 21600
+            total_write_local_mb=216.0,
+            total_write_remote_mb=158.2,
+            total_read_remote_mb=0.0,
+            total_read_local_mb=0.0,
+            total_network_transfer_mb=158.2
+        )
+
+        job2 = JobInfo(
+            job_id="group_1_job_2",
+            group_id="group_1",
+            batch_size=1000,
+            wallclock_time=40000.0,  # (10 + 20 + 10) * 1000
+            start_time=43200.0,
+            end_time=83200.0,
+            status="completed",
+            total_cpu_time=70000.0,  # (1000*10*1) + (1000*20*2) + (1000*10*2) = 10000 + 40000 + 20000
+            total_write_local_mb=200.0,
+            total_write_remote_mb=146.5,
+            total_read_remote_mb=0.0,
+            total_read_local_mb=0.0,
+            total_network_transfer_mb=146.5
+        )
+
+        simulation_result = SimulationResult(
+            workflow_id="test_workflow",
+            composition_number=1,
+            total_events=2080,  # 1080 + 1000
+            total_groups=1,
+            total_jobs=2,
+            total_wall_time=83200.0,
+            total_turnaround_time=43200.0,
+            groups=[group],
+            jobs=[job1, job2],
+            success=True
+        )
+
+        # Test resource utilization calculation
+        calculator = WorkflowMetricsCalculator()
+        resource_usage = calculator._calculate_resource_utilization_from_simulation(simulation_result)
+
+        # Verify resource usage object is created
+        assert resource_usage is not None
+        assert hasattr(resource_usage, 'cpu_usage')
+        assert hasattr(resource_usage, 'memory_usage')
+        assert hasattr(resource_usage, 'storage_usage')
+        assert hasattr(resource_usage, 'network_usage')
+        assert hasattr(resource_usage, 'cpu_utilization')
+        assert hasattr(resource_usage, 'memory_occupancy')
+
+        # Test CPU utilization calculation
+        # Expected: average of job utilizations
+        # Job 1: CPU used = 75600, CPU allocated = 1080 * 40 * 2 = 86400, utilization = 75600/86400 = 0.875
+        # Job 2: CPU used = 70000, CPU allocated = 1000 * 40 * 2 = 80000, utilization = 70000/80000 = 0.875
+        # Average: (0.875 + 0.875) / 2 = 0.875
+        expected_cpu_utilization = 0.875
+        assert abs(resource_usage.cpu_utilization - expected_cpu_utilization) < 0.001
+
+        # Test memory occupancy calculation
+        # Expected: based on the actual implementation formula
+        # Memory used = sum(group.input_events * taskset.time_per_event * taskset.memory)
+        #            = 1080 * (10*2000 + 20*4000 + 10*1000) = 1080 * (20000 + 80000 + 10000) = 1080 * 110000 = 118800000
+        # Memory allocated = group.input_events * group_time_per_event * max_group_memory
+        #                  = 1080 * 40 * 4000 = 172800000
+        # Utilization = 118800000 / 172800000 = 0.6875
+        expected_memory_occupancy = 0.6875
+        assert abs(resource_usage.memory_occupancy - expected_memory_occupancy) < 0.001
+
+        # Test resource usage totals
+        # Total CPU cores used = max_cores * num_jobs = 2 * 2 = 4
+        expected_cpu_cores = 4
+        assert resource_usage.cpu_usage == expected_cpu_cores
+
+        # Total memory used = max_memory * num_jobs = 4000 * 2 = 8000
+        expected_memory = 8000
+        assert resource_usage.memory_usage == expected_memory
+
+        # Network usage should match total network transfer
+        expected_network = 158.2 + 146.5  # 304.7
+        assert abs(resource_usage.network_usage - expected_network) < 0.01
+
+    def test_calculate_resource_utilization_empty_simulation(self):
+        """Test resource utilization calculation with empty simulation."""
+        # Create empty simulation result
+        simulation_result = SimulationResult(
+            workflow_id="test_workflow",
+            composition_number=1,
+            total_events=0,
+            total_groups=0,
+            total_jobs=0,
+            total_wall_time=0.0,
+            total_turnaround_time=0.0,
+            groups=[],
+            jobs=[],
+            success=True
+        )
+
+        calculator = WorkflowMetricsCalculator()
+        resource_usage = calculator._calculate_resource_utilization_from_simulation(simulation_result)
+
+        # Should return default values
+        assert resource_usage.cpu_usage == 0.0
+        assert resource_usage.memory_usage == 0.0
+        assert resource_usage.storage_usage == 0.0
+        assert resource_usage.network_usage == 0.0
+        assert resource_usage.cpu_utilization == 0.0
+        assert resource_usage.memory_occupancy == 0.0
+
+    def test_calculate_resource_utilization_multiple_groups(self):
+        """Test resource utilization calculation with multiple groups."""
+        # Create two groups with different resource requirements
+        taskset1 = TasksetInfo(
+            taskset_id="Taskset1",
+            group_name="group_1",
+            input_taskset=None,
+            time_per_event=5.0,
+            memory=1000,
+            multicore=1,
+            size_per_event=100,
+            group_input_events=500,
+            scram_arch=["el9_amd64_gcc11"],
+            requires_gpu="forbidden",
+            keep_output=False
+        )
+
+        taskset2 = TasksetInfo(
+            taskset_id="Taskset2",
+            group_name="group_2",
+            input_taskset=None,
+            time_per_event=15.0,
+            memory=3000,
+            multicore=3,
+            size_per_event=200,
+            group_input_events=300,
+            scram_arch=["el9_amd64_gcc11"],
+            requires_gpu="forbidden",
+            keep_output=False
+        )
+
+        group1 = GroupInfo(
+            group_id="group_1",
+            tasksets=[taskset1],
+            input_events=500,
+            job_count=1,
+            exact_job_count=1.0,
+            total_execution_time=2500.0,  # 5 * 500
+            dependencies=[]
+        )
+
+        group2 = GroupInfo(
+            group_id="group_2",
+            tasksets=[taskset2],
+            input_events=300,
+            job_count=1,
+            exact_job_count=1.0,
+            total_execution_time=4500.0,  # 15 * 300
+            dependencies=[]
+        )
+
+        job1 = JobInfo(
+            job_id="group_1_job_1",
+            group_id="group_1",
+            batch_size=500,
+            wallclock_time=2500.0,
+            start_time=0.0,
+            end_time=2500.0,
+            status="completed",
+            total_cpu_time=2500.0,  # 500 * 5 * 1
+            total_write_local_mb=50.0,
+            total_write_remote_mb=0.0,
+            total_read_remote_mb=0.0,
+            total_read_local_mb=0.0,
+            total_network_transfer_mb=0.0
+        )
+
+        job2 = JobInfo(
+            job_id="group_2_job_1",
+            group_id="group_2",
+            batch_size=300,
+            wallclock_time=4500.0,
+            start_time=2500.0,
+            end_time=7000.0,
+            status="completed",
+            total_cpu_time=13500.0,  # 300 * 15 * 3
+            total_write_local_mb=60.0,
+            total_write_remote_mb=0.0,
+            total_read_remote_mb=0.0,
+            total_read_local_mb=0.0,
+            total_network_transfer_mb=0.0
+        )
+
+        simulation_result = SimulationResult(
+            workflow_id="test_workflow",
+            composition_number=1,
+            total_events=800,  # 500 + 300
+            total_groups=2,
+            total_jobs=2,
+            total_wall_time=7000.0,
+            total_turnaround_time=4500.0,
+            groups=[group1, group2],
+            jobs=[job1, job2],
+            success=True
+        )
+
+        calculator = WorkflowMetricsCalculator()
+        resource_usage = calculator._calculate_resource_utilization_from_simulation(simulation_result)
+
+        # Test CPU utilization calculation
+        # Group 1: CPU used = 2500, CPU allocated = 500 * 5 * 1 = 2500, utilization = 1.0
+        # Group 2: CPU used = 13500, CPU allocated = 300 * 15 * 3 = 13500, utilization = 1.0
+        # Average: (1.0 + 1.0) / 2 = 1.0
+        expected_cpu_utilization = 1.0
+        assert abs(resource_usage.cpu_utilization - expected_cpu_utilization) < 0.001
+
+        # Test memory occupancy calculation
+        # Group 1: Memory used = 1000 * 2500 = 2500000, Memory allocated = 1000 * 2500 = 2500000, utilization = 1.0
+        # Group 2: Memory used = 3000 * 4500 = 13500000, Memory allocated = 3000 * 4500 = 13500000, utilization = 1.0
+        # Average: (1.0 + 1.0) / 2 = 1.0
+        expected_memory_occupancy = 1.0
+        assert abs(resource_usage.memory_occupancy - expected_memory_occupancy) < 0.001
+
+        # Test resource usage totals
+        # Total CPU cores = 1 + 3 = 4
+        expected_cpu_cores = 4
+        assert resource_usage.cpu_usage == expected_cpu_cores
+
+        # Total memory = 1000 + 3000 = 4000
+        expected_memory = 4000
+        assert resource_usage.memory_usage == expected_memory
+
 
 if __name__ == "__main__":
     pytest.main([__file__])
