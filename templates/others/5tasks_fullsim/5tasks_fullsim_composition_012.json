@@ -1,0 +1,75 @@
+{
+  "Comments": "Workflow Composition 12 - 4 groups",
+  "NumTasks": 5,
+  "RequestNumEvents": 2666667,
+  "Taskset1": {
+    "KeepOutput": false,
+    "Memory": 4000,
+    "Multicore": 8,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc11"
+    ],
+    "SizePerEvent": 735,
+    "TimePerEvent": 1.67,
+    "GroupName": "group_5",
+    "GroupInputEvents": 9294
+  },
+  "Taskset2": {
+    "KeepOutput": false,
+    "Memory": 8000,
+    "Multicore": 4,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc11"
+    ],
+    "SizePerEvent": 400,
+    "TimePerEvent": 2.978,
+    "InputTaskset": "Taskset1",
+    "GroupName": "group_5",
+    "GroupInputEvents": 9294
+  },
+  "Taskset3": {
+    "KeepOutput": true,
+    "Memory": 8000,
+    "Multicore": 4,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc11"
+    ],
+    "SizePerEvent": 407,
+    "TimePerEvent": 1.8626,
+    "InputTaskset": "Taskset2",
+    "GroupName": "group_2",
+    "GroupInputEvents": 23193
+  },
+  "Taskset4": {
+    "KeepOutput": true,
+    "Memory": 8000,
+    "Multicore": 4,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc11"
+    ],
+    "SizePerEvent": 150,
+    "TimePerEvent": 1,
+    "InputTaskset": "Taskset3",
+    "GroupName": "group_3",
+    "GroupInputEvents": 43200
+  },
+  "Taskset5": {
+    "KeepOutput": true,
+    "Memory": 8000,
+    "Multicore": 4,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc12"
+    ],
+    "SizePerEvent": 30,
+    "TimePerEvent": 0.3402,
+    "InputTaskset": "Taskset4",
+    "GroupName": "group_4",
+    "GroupInputEvents": 126984
+  },
+  "CompositionNumber": 12
+}

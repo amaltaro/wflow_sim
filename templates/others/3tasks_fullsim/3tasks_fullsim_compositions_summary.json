@@ -1,0 +1,122 @@
+{
+  "template_name": "3tasks_fullsim",
+  "total_compositions": 4,
+  "compositions": [
+    {
+      "composition_number": 1,
+      "num_groups": 1,
+      "groups": [
+        "group_5"
+      ],
+      "total_cpu_time": 24746669.759999998,
+      "event_throughput": 0.10775862068965518,
+      "total_memory_mb": 1296000,
+      "total_jobs": 143.21519871106338,
+      "group_details": [
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset1",
+            "Taskset2",
+            "Taskset3"
+          ],
+          "events_per_task": 18620
+        }
+      ]
+    },
+    {
+      "composition_number": 2,
+      "num_groups": 2,
+      "groups": [
+        "group_3",
+        "group_2"
+      ],
+      "total_cpu_time": 24746669.76,
+      "event_throughput": 0.10775862068965517,
+      "total_memory_mb": 1275000,
+      "total_jobs": 143.2110490035695,
+      "group_details": [
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset1",
+            "Taskset2"
+          ],
+          "events_per_task": 21818
+        },
+        {
+          "group_id": "group_2",
+          "tasks": [
+            "Taskset3"
+          ],
+          "events_per_task": 127058
+        }
+      ]
+    },
+    {
+      "composition_number": 3,
+      "num_groups": 2,
+      "groups": [
+        "group_0",
+        "group_4"
+      ],
+      "total_cpu_time": 19520002.44,
+      "event_throughput": 0.13661202185792348,
+      "total_memory_mb": 1213000,
+      "total_jobs": 143.21283060865065,
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ],
+          "events_per_task": 44081
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset2",
+            "Taskset3"
+          ],
+          "events_per_task": 32238
+        }
+      ]
+    },
+    {
+      "composition_number": 4,
+      "num_groups": 3,
+      "groups": [
+        "group_0",
+        "group_1",
+        "group_2"
+      ],
+      "total_cpu_time": 19520002.439999998,
+      "event_throughput": 0.1366120218579235,
+      "total_memory_mb": 1151000,
+      "total_jobs": 143.21089868745028,
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ],
+          "events_per_task": 44081
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ],
+          "events_per_task": 43200
+        },
+        {
+          "group_id": "group_2",
+          "tasks": [
+            "Taskset3"
+          ],
+          "events_per_task": 127058
+        }
+      ]
+    }
+  ]
+}

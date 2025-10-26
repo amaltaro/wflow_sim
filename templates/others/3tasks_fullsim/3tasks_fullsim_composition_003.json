@@ -1,0 +1,47 @@
+{
+  "Comments": "Workflow Composition 3 - 2 groups",
+  "NumTasks": 3,
+  "RequestNumEvents": 2666667,
+  "Taskset1": {
+    "KeepOutput": false,
+    "Memory": 9000,
+    "Multicore": 2,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc10"
+    ],
+    "SizePerEvent": 383.34,
+    "TimePerEvent": 0.98,
+    "GroupName": "group_0",
+    "GroupInputEvents": 44081
+  },
+  "Taskset2": {
+    "KeepOutput": true,
+    "Memory": 7000,
+    "Multicore": 4,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc11"
+    ],
+    "SizePerEvent": 150,
+    "TimePerEvent": 1,
+    "InputTaskset": "Taskset1",
+    "GroupName": "group_4",
+    "GroupInputEvents": 32238
+  },
+  "Taskset3": {
+    "KeepOutput": true,
+    "Memory": 8000,
+    "Multicore": 4,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc11"
+    ],
+    "SizePerEvent": 30.78,
+    "TimePerEvent": 0.34,
+    "InputTaskset": "Taskset2",
+    "GroupName": "group_4",
+    "GroupInputEvents": 32238
+  },
+  "CompositionNumber": 3
+}
