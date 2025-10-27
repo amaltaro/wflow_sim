@@ -119,6 +119,7 @@ class WorkflowMetricsCalculator:
         self.metrics: Optional[WorkflowMetrics] = None
         self.job_metrics_calculator = JobMetricsCalculator()
         self.logger = logging.getLogger(__name__)
+        self._job_metrics_cache: Optional[Dict[str, Any]] = None
 
     def calculate_metrics(self, simulation_result: 'SimulationResult') -> WorkflowMetrics:
         """
@@ -147,6 +148,9 @@ class WorkflowMetricsCalculator:
         total_wall_time = simulation_result.total_wall_time
         total_turnaround_time = simulation_result.total_turnaround_time
 
+        # Cache aggregated job metrics once (used by multiple methods below)
+        self._job_metrics_cache = self._aggregate_job_metrics(simulation_result.jobs)
+
         # Calculate group-level metrics from simulation
         group_metrics = self._calculate_group_metrics_from_simulation(simulation_result)
 
@@ -164,8 +168,8 @@ class WorkflowMetricsCalculator:
         # Calculate resource utilization metrics
         resource_utilization = self._calculate_resource_utilization_from_simulation(simulation_result)
 
-        # Calculate aggregated job-level metrics
-        job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
+        # Use cached job metrics
+        job_metrics_stats = self._job_metrics_cache
 
         self.metrics = WorkflowMetrics(
             workflow_id=workflow_id,
@@ -220,6 +224,42 @@ class WorkflowMetricsCalculator:
             total_tasksets += len(group.tasksets)
         return total_tasksets
 
+    def _aggregate_job_metrics(self, jobs: List[Any]) -> Dict[str, float]:
+        """
+        Aggregate job metrics across all jobs (workflow-level calculation).
+
+        This is a workflow-level operation since it aggregates across multiple jobs.
+        Returns aggregated totals and statistics for both job metrics and execution metadata.
+
+        Args:
+            jobs: List of JobInfo objects
+
+        Returns:
+            Dictionary containing aggregated metrics and statistics
+        """
+        if not jobs:
+            return {
+                'total_cpu_time': 0.0,
+                'total_write_local_mb': 0.0,
+                'total_write_remote_mb': 0.0,
+                'total_read_remote_mb': 0.0,
+                'total_read_local_mb': 0.0,
+                'total_network_transfer_mb': 0.0,
+                'total_jobs': 0
+            }
+
+        return {
+            'total_cpu_time': sum(job.total_cpu_time for job in jobs),
+            'total_write_local_mb': sum(job.total_write_local_mb for job in jobs),
+            'total_write_remote_mb': sum(job.total_write_remote_mb for job in jobs),
+            'total_read_remote_mb': sum(job.total_read_remote_mb for job in jobs),
+            'total_read_local_mb': sum(job.total_read_local_mb for job in jobs),
+            'total_network_transfer_mb': sum(job.total_network_transfer_mb for job in jobs),
+            'total_jobs': len(jobs),
+            '_wall_times': [job.wallclock_time for job in jobs],
+            '_batch_sizes': [job.batch_size for job in jobs]
+        }
+
     def _calculate_group_metrics_from_simulation(self, simulation_result: 'SimulationResult') -> List[GroupMetrics]:
         """Calculate group metrics from simulation result."""
         group_metrics = []
@@ -271,9 +311,8 @@ class WorkflowMetricsCalculator:
     def _calculate_event_throughput_from_simulation(self, simulation_result: 'SimulationResult') -> float:
         """Calculate event throughput from simulation result."""
         if simulation_result.total_events > 0:
-            # Calculate total CPU time from job metrics
-            job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
-            total_cpu_time = job_metrics_stats['total_cpu_time']
+            # Use cached job metrics
+            total_cpu_time = self._job_metrics_cache['total_cpu_time']
             if total_cpu_time > 0:
                 return simulation_result.total_events / total_cpu_time
         return 0.0
@@ -292,54 +331,48 @@ class WorkflowMetricsCalculator:
     def _calculate_cpu_time_per_event_from_simulation(self, simulation_result: 'SimulationResult') -> float:
         """Calculate CPU time per event from simulation result."""
         if simulation_result.total_events > 0:
-            # Calculate total CPU time from job metrics
-            job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
-            total_cpu_time = job_metrics_stats['total_cpu_time']
+            # Use cached job metrics
+            total_cpu_time = self._job_metrics_cache['total_cpu_time']
             return total_cpu_time / simulation_result.total_events
         return 0.0
 
     def _calculate_network_transfer_per_event_from_simulation(self, simulation_result: 'SimulationResult') -> float:
         """Calculate network transfer per event from simulation result."""
         if simulation_result.total_events > 0:
-            # Calculate total network transfer from job metrics
-            job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
-            total_network_transfer_mb = job_metrics_stats['total_network_transfer_mb']
+            # Use cached job metrics
+            total_network_transfer_mb = self._job_metrics_cache['total_network_transfer_mb']
             return total_network_transfer_mb / simulation_result.total_events
         return 0.0
 
     def _calculate_write_local_per_event_from_simulation(self, simulation_result: 'SimulationResult') -> float:
         """Calculate write local per event from simulation result."""
         if simulation_result.total_events > 0:
-            # Calculate total write local from job metrics
-            job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
-            total_write_local_mb = job_metrics_stats['total_write_local_mb']
+            # Use cached job metrics
+            total_write_local_mb = self._job_metrics_cache['total_write_local_mb']
             return total_write_local_mb / simulation_result.total_events
         return 0.0
 
     def _calculate_write_remote_per_event_from_simulation(self, simulation_result: 'SimulationResult') -> float:
         """Calculate write remote per event from simulation result."""
         if simulation_result.total_events > 0:
-            # Calculate total write remote from job metrics
-            job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
-            total_write_remote_mb = job_metrics_stats['total_write_remote_mb']
+            # Use cached job metrics
+            total_write_remote_mb = self._job_metrics_cache['total_write_remote_mb']
             return total_write_remote_mb / simulation_result.total_events
         return 0.0
 
     def _calculate_read_remote_per_event_from_simulation(self, simulation_result: 'SimulationResult') -> float:
         """Calculate read remote per event from simulation result."""
         if simulation_result.total_events > 0:
-            # Calculate total read remote from job metrics
-            job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
-            total_read_remote_mb = job_metrics_stats['total_read_remote_mb']
+            # Use cached job metrics
+            total_read_remote_mb = self._job_metrics_cache['total_read_remote_mb']
             return total_read_remote_mb / simulation_result.total_events
         return 0.0
 
     def _calculate_read_local_per_event_from_simulation(self, simulation_result: 'SimulationResult') -> float:
         """Calculate read local per event from simulation result."""
         if simulation_result.total_events > 0:
-            # Calculate total read local from job metrics
-            job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
-            total_read_local_mb = job_metrics_stats['total_read_local_mb']
+            # Use cached job metrics
+            total_read_local_mb = self._job_metrics_cache['total_read_local_mb']
             return total_read_local_mb / simulation_result.total_events
         return 0.0
 
@@ -355,9 +388,13 @@ class WorkflowMetricsCalculator:
         total_cpu_cores_used = 0
         total_memory_used = 0
 
-        # Get job metrics for total usage
-        job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
-        total_cpu_time_used = job_metrics_stats['total_cpu_time']
+        # Use cached job metrics for total usage (cache available when called through calculate_metrics)
+        # If cache not available, populate it by calling _aggregate_job_metrics
+        if self._job_metrics_cache is None:
+            self._job_metrics_cache = self._aggregate_job_metrics(simulation_result.jobs)
+
+        total_cpu_time_used = self._job_metrics_cache['total_cpu_time']
+        network_usage = self._job_metrics_cache['total_network_transfer_mb']
 
         for group in simulation_result.groups:
             # find allocated resources per job/group
@@ -390,7 +427,7 @@ class WorkflowMetricsCalculator:
             cpu_usage=total_cpu_cores_used,
             memory_usage=total_memory_used,
             storage_usage=0.0,  # Could be calculated from I/O metrics if needed
-            network_usage=job_metrics_stats['total_network_transfer_mb'],
+            network_usage=network_usage,
             cpu_utilization=cpu_utilization,
             memory_occupancy=memory_occupancy
         )
@@ -422,27 +459,27 @@ class WorkflowMetricsCalculator:
                 'total_network_transfer_mb': 0.0
             }
 
-        # Calculate basic job statistics
-        job_wall_times = [job.wallclock_time for job in simulation_result.jobs]
-        batch_sizes = [job.batch_size for job in simulation_result.jobs]
+        # Aggregate metrics across all jobs (workflow-level aggregation)
+        job_metrics = self._aggregate_job_metrics(simulation_result.jobs)
 
-        # Use JobMetricsCalculator for aggregated job metrics
-        job_metrics_stats = self.job_metrics_calculator.calculate_job_statistics(simulation_result.jobs)
+        # Extract wall times and batch sizes for statistics
+        job_wall_times = job_metrics['_wall_times']
+        batch_sizes = job_metrics['_batch_sizes']
 
         return {
-            'average_wall_time': sum(job_wall_times) / len(job_wall_times),
-            'min_wall_time': min(job_wall_times),
-            'max_wall_time': max(job_wall_times),
-            'average_batch_size': sum(batch_sizes) / len(batch_sizes),
-            'min_batch_size': min(batch_sizes),
-            'max_batch_size': max(batch_sizes),
-            'total_jobs': len(simulation_result.jobs),
-            'total_cpu_time': job_metrics_stats['total_cpu_time'],
-            'total_write_local_mb': job_metrics_stats['total_write_local_mb'],
-            'total_write_remote_mb': job_metrics_stats['total_write_remote_mb'],
-            'total_read_local_mb': job_metrics_stats['total_read_local_mb'],
-            'total_read_remote_mb': job_metrics_stats['total_read_remote_mb'],
-            'total_network_transfer_mb': job_metrics_stats['total_network_transfer_mb']
+            'average_wall_time': sum(job_wall_times) / len(job_wall_times) if job_wall_times else 0.0,
+            'min_wall_time': min(job_wall_times) if job_wall_times else 0.0,
+            'max_wall_time': max(job_wall_times) if job_wall_times else 0.0,
+            'average_batch_size': sum(batch_sizes) / len(batch_sizes) if batch_sizes else 0.0,
+            'min_batch_size': min(batch_sizes) if batch_sizes else 0,
+            'max_batch_size': max(batch_sizes) if batch_sizes else 0,
+            'total_jobs': job_metrics['total_jobs'],
+            'total_cpu_time': job_metrics['total_cpu_time'],
+            'total_write_local_mb': job_metrics['total_write_local_mb'],
+            'total_write_remote_mb': job_metrics['total_write_remote_mb'],
+            'total_read_local_mb': job_metrics['total_read_local_mb'],
+            'total_read_remote_mb': job_metrics['total_read_remote_mb'],
+            'total_network_transfer_mb': job_metrics['total_network_transfer_mb']
         }
 
     def calculate_group_statistics(self, simulation_result: 'SimulationResult') -> Dict[str, Any]:
