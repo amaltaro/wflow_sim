@@ -20,7 +20,8 @@ class TestJobMetrics:
     def test_job_metrics_initialization(self):
         """Test JobMetrics dataclass initialization."""
         metrics = JobMetrics(
-            total_cpu_time=1000.0,
+            total_cpu_used_time=1000.0,
+            total_cpu_allocated_time=1500.0,
             total_write_local_mb=500.0,
             total_write_remote_mb=200.0,
             total_read_remote_mb=150.0,
@@ -28,7 +29,8 @@ class TestJobMetrics:
             total_network_transfer_mb=350.0
         )
 
-        assert metrics.total_cpu_time == 1000.0
+        assert metrics.total_cpu_used_time == 1000.0
+        assert metrics.total_cpu_allocated_time == 1500.0
         assert metrics.total_write_local_mb == 500.0
         assert metrics.total_write_remote_mb == 200.0
         assert metrics.total_read_remote_mb == 150.0
@@ -38,7 +40,8 @@ class TestJobMetrics:
     def test_job_metrics_default_values(self):
         """Test JobMetrics with default values."""
         metrics = JobMetrics(
-            total_cpu_time=0.0,
+            total_cpu_used_time=0.0,
+            total_cpu_allocated_time=0.0,
             total_write_local_mb=0.0,
             total_write_remote_mb=0.0,
             total_read_remote_mb=0.0,
@@ -46,7 +49,8 @@ class TestJobMetrics:
             total_network_transfer_mb=0.0
         )
 
-        assert metrics.total_cpu_time == 0.0
+        assert metrics.total_cpu_used_time == 0.0
+        assert metrics.total_cpu_allocated_time == 0.0
         assert metrics.total_write_local_mb == 0.0
         assert metrics.total_write_remote_mb == 0.0
         assert metrics.total_read_remote_mb == 0.0
@@ -86,8 +90,10 @@ class TestJobMetricsCalculator:
             batch_size=1000
         )
 
-        # CPU time: 10.0 * 1000 * 2 = 20000.0
-        assert job_metrics.total_cpu_time == 20000.0
+        # CPU used time: 10.0 * 1000 * 2 = 20000.0
+        # CPU allocated time: same (single taskset)
+        assert job_metrics.total_cpu_used_time == 20000.0
+        assert job_metrics.total_cpu_allocated_time == 20000.0
         # Local write: (200 * 1000) / 1024 = 195.31 MB
         assert abs(job_metrics.total_write_local_mb - 195.31) < 0.01
         # Remote write: 0 (keep_output=False and not input for other groups)
@@ -120,8 +126,10 @@ class TestJobMetricsCalculator:
             batch_size=500
         )
 
-        # CPU time: 5.0 * 500 * 1 = 2500.0
-        assert job_metrics.total_cpu_time == 2500.0
+        # CPU used time: 5.0 * 500 * 1 = 2500.0
+        # CPU allocated time: same (single taskset, keep_output=True doesn't affect CPU)
+        assert job_metrics.total_cpu_used_time == 2500.0
+        assert job_metrics.total_cpu_allocated_time == 2500.0
         # Local write: (300 * 500) / 1024 = 146.48 MB
         assert abs(job_metrics.total_write_local_mb - 146.48) < 0.01
         # Remote write: same as local write (keep_output=True)
@@ -156,8 +164,10 @@ class TestJobMetricsCalculator:
             input_taskset_size_per_event=250  # 250 KB from input taskset
         )
 
-        # CPU time: 15.0 * 800 * 3 = 36000.0
-        assert job_metrics.total_cpu_time == 36000.0
+        # CPU used time: 15.0 * 800 * 3 = 36000.0
+        # CPU allocated time: same (single taskset)
+        assert job_metrics.total_cpu_used_time == 36000.0
+        assert job_metrics.total_cpu_allocated_time == 36000.0
         # Local write: (400 * 800) / 1024 = 312.5 MB
         assert job_metrics.total_write_local_mb == 312.5
         # Remote write: 0 (keep_output=False and not input for other groups)
@@ -192,8 +202,10 @@ class TestJobMetricsCalculator:
             input_taskset_size_per_event=None
         )
 
-        # CPU time: 8.0 * 600 * 2 = 9600.0
-        assert job_metrics.total_cpu_time == 9600.0
+        # CPU used time: 8.0 * 600 * 2 = 9600.0
+        # CPU allocated time: same (single taskset)
+        assert job_metrics.total_cpu_used_time == 9600.0
+        assert job_metrics.total_cpu_allocated_time == 9600.0
         # Local write: (350 * 600) / 1024 = 205.08 MB
         assert abs(job_metrics.total_write_local_mb - 205.08) < 0.01
         # Remote write: same as local write (input for other groups)
@@ -242,8 +254,13 @@ class TestJobMetricsCalculator:
             input_taskset_size_per_event=None
         )
 
-        # CPU time: (5.0 * 200 * 1) + (10.0 * 200 * 2) = 1000 + 4000 = 5000.0
-        assert job_metrics.total_cpu_time == 5000.0
+        # CPU used time: (5.0 * 200 * 1) + (10.0 * 200 * 2) = 1000 + 4000 = 5000.0
+        # CPU allocated time: total execution time × max multicore
+        # total_execution_time = (5.0 * 200) + (10.0 * 200) = 1000 + 2000 = 3000
+        # max_multicore = max(1, 2) = 2
+        # total_cpu_allocated_time = 3000 * 2 = 6000.0
+        assert job_metrics.total_cpu_used_time == 5000.0
+        assert job_metrics.total_cpu_allocated_time == 6000.0
         # Local write: (100 * 200) / 1024 + (200 * 200) / 1024 = 19.53 + 39.06 = 58.59 MB
         assert abs(job_metrics.total_write_local_mb - 58.59) < 0.01
         # Remote write: only taskset2 (keep_output=True) = 39.06 MB
@@ -278,8 +295,10 @@ class TestJobMetricsCalculator:
             input_taskset_size_per_event=300  # 300 KB from input taskset
         )
 
-        # CPU time: 12.0 * 1000 * 2 = 24000.0
-        assert job_metrics.total_cpu_time == 24000.0
+        # CPU used time: 12.0 * 1000 * 2 = 24000.0
+        # CPU allocated time: same (single taskset)
+        assert job_metrics.total_cpu_used_time == 24000.0
+        assert job_metrics.total_cpu_allocated_time == 24000.0
         # Local write: (500 * 1000) / 1024 = 488.28 MB
         assert abs(job_metrics.total_write_local_mb - 488.28) < 0.01
         # Remote write: same as local write (keep_output=True)
@@ -298,7 +317,8 @@ class TestJobMetricsCalculator:
             batch_size=1000
         )
 
-        assert job_metrics.total_cpu_time == 0.0
+        assert job_metrics.total_cpu_used_time == 0.0
+        assert job_metrics.total_cpu_allocated_time == 0.0
         assert job_metrics.total_write_local_mb == 0.0
         assert job_metrics.total_write_remote_mb == 0.0
         assert job_metrics.total_read_remote_mb == 0.0
@@ -327,7 +347,8 @@ class TestJobMetricsCalculator:
             batch_size=0
         )
 
-        assert job_metrics.total_cpu_time == 0.0
+        assert job_metrics.total_cpu_used_time == 0.0
+        assert job_metrics.total_cpu_allocated_time == 0.0
         assert job_metrics.total_write_local_mb == 0.0
         assert job_metrics.total_write_remote_mb == 0.0
         assert job_metrics.total_read_remote_mb == 0.0
@@ -416,7 +437,8 @@ class TestJobMetricsCalculator:
             input_tasksets_for_other_groups=None
         )
 
-        assert job_metrics.total_cpu_time == 2500.0
+        assert job_metrics.total_cpu_used_time == 2500.0
+        assert job_metrics.total_cpu_allocated_time == 2500.0
         assert job_metrics.total_write_remote_mb == 0.0  # Should not be input for other groups
 
     def test_calculate_job_metrics_none_input_taskset_size(self):
@@ -445,7 +467,8 @@ class TestJobMetricsCalculator:
             input_taskset_size_per_event=None
         )
 
-        assert job_metrics.total_cpu_time == 2500.0
+        assert job_metrics.total_cpu_used_time == 2500.0
+        assert job_metrics.total_cpu_allocated_time == 2500.0
         assert job_metrics.total_read_remote_mb == 0.0  # Should not have remote read
 
 

@@ -285,7 +285,8 @@ class TestWorkflowRunner:
                 self.network_transfer_mb_per_event = 0.1
                 self.event_throughput = 1.0
                 self.success_rate = 1.0
-                self.total_cpu_time = 50000.0
+                self.total_cpu_used_time = 50000.0
+                self.total_cpu_allocated_time = 60000.0
                 self.total_write_local_mb = 1000.0
                 self.total_write_remote_mb = 500.0
                 self.total_read_remote_mb = 200.0
@@ -338,7 +339,8 @@ class TestWorkflowRunner:
         assert metrics['success_rate'] == 1.0
 
         # Check new aggregated job-level metrics
-        assert metrics['total_cpu_time'] == 50000.0
+        assert metrics['total_cpu_used_time'] == 50000.0
+        assert metrics['total_cpu_allocated_time'] == 60000.0
         assert metrics['total_write_local_mb'] == 1000.0
         assert metrics['total_write_remote_mb'] == 500.0
         assert metrics['total_read_remote_mb'] == 200.0

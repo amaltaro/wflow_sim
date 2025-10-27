@@ -72,7 +72,8 @@ class TestWorkflowMetricsCalculator:
             start_time=0.0,
             end_time=32400.0,
             status="completed",
-            total_cpu_time=32400.0,
+            total_cpu_used_time=32400.0,
+            total_cpu_allocated_time=32400.0,
             total_write_local_mb=216.0,  # (200 + 300) * 1080 / 1024 / 2
             total_write_remote_mb=158.2,  # 300 * 1080 / 1024 / 2 (only keep_output=True)
             total_read_remote_mb=0.0,  # No input taskset from other groups
@@ -114,7 +115,8 @@ class TestWorkflowMetricsCalculator:
         assert metrics.network_transfer_mb_per_event == 0.0001582  # 158.2 / 1000000
 
         # Test aggregated job-level metrics
-        assert metrics.total_cpu_time == 32400.0
+        assert metrics.total_cpu_used_time == 32400.0
+        assert metrics.total_cpu_allocated_time == 32400.0
         assert metrics.total_write_local_mb == 216.0
         assert metrics.total_write_remote_mb == 158.2
         assert metrics.total_read_remote_mb == 0.0
@@ -158,7 +160,8 @@ class TestWorkflowMetricsCalculator:
                 start_time=0.0,
                 end_time=10000.0 + i * 1000,
                 status="completed",
-                total_cpu_time=10000.0 + i * 1000,  # Same as wallclock time for simplicity
+                total_cpu_used_time=10000.0 + i * 1000,  # Same as wallclock time for simplicity
+                total_cpu_allocated_time=10000.0 + i * 1000,
                 total_write_local_mb=195.3 + i * 19.5,  # 200 * batch_size / 1024
                 total_write_remote_mb=0.0,  # keep_output=False
                 total_read_remote_mb=0.0,  # No input taskset
@@ -191,7 +194,8 @@ class TestWorkflowMetricsCalculator:
         assert job_stats['max_batch_size'] == 1200
 
         # Test aggregated job-level metrics
-        assert job_stats['total_cpu_time'] == 33000.0  # 10000 + 11000 + 12000
+        assert job_stats['total_cpu_used_time'] == 33000.0  # 10000 + 11000 + 12000
+        assert job_stats['total_cpu_allocated_time'] == 33000.0  # 10000 + 11000 + 12000
         assert abs(job_stats['total_write_local_mb'] - 644.4) < 0.1  # 195.3 + 214.8 + 234.4
         assert job_stats['total_write_remote_mb'] == 0.0
         assert job_stats['total_read_remote_mb'] == 0.0
@@ -221,7 +225,8 @@ class TestWorkflowMetricsCalculator:
         assert job_stats['max_wall_time'] == 0.0
 
         # Test aggregated job-level metrics for empty case
-        assert job_stats['total_cpu_time'] == 0.0
+        assert job_stats['total_cpu_used_time'] == 0.0
+        assert job_stats['total_cpu_allocated_time'] == 0.0
         assert job_stats['total_write_local_mb'] == 0.0
         assert job_stats['total_write_remote_mb'] == 0.0
         assert job_stats['total_read_remote_mb'] == 0.0
@@ -347,7 +352,8 @@ class TestWorkflowMetricsCalculator:
         required_keys = [
             'workflow_id', 'total_tasksets', 'total_groups', 'total_jobs',
             'total_wall_time', 'total_turnaround_time', 'wall_time_per_event', 'cpu_time_per_event',
-            'network_transfer_mb_per_event', 'event_throughput', 'success_rate', 'total_cpu_time',
+            'network_transfer_mb_per_event', 'event_throughput', 'success_rate', 'total_cpu_used_time',
+            'total_cpu_allocated_time',
             'total_write_local_mb', 'total_write_remote_mb', 'total_read_remote_mb', 'total_network_transfer_mb',
             'cpu_utilization', 'memory_occupancy', 'total_cpu_cores_used', 'total_memory_used_mb',
             'cpu_cores_per_event', 'memory_mb_per_event'
@@ -408,7 +414,8 @@ class TestWorkflowMetricsCalculator:
         assert "CPU Time per Event:" in captured.out
         assert "Network Transfer per Event:" in captured.out
         assert "AGGREGATED JOB METRICS" in captured.out
-        assert "Total CPU Time:" in captured.out
+        assert "Total CPU Used Time:" in captured.out
+        assert "Total CPU Allocated Time:" in captured.out
         assert "Total Write Local:" in captured.out
         assert "Total Write Remote:" in captured.out
         assert "Total Read Remote:" in captured.out
@@ -524,7 +531,10 @@ class TestWorkflowMetricsCalculator:
                 end_time=15.0 * batch_size,
                 status="completed",
                 # Calculate expected metrics
-                total_cpu_time=15.0 * batch_size,  # (5 * 2 + 10 * 1) * batch_size
+                # CPU used: (5*2 + 10*1) * batch_size = 20 * batch_size
+                # CPU allocated: (5+10) * batch_size * 2 = 30 * batch_size (max multicore)
+                total_cpu_used_time=20.0 * batch_size,
+                total_cpu_allocated_time=30.0 * batch_size,
                 total_write_local_mb=(100 + 200) * batch_size / 1024.0,  # Both tasksets write locally
                 total_write_remote_mb=200 * batch_size / 1024.0,  # Only taskset2 (keep_output=True)
                 total_read_remote_mb=0.0,  # No input from other groups
@@ -549,13 +559,17 @@ class TestWorkflowMetricsCalculator:
         metrics = calculator.calculate_metrics(simulation_result)
 
         # Test aggregated job-level metrics
-        expected_cpu_time = 15.0 * 500 + 15.0 * 600  # 16500.0
+        # CPU used: 20 * 500 + 20 * 600 = 22000
+        # CPU allocated: 30 * 500 + 30 * 600 = 33000
+        expected_cpu_used_time = 20.0 * 500 + 20.0 * 600  # 22000.0
+        expected_cpu_allocated_time = 30.0 * 500 + 30.0 * 600  # 33000.0
         expected_write_local = (100 + 200) * 500 / 1024.0 + (100 + 200) * 600 / 1024.0  # ~439.45
         expected_write_remote = 200 * 500 / 1024.0 + 200 * 600 / 1024.0  # ~214.84
         expected_read_remote = 0.0
         expected_network_transfer = expected_write_remote + expected_read_remote  # ~214.84
 
-        assert abs(metrics.total_cpu_time - expected_cpu_time) < 0.01
+        assert abs(metrics.total_cpu_used_time - expected_cpu_used_time) < 0.01
+        assert abs(metrics.total_cpu_allocated_time - expected_cpu_allocated_time) < 0.01
         assert abs(metrics.total_write_local_mb - expected_write_local) < 0.01
         assert abs(metrics.total_write_remote_mb - expected_write_remote) < 0.01
         assert metrics.total_read_remote_mb == expected_read_remote
@@ -563,14 +577,16 @@ class TestWorkflowMetricsCalculator:
 
         # Test that metrics are included in summary
         summary = calculator.get_metrics_summary()
-        assert 'total_cpu_time' in summary
+        assert 'total_cpu_used_time' in summary
+        assert 'total_cpu_allocated_time' in summary
         assert 'total_write_local_mb' in summary
         assert 'total_write_remote_mb' in summary
         assert 'total_read_remote_mb' in summary
         assert 'total_network_transfer_mb' in summary
 
         # Test that values match
-        assert abs(summary['total_cpu_time'] - expected_cpu_time) < 0.01
+        assert abs(summary['total_cpu_used_time'] - expected_cpu_used_time) < 0.01
+        assert abs(summary['total_cpu_allocated_time'] - expected_cpu_allocated_time) < 0.01
         assert abs(summary['total_write_local_mb'] - expected_write_local) < 0.01
         assert abs(summary['total_write_remote_mb'] - expected_write_remote) < 0.01
         assert summary['total_read_remote_mb'] == expected_read_remote
@@ -640,7 +656,8 @@ class TestWorkflowMetricsCalculator:
             start_time=0.0,
             end_time=43200.0,
             status="completed",
-            total_cpu_time=75600.0,  # (1080*10*1) + (1080*20*2) + (1080*10*2) = 10800 + 43200 + 21600
+            total_cpu_used_time=75600.0,  # (1080*10*1) + (1080*20*2) + (1080*10*2) = 10800 + 43200 + 21600
+            total_cpu_allocated_time=86400.0,  # 43200 * 2 (max cores)
             total_write_local_mb=216.0,
             total_write_remote_mb=158.2,
             total_read_remote_mb=0.0,
@@ -656,7 +673,8 @@ class TestWorkflowMetricsCalculator:
             start_time=43200.0,
             end_time=83200.0,
             status="completed",
-            total_cpu_time=70000.0,  # (1000*10*1) + (1000*20*2) + (1000*10*2) = 10000 + 40000 + 20000
+            total_cpu_used_time=70000.0,  # (1000*10*1) + (1000*20*2) + (1000*10*2) = 10000 + 40000 + 20000
+            total_cpu_allocated_time=80000.0,  # 40000 * 2 (max cores)
             total_write_local_mb=200.0,
             total_write_remote_mb=146.5,
             total_read_remote_mb=0.0,
@@ -807,7 +825,8 @@ class TestWorkflowMetricsCalculator:
             start_time=0.0,
             end_time=2500.0,
             status="completed",
-            total_cpu_time=2500.0,  # 500 * 5 * 1
+            total_cpu_used_time=2500.0,  # 500 * 5 * 1
+            total_cpu_allocated_time=2500.0,
             total_write_local_mb=50.0,
             total_write_remote_mb=0.0,
             total_read_remote_mb=0.0,
@@ -823,7 +842,8 @@ class TestWorkflowMetricsCalculator:
             start_time=2500.0,
             end_time=7000.0,
             status="completed",
-            total_cpu_time=13500.0,  # 300 * 15 * 3
+            total_cpu_used_time=13500.0,  # 300 * 15 * 3
+            total_cpu_allocated_time=13500.0,
             total_write_local_mb=60.0,
             total_write_remote_mb=0.0,
             total_read_remote_mb=0.0,
