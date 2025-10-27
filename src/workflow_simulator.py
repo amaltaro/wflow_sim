@@ -69,7 +69,8 @@ class JobInfo:
     start_time: float
     end_time: float
     status: str  # 'pending', 'running', 'completed', 'failed'
-    total_cpu_time: float = 0.0
+    total_cpu_used_time: float = 0.0
+    total_cpu_allocated_time: float = 0.0
     total_write_local_mb: float = 0.0
     total_write_remote_mb: float = 0.0
     total_read_remote_mb: float = 0.0
@@ -730,7 +731,8 @@ class WorkflowSimulator:
                         start_time=0.0,  # Will be set when job starts
                         end_time=0.0,
                         status='pending',
-                        total_cpu_time=job_metrics.total_cpu_time,
+                        total_cpu_used_time=job_metrics.total_cpu_used_time,
+                        total_cpu_allocated_time=job_metrics.total_cpu_allocated_time,
                         total_write_local_mb=job_metrics.total_write_local_mb,
                         total_write_remote_mb=job_metrics.total_write_remote_mb,
                         total_read_remote_mb=job_metrics.total_read_remote_mb,

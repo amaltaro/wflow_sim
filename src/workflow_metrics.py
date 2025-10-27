@@ -84,7 +84,8 @@ class WorkflowMetrics:
     event_throughput: float
     success_rate: float
     # Aggregated job-level metrics
-    total_cpu_time: float = 0.0
+    total_cpu_used_time: float = 0.0
+    total_cpu_allocated_time: float = 0.0
     total_write_local_mb: float = 0.0
     total_write_remote_mb: float = 0.0
     total_read_remote_mb: float = 0.0
@@ -186,7 +187,8 @@ class WorkflowMetricsCalculator:
             group_metrics=group_metrics,
             event_throughput=event_throughput,
             success_rate=success_rate,
-            total_cpu_time=job_metrics_stats['total_cpu_time'],
+            total_cpu_used_time=job_metrics_stats['total_cpu_used_time'],
+            total_cpu_allocated_time=job_metrics_stats['total_cpu_allocated_time'],
             total_write_local_mb=job_metrics_stats['total_write_local_mb'],
             total_write_remote_mb=job_metrics_stats['total_write_remote_mb'],
             total_read_remote_mb=job_metrics_stats['total_read_remote_mb'],
@@ -239,7 +241,8 @@ class WorkflowMetricsCalculator:
         """
         if not jobs:
             return {
-                'total_cpu_time': 0.0,
+                'total_cpu_used_time': 0.0,
+                'total_cpu_allocated_time': 0.0,
                 'total_write_local_mb': 0.0,
                 'total_write_remote_mb': 0.0,
                 'total_read_remote_mb': 0.0,
@@ -249,7 +252,8 @@ class WorkflowMetricsCalculator:
             }
 
         return {
-            'total_cpu_time': sum(job.total_cpu_time for job in jobs),
+            'total_cpu_used_time': sum(job.total_cpu_used_time for job in jobs),
+            'total_cpu_allocated_time': sum(job.total_cpu_allocated_time for job in jobs),
             'total_write_local_mb': sum(job.total_write_local_mb for job in jobs),
             'total_write_remote_mb': sum(job.total_write_remote_mb for job in jobs),
             'total_read_remote_mb': sum(job.total_read_remote_mb for job in jobs),
@@ -311,10 +315,10 @@ class WorkflowMetricsCalculator:
     def _calculate_event_throughput_from_simulation(self, simulation_result: 'SimulationResult') -> float:
         """Calculate event throughput from simulation result."""
         if simulation_result.total_events > 0:
-            # Use cached job metrics
-            total_cpu_time = self._job_metrics_cache['total_cpu_time']
-            if total_cpu_time > 0:
-                return simulation_result.total_events / total_cpu_time
+            # Use cached job metrics - use allocated time for throughput calculation
+            total_cpu_allocated_time = self._job_metrics_cache['total_cpu_allocated_time']
+            if total_cpu_allocated_time > 0:
+                return simulation_result.total_events / total_cpu_allocated_time
         return 0.0
 
     def _calculate_success_rate_from_simulation(self, simulation_result: 'SimulationResult') -> float:
@@ -331,9 +335,9 @@ class WorkflowMetricsCalculator:
     def _calculate_cpu_time_per_event_from_simulation(self, simulation_result: 'SimulationResult') -> float:
         """Calculate CPU time per event from simulation result."""
         if simulation_result.total_events > 0:
-            # Use cached job metrics
-            total_cpu_time = self._job_metrics_cache['total_cpu_time']
-            return total_cpu_time / simulation_result.total_events
+            # Use cached job metrics - use allocated time for per-event calculation
+            total_cpu_allocated_time = self._job_metrics_cache['total_cpu_allocated_time']
+            return total_cpu_allocated_time / simulation_result.total_events
         return 0.0
 
     def _calculate_network_transfer_per_event_from_simulation(self, simulation_result: 'SimulationResult') -> float:
@@ -393,7 +397,7 @@ class WorkflowMetricsCalculator:
         if self._job_metrics_cache is None:
             self._job_metrics_cache = self._aggregate_job_metrics(simulation_result.jobs)
 
-        total_cpu_time_used = self._job_metrics_cache['total_cpu_time']
+        total_cpu_time_used = self._job_metrics_cache['total_cpu_allocated_time']
         network_usage = self._job_metrics_cache['total_network_transfer_mb']
 
         for group in simulation_result.groups:
@@ -451,7 +455,8 @@ class WorkflowMetricsCalculator:
                 'min_batch_size': 0,
                 'max_batch_size': 0,
                 'total_jobs': 0,
-                'total_cpu_time': 0.0,
+                'total_cpu_used_time': 0.0,
+                'total_cpu_allocated_time': 0.0,
                 'total_write_local_mb': 0.0,
                 'total_write_remote_mb': 0.0,
                 'total_read_local_mb': 0.0,
@@ -474,7 +479,8 @@ class WorkflowMetricsCalculator:
             'min_batch_size': min(batch_sizes) if batch_sizes else 0,
             'max_batch_size': max(batch_sizes) if batch_sizes else 0,
             'total_jobs': job_metrics['total_jobs'],
-            'total_cpu_time': job_metrics['total_cpu_time'],
+            'total_cpu_used_time': job_metrics['total_cpu_used_time'],
+            'total_cpu_allocated_time': job_metrics['total_cpu_allocated_time'],
             'total_write_local_mb': job_metrics['total_write_local_mb'],
             'total_write_remote_mb': job_metrics['total_write_remote_mb'],
             'total_read_local_mb': job_metrics['total_read_local_mb'],
@@ -555,7 +561,8 @@ class WorkflowMetricsCalculator:
         print(f"\n" + "-"*40)
         print("AGGREGATED JOB METRICS")
         print("-"*40)
-        print(f"Total CPU Time: {self.metrics.total_cpu_time:.2f} seconds")
+        print(f"Total CPU Used Time: {self.metrics.total_cpu_used_time:.2f} seconds")
+        print(f"Total CPU Allocated Time: {self.metrics.total_cpu_allocated_time:.2f} seconds")
         print(f"Total Write Local: {self.metrics.total_write_local_mb:.2f} MB")
         print(f"Total Write Remote: {self.metrics.total_write_remote_mb:.2f} MB")
         print(f"Total Read Local: {self.metrics.total_read_local_mb:.2f} MB")
@@ -618,7 +625,8 @@ class WorkflowMetricsCalculator:
             'network_transfer_mb_per_event': self.metrics.network_transfer_mb_per_event,
             'event_throughput': self.metrics.event_throughput,
             'success_rate': self.metrics.success_rate,
-            'total_cpu_time': self.metrics.total_cpu_time,
+            'total_cpu_used_time': self.metrics.total_cpu_used_time,
+            'total_cpu_allocated_time': self.metrics.total_cpu_allocated_time,
             'total_write_local_mb': self.metrics.total_write_local_mb,
             'total_write_remote_mb': self.metrics.total_write_remote_mb,
             'total_read_remote_mb': self.metrics.total_read_remote_mb,

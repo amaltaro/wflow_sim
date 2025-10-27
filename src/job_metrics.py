@@ -13,7 +13,8 @@ from dataclasses import dataclass
 @dataclass
 class JobMetrics:
     """Job-level metrics for a single job execution."""
-    total_cpu_time: float
+    total_cpu_used_time: float  # Actual CPU time used from event processing
+    total_cpu_allocated_time: float  # CPU time allocated for the whole job
     total_write_local_mb: float
     total_write_remote_mb: float
     total_read_remote_mb: float
@@ -51,7 +52,7 @@ class JobMetricsCalculator:
         if input_tasksets_for_other_groups is None:
             input_tasksets_for_other_groups = set()
 
-        total_cpu_time = 0.0
+        total_cpu_used_time = 0.0
         total_write_local_mb = 0.0
         total_write_remote_mb = 0.0
         total_read_remote_mb = 0.0
@@ -62,14 +63,21 @@ class JobMetricsCalculator:
             # SizePerEvent is in KB, convert to MB
             total_read_remote_mb = (input_taskset_size_per_event * batch_size) / 1024.0
 
-        # Create a mapping of taskset_id to size_per_event for local read calculation
+        # Find max multicore needed for the job (all tasksets share the same allocated resources)
+        max_multicore = max(taskset.multicore for taskset in tasksets) if tasksets else 1
+
+        # Calculate total sequential execution time (tasksets execute one after another)
+        total_execution_time = sum(taskset.time_per_event * batch_size for taskset in tasksets)
+
+        # Calculate CPU allocated time: total execution time × max multicore (allocated resources)
+        total_cpu_allocated_time = total_execution_time * max_multicore
+
         taskset_size_map = {ts.taskset_id: ts.size_per_event for ts in tasksets}
 
         for taskset in tasksets:
-            # Calculate CPU time: time_per_event * input_events * multicore
+            # Calculate CPU used time: actual CPU time used from event processing
             cpu_time = taskset.time_per_event * batch_size * taskset.multicore
-            total_cpu_time += cpu_time
-
+            total_cpu_used_time += cpu_time
             # Calculate write operations (SizePerEvent is in KB, convert to MB)
             write_mb = (taskset.size_per_event * batch_size) / 1024.0
 
@@ -96,7 +104,8 @@ class JobMetricsCalculator:
         total_network_transfer_mb = total_write_remote_mb + total_read_remote_mb
 
         return JobMetrics(
-            total_cpu_time=total_cpu_time,
+            total_cpu_used_time=total_cpu_used_time,
+            total_cpu_allocated_time=total_cpu_allocated_time,
             total_write_local_mb=total_write_local_mb,
             total_write_remote_mb=total_write_remote_mb,
             total_read_remote_mb=total_read_remote_mb,

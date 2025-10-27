@@ -144,7 +144,8 @@ class WorkflowRunner:
         print(f"  Average Batch Size: {job_stats['average_batch_size']:.0f} events")
         print(f"  Min Batch Size: {job_stats['min_batch_size']} events")
         print(f"  Max Batch Size: {job_stats['max_batch_size']} events")
-        print(f"  Total CPU Time: {job_stats['total_cpu_time']:.2f}s")
+        print(f"  Total CPU Used Time: {job_stats['total_cpu_used_time']:.2f}s")
+        print(f"  Total CPU Allocated Time: {job_stats['total_cpu_allocated_time']:.2f}s")
         print(f"  Total Write Local: {job_stats['total_write_local_mb']:.2f} MB")
         print(f"  Total Write Remote: {job_stats['total_write_remote_mb']:.2f} MB")
         print(f"  Total Read Local: {job_stats['total_read_local_mb']:.2f} MB")
@@ -172,7 +173,8 @@ class WorkflowRunner:
                 'network_transfer_mb_per_event': metrics.network_transfer_mb_per_event,
                 'event_throughput': metrics.event_throughput,
                 'success_rate': metrics.success_rate,
-                'total_cpu_time': metrics.total_cpu_time,
+                'total_cpu_used_time': metrics.total_cpu_used_time,
+                'total_cpu_allocated_time': metrics.total_cpu_allocated_time,
                 'total_write_local_mb': metrics.total_write_local_mb,
                 'total_write_remote_mb': metrics.total_write_remote_mb,
                 'total_read_remote_mb': metrics.total_read_remote_mb,
@@ -229,7 +231,8 @@ class WorkflowRunner:
                         'start_time': job.start_time,
                         'end_time': job.end_time,
                         'status': job.status,
-                        'total_cpu_time': job.total_cpu_time,
+                        'total_cpu_used_time': job.total_cpu_used_time,
+                        'total_cpu_allocated_time': job.total_cpu_allocated_time,
                         'total_write_local_mb': job.total_write_local_mb,
                         'total_write_remote_mb': job.total_write_remote_mb,
                         'total_read_local_mb': job.total_read_local_mb,
