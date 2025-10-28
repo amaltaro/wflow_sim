@@ -25,7 +25,8 @@ The `WorkflowMetricsCalculator` class provides comprehensive workflow-level metr
 - **Success Rate**: Percentage of successful executions
 
 ### Aggregated Job Metrics
-- **Total CPU Time**: Sum of all job CPU times
+- **Total CPU Used Time**: Sum of all job CPU time actually used from event processing
+- **Total CPU Allocated Time**: Sum of all job CPU time allocated (resource reservation)
 - **Total Write Local**: Sum of local disk writes across all jobs
 - **Total Write Remote**: Sum of remote storage writes across all jobs
 - **Total Read Remote**: Sum of remote storage reads across all jobs
@@ -66,7 +67,8 @@ calculator.print_metrics()
 
 # Calculate job statistics (includes aggregated job metrics)
 job_stats = calculator.calculate_job_statistics(results['simulation_result'])
-print(f"Total CPU Time: {job_stats['total_cpu_time']:.2f}s")
+print(f"Total CPU Used Time: {job_stats['total_cpu_used_time']:.2f}s")
+print(f"Total CPU Allocated Time: {job_stats['total_cpu_allocated_time']:.2f}s")
 print(f"Total Network Transfer: {job_stats['total_network_transfer_mb']:.2f} MB")
 
 # Save to file
@@ -87,7 +89,8 @@ print(f"Throughput: {metrics.throughput} events/second")
 
 # Access aggregated job metrics
 job_stats = calculator.calculate_job_statistics(results['simulation_result'])
-print(f"Total CPU Time: {job_stats['total_cpu_time']:.2f}s")
+print(f"Total CPU Used Time: {job_stats['total_cpu_used_time']:.2f}s")
+print(f"Total CPU Allocated Time: {job_stats['total_cpu_allocated_time']:.2f}s")
 print(f"Total Write Local: {job_stats['total_write_local_mb']:.2f} MB")
 print(f"Total Write Remote: {job_stats['total_write_remote_mb']:.2f} MB")
 print(f"Total Read Remote: {job_stats['total_read_remote_mb']:.2f} MB")
@@ -150,7 +153,8 @@ The calculator expects simulation results from `WorkflowSimulator`:
 The calculator integrates job-level metrics through `JobMetricsCalculator`:
 
 ### Job-Level Metrics Aggregated
-- **CPU Time**: Sum of `time_per_event × input_events × multicore` across all jobs
+- **CPU Used Time**: Sum of `time_per_event × input_events × multicore` across all jobs (actual usage)
+- **CPU Allocated Time**: Sum of `total_execution_time × max_multicore` across all jobs (resource reservation)
 - **Local I/O**: Sum of local disk writes across all jobs
 - **Remote I/O**: Sum of remote storage writes across all jobs  
 - **Network Transfer**: Sum of complete network transfers across all jobs (remote writes + remote reads)
@@ -183,7 +187,8 @@ Throughput: 20.00 events/second
 Success Rate: 1.00
 
 ⚡ JOB STATISTICS:
-  Total CPU Time: 120000.00s
+  Total CPU Used Time: 100000.00s
+  Total CPU Allocated Time: 120000.00s
   Total Write Local: 20000.00 MB
   Total Write Remote: 15000.00 MB
   Total Read Remote: 0.00 MB

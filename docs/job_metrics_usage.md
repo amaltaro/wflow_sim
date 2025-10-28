@@ -31,8 +31,10 @@ The `JobMetricsCalculator` is designed with clear separation of concerns:
 ## Job Metrics Calculated
 
 ### CPU Time Metrics
-- **Total CPU Time**: `sum(time_per_event × input_events × multicore)` for each taskset in a job
-- **Per-Taskset CPU Time**: Individual CPU time for each taskset within the job
+- **Total CPU Used Time**: Actual CPU time used from event processing - `sum(time_per_event × input_events × multicore)` for each taskset in a job
+- **Total CPU Allocated Time**: CPU time allocated for the whole job - `total_execution_time × max_multicore`, where total execution time is the sum of all taskset execution times and max_multicore is the maximum multicore setting among all tasksets in the job
+
+Note: All tasksets in a job execute sequentially and share the same allocated resources (max cores needed), so allocated time represents the actual resource reservation for the job.
 
 ### I/O Metrics
 - **Total Write Local MB**: All data written to local disk (regardless of `keep_output` flag)
@@ -87,7 +89,8 @@ job_metrics = calculator.calculate_job_metrics(
 )
 
 # Access individual metrics
-print(f"CPU Time: {job_metrics.total_cpu_time:.2f}s")
+print(f"CPU Used Time: {job_metrics.total_cpu_used_time:.2f}s")
+print(f"CPU Allocated Time: {job_metrics.total_cpu_allocated_time:.2f}s")
 print(f"Local Write: {job_metrics.total_write_local_mb:.2f} MB")
 print(f"Remote Write: {job_metrics.total_write_remote_mb:.2f} MB")
 print(f"Remote Read: {job_metrics.total_read_remote_mb:.2f} MB")
@@ -95,13 +98,11 @@ print(f"Remote Read: {job_metrics.total_read_remote_mb:.2f} MB")
 
 ### Aggregating Across Multiple Jobs
 
-```python
-# Calculate statistics across all jobs
-job_stats = calculator.calculate_job_statistics(simulation_result.jobs)
+Note: Aggregation across multiple jobs is now handled by `WorkflowMetricsCalculator._aggregate_job_metrics()`. For direct job-level metrics calculation, use the methods on individual `JobMetrics` objects or aggregate them manually.
 
 # Access aggregated metrics
-print(f"Total CPU Time: {job_stats['total_cpu_time']:.2f}s")
-print(f"Average CPU per Job: {job_stats['average_cpu_time_per_job']:.2f}s")
+print(f"Total CPU Used Time: {job_stats['total_cpu_used_time']:.2f}s")
+print(f"Total CPU Allocated Time: {job_stats['total_cpu_allocated_time']:.2f}s")
 print(f"Total Local Write: {job_stats['total_write_local_mb']:.2f} MB")
 print(f"Total Remote Write: {job_stats['total_write_remote_mb']:.2f} MB")
 ```
@@ -117,12 +118,15 @@ simulator = WorkflowSimulator()
 result = simulator.simulate_workflow('workflow.json')
 
 # Calculate job statistics
-job_calculator = JobMetricsCalculator()
-job_stats = job_calculator.calculate_job_statistics(result.jobs)
+from src.workflow_metrics import WorkflowMetricsCalculator
+
+metrics_calculator = WorkflowMetricsCalculator()
+job_stats = metrics_calculator.calculate_job_statistics(result)
 
 # Display results
 print(f"Total Jobs: {job_stats['total_jobs']}")
-print(f"Total CPU Time: {job_stats['total_cpu_time']:.2f}s")
+print(f"Total CPU Used Time: {job_stats['total_cpu_used_time']:.2f}s")
+print(f"Total CPU Allocated Time: {job_stats['total_cpu_allocated_time']:.2f}s")
 print(f"Total Network Transfer: {job_stats['total_network_transfer_mb']:.2f} MB")
 ```
 
@@ -134,7 +138,8 @@ print(f"Total Network Transfer: {job_stats['total_network_transfer_mb']:.2f} MB"
 @dataclass
 class JobMetrics:
     """Job-level metrics for a single job execution."""
-    total_cpu_time: float
+    total_cpu_used_time: float  # Actual CPU time used from event processing
+    total_cpu_allocated_time: float  # CPU time allocated for the whole job
     total_write_local_mb: float
     total_write_remote_mb: float
     total_read_remote_mb: float
@@ -145,16 +150,12 @@ class JobMetrics:
 
 ```python
 {
-    'total_cpu_time': float,
+    'total_cpu_used_time': float,
+    'total_cpu_allocated_time': float,
     'total_write_local_mb': float,
     'total_write_remote_mb': float,
     'total_read_remote_mb': float,
-    'total_network_transfer_mb': float,
-    'average_cpu_time_per_job': float,
-    'average_write_local_mb_per_job': float,
-    'average_write_remote_mb_per_job': float,
-    'average_read_remote_mb_per_job': float,
-    'average_network_transfer_mb_per_job': float
+    'total_network_transfer_mb': float
 }
 ```
 
@@ -184,7 +185,8 @@ Each taskset must provide:
 
 ```
 Job Metrics for group_1_job_1:
-  CPU Time: 1200.00s
+  CPU Used Time: 1200.00s
+  CPU Allocated Time: 1500.00s
   Local Write: 200.00 MB
   Remote Write: 150.00 MB
   Remote Read: 0.00 MB
@@ -192,12 +194,12 @@ Job Metrics for group_1_job_1:
 
 Aggregated Job Statistics:
   Total Jobs: 100
-  Total CPU Time: 120000.00s
+  Total CPU Used Time: 120000.00s
+  Total CPU Allocated Time: 150000.00s
   Total Local Write: 20000.00 MB
   Total Remote Write: 15000.00 MB
   Total Remote Read: 0.00 MB
   Total Network Transfer: 15000.00 MB
-  Average CPU per Job: 1200.00s
 ```
 
 ## Integration Points

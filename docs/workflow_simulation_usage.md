@@ -306,7 +306,8 @@ COMPLETE WORKFLOW EXECUTION SUMMARY
   Average Batch Size: 1080 events
   Min Batch Size: 1080 events
   Max Batch Size: 1080 events
-  Total CPU Time: 70000000.00s
+  Total CPU Used Time: 60000000.00s
+  Total CPU Allocated Time: 70000000.00s
   Total Write Local: 537109.38 MB
   Total Write Remote: 341796.88 MB
   Total Read Remote: 0.00 MB
