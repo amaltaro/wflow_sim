@@ -27,30 +27,33 @@ def plot_workflow_comparison(construction_metrics: List[Dict], output_dir: str =
     num_groups = []
     event_throughputs = []
     total_cpu_times = []
-    stored_data_per_event = []
-    total_stored_data = []
-    input_data_per_event = []
-    output_data_per_event = []
+    write_remote_pevt = []
+    total_write_remote = []
+    read_remote_pevt = []
+    write_local_pevt = []
+    read_local_pevt = []
     group_combinations = []
 
     for metrics in construction_metrics:
         num_groups.append(metrics["num_groups"])
         event_throughputs.append(metrics["event_throughput"])
         total_cpu_times.append(metrics["total_cpu_time"])
-        stored_data_per_event.append(metrics["write_remote_per_event_mb"])
-        total_stored_data.append(metrics["total_write_remote_mb"])
-        input_data_per_event.append(metrics["read_remote_per_event_mb"])
-        output_data_per_event.append(metrics["write_local_per_event_mb"])
+        write_remote_pevt.append(metrics["write_remote_per_event_mb"])
+        total_write_remote.append(metrics["total_write_remote_mb"])
+        read_remote_pevt.append(metrics["read_remote_per_event_mb"])
+        write_local_pevt.append(metrics["write_local_per_event_mb"])
+        read_local_pevt.append(metrics["read_local_per_event_mb"])
         group_combinations.append(" + ".join(metrics["groups"]))
 
     # Convert lists to numpy arrays for numerical operations
     num_groups = np.array(num_groups)
     event_throughputs = np.array(event_throughputs)
     total_cpu_times = np.array(total_cpu_times)
-    stored_data_per_event = np.array(stored_data_per_event)
-    total_stored_data = np.array(total_stored_data)
-    input_data_per_event = np.array(input_data_per_event)
-    output_data_per_event = np.array(output_data_per_event)
+    write_remote_pevt = np.array(write_remote_pevt)
+    total_write_remote = np.array(total_write_remote)
+    read_remote_pevt = np.array(read_remote_pevt)
+    write_local_pevt = np.array(write_local_pevt)
+    read_local_pevt = np.array(read_local_pevt)
 
     # Create a figure with multiple subplots - now with fixed, professional proportions
     if len(construction_metrics) <= 2:
@@ -63,29 +66,29 @@ def plot_workflow_comparison(construction_metrics: List[Dict], output_dir: str =
     # custom_labels are only used in the text output file
     construction_labels = [f"Const {i+1}" for i, _ in enumerate(construction_metrics)]
 
-    # 1. Group Size Distribution
+    # 1. Data Volume Analysis Per Event (with Local Read)
     ax3 = fig.add_subplot(gs[0, 0])
-    group_sizes = []
-    for metrics in construction_metrics:
-        sizes = [len(group["tasks"]) for group in metrics["group_details"]]
-        group_sizes.append(sizes)
-
-    # Create a box plot for group sizes
-    ax3.boxplot(group_sizes, tick_labels=construction_labels)
+    x = np.arange(len(construction_metrics))
+    width = 0.2
+    ax3.bar(x - 1.5*width, read_local_pevt, width, label='Local Read')
+    ax3.bar(x - 0.5*width, read_remote_pevt, width, label='Remote Read')
+    ax3.bar(x + 0.5*width, write_local_pevt, width, label='Local Write')
+    ax3.bar(x + 1.5*width, write_remote_pevt, width, label='Remote Write')
     ax3.set_xlabel("Workflow Construction")
-    ax3.set_ylabel("Number of Tasks per Group")
-    ax3.set_title("Group Size Distribution")
+    ax3.set_ylabel("Data Volume per Event (MB)")
+    ax3.set_title("Data Volume Analysis Per Event")
+    ax3.set_xticks(x)
     ax3.set_xticklabels(construction_labels, rotation=45)
+    ax3.legend()
     ax3.grid(True)
-    ax3.set_ylim(bottom=0)  # Set y-axis to start at 0
 
     # 2. Data Flow Analysis (Updated to use per-event metrics)
     ax2 = fig.add_subplot(gs[0, 1])
     x = np.arange(len(construction_metrics))
     width = 0.25
-    ax2.bar(x - width, input_data_per_event, width, label='Remote Read')
-    ax2.bar(x, output_data_per_event, width, label='Local Write')
-    ax2.bar(x + width, stored_data_per_event, width, label='Remote Write')
+    ax2.bar(x - width, read_remote_pevt, width, label='Remote Read')
+    ax2.bar(x, write_local_pevt, width, label='Local Write')
+    ax2.bar(x + width, write_remote_pevt, width, label='Remote Write')
     ax2.set_xlabel("Workflow Construction")
     ax2.set_ylabel("Data Volume per Event (MB)")
     ax2.set_title("Data Volume Analysis Per Event")
@@ -131,7 +134,7 @@ def plot_workflow_comparison(construction_metrics: List[Dict], output_dir: str =
     ax1 = fig.add_subplot(gs[1, 1])
 
     # Create a simple scatter plot
-    scatter = ax1.scatter(event_throughputs, stored_data_per_event,
+    scatter = ax1.scatter(event_throughputs, write_remote_pevt,
                          c=num_groups, cmap='viridis', s=100, alpha=0.7)
 
     # Add colorbar with discrete integer values
@@ -394,6 +397,7 @@ def build_construction_metrics(simulation_data_list: List[Dict[str, Any]]) -> Li
             'total_write_remote_mb': metrics.get('total_write_remote_mb', 0.0),
             'read_remote_per_event_mb': metrics.get('total_read_remote_mb_per_event', 0.0),
             'write_local_per_event_mb': metrics.get('total_write_local_mb_per_event', 0.0),
+            'read_local_per_event_mb': metrics.get('total_read_local_mb_per_event', 0.0),
             'total_read_remote_mb': metrics.get('total_read_remote_mb', 0.0),
             'total_write_local_mb': metrics.get('total_write_local_mb', 0.0),
             'total_wallclock_time': metrics.get('total_wall_time', 0.0),
