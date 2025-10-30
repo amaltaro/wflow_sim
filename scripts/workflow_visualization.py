@@ -15,15 +15,20 @@ import seaborn as sns
 from pathlib import Path
 
 
-def plot_workflow_comparison(construction_metrics: List[Dict], output_dir: str = "plots", custom_labels: List[str] = None, groups_data: List[Dict] = None):
+def plot_workflow_comparison(all_simulation_data: List[Dict],
+                             sim_groups: List[Dict],
+                             jobs: List[Dict],
+                             output_dir: str = "plots",
+                             custom_labels: List[str] = None,
+                             use_aggregate_metrics: bool = False):
     """Create a comprehensive comparison of workflow constructions.
 
     This function creates multiple visualizations to help identify trade-offs
     between different workflow constructions.
     """
-    print(f"Creating comprehensive workflow construction comparison for {len(construction_metrics)} constructions")
+    print(f"Creating comprehensive workflow construction comparison for {len(all_simulation_data)} constructions")
 
-    # Extract metrics for comparison
+    # Extract metrics for comparison directly from simulation data
     num_groups = []
     event_throughputs = []
     total_cpu_times = []
@@ -33,17 +38,91 @@ def plot_workflow_comparison(construction_metrics: List[Dict], output_dir: str =
     write_local_pevt = []
     read_local_pevt = []
     group_combinations = []
+    construction_metrics = []  # Build this for text output
 
-    for metrics in construction_metrics:
-        num_groups.append(metrics["num_groups"])
-        event_throughputs.append(metrics["event_throughput"])
-        total_cpu_times.append(metrics["total_cpu_time"])
-        write_remote_pevt.append(metrics["write_remote_per_event_mb"])
-        total_write_remote.append(metrics["total_write_remote_mb"])
-        read_remote_pevt.append(metrics["read_remote_per_event_mb"])
-        write_local_pevt.append(metrics["write_local_per_event_mb"])
-        read_local_pevt.append(metrics["read_local_per_event_mb"])
-        group_combinations.append(" + ".join(metrics["groups"]))
+    for i, sim_data in enumerate(all_simulation_data):
+        # sim_data now contains metrics directly (not nested under 'metrics')
+        file_name = sim_data.get('_file_name', f'simulation_{i}')
+
+        # Get groups for this simulation from the groups parameter
+        sim_groups = [g for g in groups if g.get('file_name') == file_name]
+
+        # Extract basic metrics
+        num_groups.append(len(sim_groups))
+        event_throughputs.append(sim_data.get('event_throughput', 0.0))
+        total_cpu_times.append(sim_data.get('total_cpu_allocated_time', 0.0))
+        write_remote_pevt.append(sim_data.get('total_write_remote_mb_per_event', 0.0))
+        total_write_remote.append(sim_data.get('total_write_remote_mb', 0.0))
+        read_remote_pevt.append(sim_data.get('total_read_remote_mb_per_event', 0.0))
+        write_local_pevt.append(sim_data.get('total_write_local_mb_per_event', 0.0))
+        read_local_pevt.append(sim_data.get('total_read_local_mb_per_event', 0.0))
+
+        # Build group combinations
+        group_ids = [g['group_id'] for g in sim_groups]
+        group_combinations.append(" + ".join(group_ids))
+
+        # Build construction metrics for text output
+        construction_metric = {
+            'groups': group_ids,
+            'num_groups': len(sim_groups),
+            'event_throughput': sim_data.get('event_throughput', 0.0),
+            'total_cpu_time': sim_data.get('total_cpu_allocated_time', 0.0),
+            'write_remote_per_event_mb': sim_data.get('total_write_remote_mb_per_event', 0.0),
+            'total_write_remote_mb': sim_data.get('total_write_remote_mb', 0.0),
+            'read_remote_per_event_mb': sim_data.get('total_read_remote_mb_per_event', 0.0),
+            'write_local_per_event_mb': sim_data.get('total_write_local_mb_per_event', 0.0),
+            'read_local_per_event_mb': sim_data.get('total_read_local_mb_per_event', 0.0),
+            'total_read_remote_mb': sim_data.get('total_read_remote_mb', 0.0),
+            'total_write_local_mb': sim_data.get('total_write_local_mb', 0.0),
+            'total_wallclock_time': sim_data.get('total_wall_time', 0.0),
+            'total_memory_mb': sim_data.get('total_memory_used_mb', 0.0),
+            'total_network_transfer_mb': sim_data.get('total_network_transfer_mb', 0.0),
+            'network_transfer_per_event_mb': sim_data.get('network_transfer_mb_per_event', 0.0),
+            'cpu_utilization': sim_data.get('cpu_utilization', 0.0),
+            'memory_occupancy': sim_data.get('memory_occupancy', 0.0),
+            'group_details': []  # Will be populated below
+        }
+
+        # Build group_details for text output
+        for group in sim_groups:
+            # Get taskset IDs for this group (from the extracted group metrics)
+            tasks = group.get('group_taskset_count', 0)  # This is the count, not the actual IDs
+
+            # Calculate events per task (using first job of this group)
+            group_jobs = [j for j in jobs if j['group_id'] == group['group_id'] and j.get('file_name') == file_name]
+            events_per_task = group_jobs[0]['batch_size'] if group_jobs else group.get('group_input_events', 0)
+
+            # Calculate per-event data metrics from first job
+            first_job = group_jobs[0] if group_jobs else None
+            total_events = group.get('group_input_events', 0) * group.get('group_job_count', 1)
+
+            read_local_per_event = 0.0
+            read_remote_per_event = 0.0
+            write_local_per_event = 0.0
+            write_remote_per_event = 0.0
+
+            if first_job and total_events > 0:
+                read_local_per_event = first_job.get('total_read_local_mb', 0.0) / events_per_task
+                read_remote_per_event = first_job.get('total_read_remote_mb', 0.0) / events_per_task
+                write_local_per_event = first_job.get('total_write_local_mb', 0.0) / events_per_task
+                write_remote_per_event = first_job.get('total_write_remote_mb', 0.0) / events_per_task
+
+            # Calculate CPU seconds for the group (using extracted metrics)
+            cpu_seconds = group.get('group_time_per_event', 0.0) * events_per_task
+
+            construction_metric['group_details'].append({
+                'group_id': group['group_id'],
+                'tasks': [f"taskset_{i+1}" for i in range(tasks)],  # Generate task IDs
+                'events_per_task': events_per_task,
+                'cpu_seconds': cpu_seconds,
+                'read_local_per_event_mb': read_local_per_event,
+                'read_remote_per_event_mb': read_remote_per_event,
+                'write_local_per_event_mb': write_local_per_event,
+                'write_remote_per_event_mb': write_remote_per_event,
+                'total_events': total_events
+            })
+
+        construction_metrics.append(construction_metric)
 
     # Convert lists to numpy arrays for numerical operations
     num_groups = np.array(num_groups)
@@ -64,16 +143,24 @@ def plot_workflow_comparison(construction_metrics: List[Dict], output_dir: str =
 
     # Always use short labels for plots ("Const 1", "Const 2", etc.)
     # custom_labels are only used in the text output file
-    construction_labels = [f"Const {i+1}" for i, _ in enumerate(construction_metrics)]
+    construction_labels = [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
+
+    # Define consistent colors for each metric type
+    colors = {
+        'Local Read': '#1f77b4',    # Blue
+        'Remote Read': '#ff7f0e',   # Orange
+        'Local Write': '#2ca02c',   # Green
+        'Remote Write': '#d62728'   # Red
+    }
 
     # 1. Data Volume Analysis Per Event (with Local Read)
     ax3 = fig.add_subplot(gs[0, 0])
-    x = np.arange(len(construction_metrics))
+    x = np.arange(len(all_simulation_data))
     width = 0.2
-    ax3.bar(x - 1.5*width, read_local_pevt, width, label='Local Read')
-    ax3.bar(x - 0.5*width, read_remote_pevt, width, label='Remote Read')
-    ax3.bar(x + 0.5*width, write_local_pevt, width, label='Local Write')
-    ax3.bar(x + 1.5*width, write_remote_pevt, width, label='Remote Write')
+    ax3.bar(x - 1.5*width, read_local_pevt, width, label='Local Read', color=colors['Local Read'])
+    ax3.bar(x - 0.5*width, read_remote_pevt, width, label='Remote Read', color=colors['Remote Read'])
+    ax3.bar(x + 0.5*width, write_local_pevt, width, label='Local Write', color=colors['Local Write'])
+    ax3.bar(x + 1.5*width, write_remote_pevt, width, label='Remote Write', color=colors['Remote Write'])
     ax3.set_xlabel("Workflow Construction")
     ax3.set_ylabel("Data Volume per Event (MB)")
     ax3.set_title("Data Volume Analysis Per Event")
@@ -84,11 +171,11 @@ def plot_workflow_comparison(construction_metrics: List[Dict], output_dir: str =
 
     # 2. Data Flow Analysis (Updated to use per-event metrics)
     ax2 = fig.add_subplot(gs[0, 1])
-    x = np.arange(len(construction_metrics))
+    x = np.arange(len(all_simulation_data))
     width = 0.25
-    ax2.bar(x - width, read_remote_pevt, width, label='Remote Read')
-    ax2.bar(x, write_local_pevt, width, label='Local Write')
-    ax2.bar(x + width, write_remote_pevt, width, label='Remote Write')
+    ax2.bar(x - width, read_remote_pevt, width, label='Remote Read', color=colors['Remote Read'])
+    ax2.bar(x, write_local_pevt, width, label='Local Write', color=colors['Local Write'])
+    ax2.bar(x + width, write_remote_pevt, width, label='Remote Write', color=colors['Remote Write'])
     ax2.set_xlabel("Workflow Construction")
     ax2.set_ylabel("Data Volume per Event (MB)")
     ax2.set_title("Data Volume Analysis Per Event")
@@ -99,9 +186,9 @@ def plot_workflow_comparison(construction_metrics: List[Dict], output_dir: str =
 
     # 3. Total Data Volume Analysis (Stacked Bar)
     ax10 = fig.add_subplot(gs[1, 0])
-    x = np.arange(len(construction_metrics))
+    x = np.arange(len(all_simulation_data))
     width = 0.6
-    bottom = np.zeros(len(construction_metrics))
+    bottom = np.zeros(len(all_simulation_data))
 
     # Convert MB to GB for better readability
     remote_read_gb = [m["total_read_remote_mb"] / 1024.0 for m in construction_metrics]
@@ -151,27 +238,33 @@ def plot_workflow_comparison(construction_metrics: List[Dict], output_dir: str =
     ax1.grid(True, alpha=0.3)
 
     # set x-axis to start at 0 and add 10% padding to the right
-    ax1.set_xlim(left=0, right=np.max(event_throughputs) * 1.1)
+    max_throughput = np.max(event_throughputs)
+    if max_throughput > 0:
+        ax1.set_xlim(left=0, right=max_throughput * 1.1)
+    else:
+        # If all throughputs are 0, set a small range to avoid the warning
+        ax1.set_xlim(left=0, right=1.0)
     # set y-axis to start at 0
     ax1.set_ylim(bottom=0)
 
     # 5. Network Transfer Analysis
     ax7 = fig.add_subplot(gs[2, 0])
     network_transfer = []
-    for metrics in construction_metrics:
+    for sim_data in all_simulation_data:
+        # sim_data now contains metrics directly
         # Network transfer = remote read + remote write (only remote operations)
         # Use pre-calculated field if available, otherwise calculate from per-event metrics
-        transfer = metrics.get("network_transfer_per_event_mb")
+        transfer = sim_data.get("network_transfer_mb_per_event")
         if transfer is None:
             # Fallback: calculate from read and write remote per event
-            transfer = metrics.get("read_remote_per_event_mb", 0.0) + metrics.get("write_remote_per_event_mb", 0.0)
+            transfer = sim_data.get("total_read_remote_mb_per_event", 0.0) + sim_data.get("total_write_remote_mb_per_event", 0.0)
         network_transfer.append(transfer)
 
-    ax7.bar(range(len(construction_metrics)), network_transfer)
+    ax7.bar(range(len(all_simulation_data)), network_transfer)
     ax7.set_xlabel("Workflow Construction")
     ax7.set_ylabel("Network Transfer per Event (MB)")
     ax7.set_title("Network Transfer Analysis")
-    ax7.set_xticks(range(len(construction_metrics)))
+    ax7.set_xticks(range(len(all_simulation_data)))
     ax7.set_xticklabels(construction_labels, rotation=45)
     ax7.grid(True)
 
@@ -180,34 +273,15 @@ def plot_workflow_comparison(construction_metrics: List[Dict], output_dir: str =
     cpu_utilization = []
     cpu_std = []  # Store standard deviations
 
-    # Check if groups_data is available
-    if groups_data is not None:
-        for metrics in construction_metrics:
-            # Get CPU utilization ratio for each group from the groups data
-            util = []
-            for group_id in metrics["groups"]:
-                # Find the corresponding group in the groups data
-                group_data = next((g for g in groups_data if g.get("group_id") == group_id), None)
-                if group_data and "resource_metrics" in group_data:
-                    util.append(group_data["resource_metrics"]["cpu"]["utilization_ratio"])
-            # Calculate average and standard deviation of CPU utilization
-            if util:
-                avg_util = sum(util) / len(util)
-                std_util = np.std(util)
-                cpu_utilization.append(avg_util)
-                cpu_std.append(std_util)
-            else:
-                cpu_utilization.append(0)
-                cpu_std.append(0)
-    else:
-        # Use metrics data if available
-        for metrics in construction_metrics:
-            cpu_util = metrics.get("cpu_utilization", 0.0)
-            cpu_utilization.append(cpu_util)
-            cpu_std.append(0)
+    # Use metrics data from simulation
+    for sim_data in all_simulation_data:
+        # sim_data now contains metrics directly
+        cpu_util = sim_data.get("cpu_utilization", 0.0)
+        cpu_utilization.append(cpu_util)
+        cpu_std.append(0)  # No std dev available from aggregated metrics
 
     # Create bar plot with error bars (only if we have std data)
-    x = range(len(construction_metrics))
+    x = range(len(all_simulation_data))
     if any(std > 0 for std in cpu_std):
         ax4.bar(x, cpu_utilization, yerr=cpu_std, capsize=5)
     else:
@@ -225,34 +299,15 @@ def plot_workflow_comparison(construction_metrics: List[Dict], output_dir: str =
     memory_utilization = []
     memory_std = []  # Store standard deviations
 
-    # Check if groups_data is available
-    if groups_data is not None:
-        for metrics in construction_metrics:
-            # Get memory occupancy for each group from the groups data
-            occupancies = []
-            for group_id in metrics["groups"]:
-                # Find the corresponding group in the groups data
-                group_data = next((g for g in groups_data if g.get("group_id") == group_id), None)
-                if group_data and "resource_metrics" in group_data:
-                    occupancies.append(group_data["resource_metrics"]["memory"]["occupancy"])
-            # Calculate average and standard deviation of memory occupancy
-            if occupancies:
-                avg_occupancy = sum(occupancies) / len(occupancies)
-                std_occupancy = np.std(occupancies)
-                memory_utilization.append(avg_occupancy)
-                memory_std.append(std_occupancy)
-            else:
-                memory_utilization.append(0)
-                memory_std.append(0)
-    else:
-        # Use metrics data if available
-        for metrics in construction_metrics:
-            mem_util = metrics.get("memory_occupancy", 0.0)
-            memory_utilization.append(mem_util)
-            memory_std.append(0)
+    # Use metrics data from simulation
+    for sim_data in all_simulation_data:
+        # sim_data now contains metrics directly
+        mem_util = sim_data.get("memory_occupancy", 0.0)
+        memory_utilization.append(mem_util)
+        memory_std.append(0)  # No std dev available from aggregated metrics
 
     # Create bar plot with error bars (only if we have std data)
-    x = range(len(construction_metrics))
+    x = range(len(all_simulation_data))
     if any(std > 0 for std in memory_std):
         ax6.bar(x, memory_utilization, yerr=memory_std, capsize=5)
     else:
@@ -267,8 +322,11 @@ def plot_workflow_comparison(construction_metrics: List[Dict], output_dir: str =
     # 8. Event Processing Analysis
     ax5 = fig.add_subplot(gs[3, 1])
     events_per_group = []
-    for metrics in construction_metrics:
-        events = [group["total_events"] for group in metrics["group_details"]]
+    for i, sim_data in enumerate(all_simulation_data):
+        file_name = sim_data.get('_file_name', f'simulation_{i}')
+        # Get groups for this simulation from the groups parameter
+        sim_groups = [g for g in groups if g.get('file_name') == file_name]
+        events = [g.get('group_input_events', 0) * g.get('group_job_count', 1) for g in sim_groups]
         events_per_group.append(events)
 
     ax5.boxplot(events_per_group, tick_labels=construction_labels)
@@ -303,6 +361,7 @@ def plot_workflow_comparison(construction_metrics: List[Dict], output_dir: str =
             f.write(f"    Local Write Data: {metrics['total_write_local_mb']:.2f} MB\n")
             f.write(f"    Remote Write Data: {metrics['total_write_remote_mb']:.2f} MB\n")
             f.write("  Data Flow Metrics (per event):\n")
+            f.write(f"    Local Read Data: {metrics['read_local_per_event_mb']:.3f} MB/event\n")
             f.write(f"    Remote Read Data: {metrics['read_remote_per_event_mb']:.3f} MB/event\n")
             f.write(f"    Local Write Data: {metrics['write_local_per_event_mb']:.3f} MB/event\n")
             f.write(f"    Remote Write Data: {metrics['write_remote_per_event_mb']:.3f} MB/event\n")
@@ -322,96 +381,11 @@ def plot_workflow_comparison(construction_metrics: List[Dict], output_dir: str =
                 f.write(f"      Events per Task: {group['events_per_task']}\n")
                 f.write(f"      CPU Time: {group['cpu_seconds']:.2f} seconds\n")
                 f.write("      Data Flow (per event):\n")
+                f.write(f"        Local Read: {group['read_local_per_event_mb']:.3f} MB/event\n")
                 f.write(f"        Remote Read: {group['read_remote_per_event_mb']:.3f} MB/event\n")
                 f.write(f"        Local Write: {group['write_local_per_event_mb']:.3f} MB/event\n")
                 f.write(f"        Remote Write: {group['write_remote_per_event_mb']:.3f} MB/event\n")
             f.write("\n")
-
-
-def build_construction_metrics(simulation_data_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Transform simulation data into the format expected by plot_workflow_comparison.
-
-    Args:
-        simulation_data_list: List of simulation data dictionaries from JSON files
-
-    Returns:
-        List of construction metrics dictionaries
-    """
-    construction_metrics = []
-
-    for sim_data in simulation_data_list:
-        metrics = sim_data.get('metrics', {})
-        sim_result = sim_data.get('simulation_result', {})
-        groups = sim_result.get('groups', [])
-        jobs = sim_result.get('jobs', [])
-
-        # Extract group IDs
-        group_ids = [g['group_id'] for g in groups]
-
-        # Build group_details
-        group_details = []
-        for group in groups:
-            # Get taskset IDs for this group
-            tasks = [ts['taskset_id'] for ts in group.get('tasksets', [])]
-
-            # Calculate events per task (using first job of this group)
-            group_jobs = [j for j in jobs if j['group_id'] == group['group_id']]
-            events_per_task = group_jobs[0]['batch_size'] if group_jobs else group['input_events']
-
-            # Calculate per-event data metrics from first job
-            first_job = group_jobs[0] if group_jobs else None
-            total_events = group['input_events'] * group.get('job_count', 1)
-
-            read_remote_per_event = 0.0
-            write_local_per_event = 0.0
-            write_remote_per_event = 0.0
-
-            if first_job:
-                if total_events > 0:
-                    read_remote_per_event = first_job.get('total_read_remote_mb', 0.0) / events_per_task
-                    write_local_per_event = first_job.get('total_write_local_mb', 0.0) / events_per_task
-                    write_remote_per_event = first_job.get('total_write_remote_mb', 0.0) / events_per_task
-
-            # Calculate CPU seconds for the group
-            cpu_seconds = sum(ts['time_per_event'] * events_per_task * ts.get('multicore', 1)
-                            for ts in group.get('tasksets', []))
-
-            group_details.append({
-                'group_id': group['group_id'],
-                'tasks': tasks,
-                'events_per_task': events_per_task,
-                'cpu_seconds': cpu_seconds,
-                'read_remote_per_event_mb': read_remote_per_event,
-                'write_local_per_event_mb': write_local_per_event,
-                'write_remote_per_event_mb': write_remote_per_event,
-                'total_events': total_events
-            })
-
-        # Build construction metrics
-        construction_metric = {
-            'groups': group_ids,
-            'num_groups': len(groups),
-            'event_throughput': metrics.get('event_throughput', 0.0),
-            'total_cpu_time': metrics.get('total_cpu_allocated_time', 0.0),
-            'write_remote_per_event_mb': metrics.get('total_write_remote_mb_per_event', 0.0),
-            'total_write_remote_mb': metrics.get('total_write_remote_mb', 0.0),
-            'read_remote_per_event_mb': metrics.get('total_read_remote_mb_per_event', 0.0),
-            'write_local_per_event_mb': metrics.get('total_write_local_mb_per_event', 0.0),
-            'read_local_per_event_mb': metrics.get('total_read_local_mb_per_event', 0.0),
-            'total_read_remote_mb': metrics.get('total_read_remote_mb', 0.0),
-            'total_write_local_mb': metrics.get('total_write_local_mb', 0.0),
-            'total_wallclock_time': metrics.get('total_wall_time', 0.0),
-            'total_memory_mb': metrics.get('total_memory_used_mb', 0.0),
-            'total_network_transfer_mb': metrics.get('total_network_transfer_mb', 0.0),
-            'network_transfer_per_event_mb': metrics.get('network_transfer_mb_per_event', 0.0),
-            'cpu_utilization': metrics.get('cpu_utilization', 0.0),
-            'memory_occupancy': metrics.get('memory_occupancy', 0.0),
-            'group_details': group_details
-        }
-
-        construction_metrics.append(construction_metric)
-
-    return construction_metrics
 
 
 def find_simulation_files(directory_path: str) -> List[str]:
@@ -568,8 +542,9 @@ def process_simulation_directory(directory_path: str) -> tuple:
             all_jobs.extend(jobs)
 
             # Keep simulation data for comparison plots
-            simulation_data['_file_name'] = file_name
-            all_simulation_data.append(simulation_data)
+            workflow_metrics = {'_file_name': file_name}
+            workflow_metrics.update(simulation_data.get('metrics', {}))
+            all_simulation_data.append(workflow_metrics)
 
             files_processed += 1
 
@@ -583,7 +558,9 @@ def process_simulation_directory(directory_path: str) -> tuple:
     print(f"Successfully processed {files_processed} simulation files")
     print(f"Extracted {len(all_groups)} groups and {len(all_jobs)} jobs")
     if all_simulation_data:
-        print(f"Sample workflow metrics: {pformat(all_simulation_data[0].get('metrics', {}))}")
+        print(f"Sample workflow metrics: {pformat(all_simulation_data[0])}")
+        print(f"Sample group metrics: {pformat(all_groups[0])}")
+        print(f"Sample job metrics: {pformat(all_jobs[0])}")
 
     return all_groups, all_jobs, all_simulation_data
 
@@ -611,19 +588,12 @@ if __name__ == "__main__":
         if len(all_simulation_data) > 1:
             print(f"\nGenerating workflow comparison for {len(all_simulation_data)} workflows...")
             try:
-                # Transform simulation data into construction metrics format
-                construction_metrics = build_construction_metrics(all_simulation_data)
-
-                # Generate custom labels from file names
-                custom_labels = [Path(sim_data['_file_name']).stem
-                               for sim_data in all_simulation_data]
-
                 # Call the comparison function
                 plot_workflow_comparison(
-                    construction_metrics=construction_metrics,
-                    output_dir=args.output_dir,
-                    custom_labels=custom_labels,
-                    groups_data=None  # Can be enhanced to extract from simulation data if needed
+                    all_simulation_data=all_simulation_data,
+                    sim_groups=groups,
+                    jobs=jobs,
+                    output_dir=args.output_dir
                 )
                 print(f"Workflow comparison saved to {args.output_dir}/workflow_comparison.png")
             except Exception as e:
