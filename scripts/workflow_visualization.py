@@ -15,6 +15,458 @@ import seaborn as sns
 from pathlib import Path
 
 
+def plot_io_patterns(all_simulation_data: List[Dict],
+                     sim_groups: List[Dict],
+                     jobs: List[Dict],
+                     output_dir: str = "plots",
+                     custom_labels: List[str] = None):
+    """Create I/O pattern analysis plots for workflow comparison.
+
+    Plots:
+    1. Data Volume Analysis Per Event (with Local Read)
+    2. Data Flow Analysis (Remote Read, Local Write, Remote Write)
+    3. Total Data Volume Analysis (Including Local Read)
+    4. Total Data Volume Analysis (Original version)
+    """
+    print(f"==> Creating I/O pattern analysis for {len(all_simulation_data)} workflows")
+
+    # Extract metrics for comparison
+    event_throughputs = []
+    write_remote_pevt = []
+    total_write_remote = []
+    read_remote_pevt = []
+    write_local_pevt = []
+    read_local_pevt = []
+    construction_metrics = []  # Build this for text output
+
+    for i, sim_data in enumerate(all_simulation_data):
+        file_name = sim_data.get('_file_name', f'simulation_{i}')
+        sim_groups_for_file = [g for g in sim_groups if g.get('file_name') == file_name]
+
+        # Extract basic metrics
+        event_throughputs.append(sim_data.get('event_throughput', 0.0))
+        write_remote_pevt.append(sim_data.get('total_write_remote_mb_per_event', 0.0))
+        total_write_remote.append(sim_data.get('total_write_remote_mb', 0.0))
+        read_remote_pevt.append(sim_data.get('total_read_remote_mb_per_event', 0.0))
+        write_local_pevt.append(sim_data.get('total_write_local_mb_per_event', 0.0))
+        read_local_pevt.append(sim_data.get('total_read_local_mb_per_event', 0.0))
+
+        # Build construction metrics for text output
+        construction_metric = {
+            'groups': [g['group_id'] for g in sim_groups_for_file],
+            'num_groups': len(sim_groups_for_file),
+            'event_throughput': sim_data.get('event_throughput', 0.0),
+            'write_remote_per_event_mb': sim_data.get('total_write_remote_mb_per_event', 0.0),
+            'read_remote_per_event_mb': sim_data.get('total_read_remote_mb_per_event', 0.0),
+            'write_local_per_event_mb': sim_data.get('total_write_local_mb_per_event', 0.0),
+            'read_local_per_event_mb': sim_data.get('total_read_local_mb_per_event', 0.0),
+            'total_read_remote_mb': sim_data.get('total_read_remote_mb', 0.0),
+            'total_read_local_mb': sim_data.get('total_read_local_mb', 0.0),
+            'total_write_local_mb': sim_data.get('total_write_local_mb', 0.0),
+            'total_write_remote_mb': sim_data.get('total_write_remote_mb', 0.0),
+            'total_wallclock_time': sim_data.get('total_wall_time', 0.0),
+            'total_memory_mb': sim_data.get('total_memory_used_mb', 0.0),
+            'total_network_transfer_mb': sim_data.get('total_network_transfer_mb', 0.0),
+            'network_transfer_per_event_mb': sim_data.get('network_transfer_mb_per_event', 0.0),
+        }
+        construction_metrics.append(construction_metric)
+
+    # Convert lists to numpy arrays for numerical operations
+    event_throughputs = np.array(event_throughputs)
+    write_remote_pevt = np.array(write_remote_pevt)
+    total_write_remote = np.array(total_write_remote)
+    read_remote_pevt = np.array(read_remote_pevt)
+    write_local_pevt = np.array(write_local_pevt)
+    read_local_pevt = np.array(read_local_pevt)
+
+    # Create figure with 2x2 subplots for I/O patterns
+    fig = plt.figure(figsize=(16, 12))
+    gs = fig.add_gridspec(2, 2, height_ratios=[1, 1])
+
+    # Always use short labels for plots
+    construction_labels = [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
+
+    # Define consistent colors for each metric type
+    colors = {
+        'Local Read': '#1f77b4',    # Blue
+        'Remote Read': '#ff7f0e',   # Orange
+        'Local Write': '#2ca02c',   # Green
+        'Remote Write': '#d62728'   # Red
+    }
+
+    # 1. Data Volume Analysis Per Event (with Local Read)
+    ax1 = fig.add_subplot(gs[0, 0])
+    x = np.arange(len(all_simulation_data))
+    width = 0.2
+    ax1.bar(x - 1.5*width, read_local_pevt, width, label='Local Read', color=colors['Local Read'])
+    ax1.bar(x - 0.5*width, read_remote_pevt, width, label='Remote Read', color=colors['Remote Read'])
+    ax1.bar(x + 0.5*width, write_local_pevt, width, label='Local Write', color=colors['Local Write'])
+    ax1.bar(x + 1.5*width, write_remote_pevt, width, label='Remote Write', color=colors['Remote Write'])
+    ax1.set_xlabel("Workflow Construction")
+    ax1.set_ylabel("Data Volume per Event (MB)")
+    ax1.set_title("Data Volume Analysis Per Event")
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(construction_labels, rotation=45)
+    ax1.legend()
+    ax1.grid(True)
+
+    # 2. Data Flow Analysis (Updated to use per-event metrics)
+    ax2 = fig.add_subplot(gs[0, 1])
+    x = np.arange(len(all_simulation_data))
+    width = 0.25
+    ax2.bar(x - width, read_remote_pevt, width, label='Remote Read', color=colors['Remote Read'])
+    ax2.bar(x, write_local_pevt, width, label='Local Write', color=colors['Local Write'])
+    ax2.bar(x + width, write_remote_pevt, width, label='Remote Write', color=colors['Remote Write'])
+    ax2.set_xlabel("Workflow Construction")
+    ax2.set_ylabel("Data Volume per Event (MB)")
+    ax2.set_title("Data Flow Analysis")
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(construction_labels, rotation=45)
+    ax2.legend()
+    ax2.grid(True)
+
+    # 3. Total Data Volume Analysis (Stacked Bar) - Including Local Read
+    ax3 = fig.add_subplot(gs[1, 0])
+    x = np.arange(len(all_simulation_data))
+    width = 0.6
+    bottom = np.zeros(len(all_simulation_data))
+
+    # Convert MB to GB for better readability
+    local_read_gb = [m["total_read_local_mb"] / 1024.0 for m in construction_metrics]
+    remote_read_gb = [m["total_read_remote_mb"] / 1024.0 for m in construction_metrics]
+    local_write_gb = [m["total_write_local_mb"] / 1024.0 for m in construction_metrics]
+    remote_write_gb = [m["total_write_remote_mb"] / 1024.0 for m in construction_metrics]
+
+    # Plot each data type as a layer in the stack
+    ax3.bar(x, local_read_gb, width, label='Local Read', bottom=bottom, color=colors['Local Read'])
+    bottom += local_read_gb
+
+    ax3.bar(x, remote_read_gb, width, label='Remote Read', bottom=bottom, color=colors['Remote Read'])
+    bottom += remote_read_gb
+
+    ax3.bar(x, local_write_gb, width, label='Local Write', bottom=bottom, color=colors['Local Write'])
+    bottom += local_write_gb
+
+    ax3.bar(x, remote_write_gb, width, label='Remote Write', bottom=bottom, color=colors['Remote Write'])
+
+    # Add total value labels on top of each bar
+    totals_gb = [int(lr + rr + lw + rw) for lr, rr, lw, rw in zip(local_read_gb, remote_read_gb, local_write_gb, remote_write_gb)]
+    for i, total in enumerate(totals_gb):
+        ax3.text(i, total, f'{total}', ha='center', va='bottom')
+
+    ax3.set_xlabel("Workflow Construction")
+    ax3.set_ylabel("Total Data Volume (GB)")
+    ax3.set_title("Total Workflow Data Volume Analysis (Including Local Read)")
+    ax3.set_xticks(x)
+    ax3.set_xticklabels(construction_labels, rotation=45)
+    ax3.legend()
+    ax3.grid(True)
+
+    # 4. Total Data Volume Analysis (Stacked Bar) - Original version
+    ax4 = fig.add_subplot(gs[1, 1])
+    x = np.arange(len(all_simulation_data))
+    width = 0.6
+    bottom = np.zeros(len(all_simulation_data))
+
+    # Convert MB to GB for better readability
+    remote_read_gb = [m["total_read_remote_mb"] / 1024.0 for m in construction_metrics]
+    local_write_gb = [m["total_write_local_mb"] / 1024.0 for m in construction_metrics]
+    remote_write_gb = [m["total_write_remote_mb"] / 1024.0 for m in construction_metrics]
+
+    # Plot each data type as a layer in the stack
+    ax4.bar(x, remote_read_gb, width, label='Remote Read', bottom=bottom, color=colors['Remote Read'])
+    bottom += remote_read_gb
+
+    ax4.bar(x, local_write_gb, width, label='Local Write', bottom=bottom, color=colors['Local Write'])
+    bottom += local_write_gb
+
+    ax4.bar(x, remote_write_gb, width, label='Remote Write', bottom=bottom, color=colors['Remote Write'])
+
+    # Add total value labels on top of each bar
+    totals_gb = [int(rr + lw + rw) for rr, lw, rw in zip(remote_read_gb, local_write_gb, remote_write_gb)]
+    for i, total in enumerate(totals_gb):
+        ax4.text(i, total, f'{total}', ha='center', va='bottom')
+
+    ax4.set_xlabel("Workflow Construction")
+    ax4.set_ylabel("Total Data Volume (GB)")
+    ax4.set_title("Total Workflow Data Volume Analysis")
+    ax4.set_xticks(x)
+    ax4.set_xticklabels(construction_labels, rotation=45)
+    ax4.legend()
+    ax4.grid(True)
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "io_patterns_comparison.png"))
+    plt.close()
+    print(f"  => I/O patterns comparison saved to {output_dir}/io_patterns_comparison.png")
+
+
+def plot_resource_utilization(all_simulation_data: List[Dict],
+                              sim_groups: List[Dict],
+                              jobs: List[Dict],
+                              output_dir: str = "plots",
+                              custom_labels: List[str] = None):
+    """Create resource utilization analysis plots for workflow comparison.
+
+    Plots:
+    1. Network Transfer Analysis
+    2. CPU Utilization Analysis
+    3. Memory Utilization Analysis
+    4. Resource Cost Analysis (CPU cores, Memory in GB)
+    """
+    print(f"==> Creating resource utilization analysis for {len(all_simulation_data)} workflows")
+
+    # Extract metrics for comparison
+    num_groups = []
+    cpu_utilization = []
+    memory_utilization = []
+    network_transfer = []
+    total_cpu_cores = []
+    total_memory_mb = []
+    events_per_cpu_core = []
+    construction_metrics = []  # Build this for text output
+
+    for i, sim_data in enumerate(all_simulation_data):
+        file_name = sim_data.get('_file_name', f'simulation_{i}')
+        sim_groups_for_file = [g for g in sim_groups if g.get('file_name') == file_name]
+
+        # Extract basic metrics
+        num_groups.append(len(sim_groups_for_file))
+        cpu_utilization.append(sim_data.get('cpu_utilization', 0.0))
+        memory_utilization.append(sim_data.get('memory_occupancy', 0.0))
+
+        # Network transfer calculation
+        transfer = sim_data.get("network_transfer_mb_per_event")
+        if transfer is None:
+            transfer = sim_data.get("total_read_remote_mb_per_event", 0.0) + sim_data.get("total_write_remote_mb_per_event", 0.0)
+        network_transfer.append(transfer)
+
+        # Resource cost analysis
+        total_cpu = sim_data.get('total_cpu_cores_used', 0.0)
+        total_memory = sim_data.get('total_memory_used_mb', 0.0)
+        total_events = sim_data.get('total_events_processed', 0.0)
+
+        total_cpu_cores.append(total_cpu)
+        total_memory_mb.append(total_memory)
+
+        # Calculate events per CPU core (efficiency metric)
+        if total_cpu > 0:
+            events_per_cpu_core.append(total_events / total_cpu)
+        else:
+            events_per_cpu_core.append(0.0)
+
+        # Build construction metrics for text output
+        construction_metric = {
+            'groups': [g['group_id'] for g in sim_groups_for_file],
+            'num_groups': len(sim_groups_for_file),
+            'cpu_utilization': sim_data.get('cpu_utilization', 0.0),
+            'memory_occupancy': sim_data.get('memory_occupancy', 0.0),
+            'network_transfer_per_event_mb': transfer,
+            'total_cpu_cores_used': total_cpu,
+            'total_memory_used_mb': total_memory,
+            'events_per_cpu_core': total_events / total_cpu if total_cpu > 0 else 0.0,
+        }
+        construction_metrics.append(construction_metric)
+
+    # Convert lists to numpy arrays for numerical operations
+    num_groups = np.array(num_groups)
+    cpu_utilization = np.array(cpu_utilization)
+    memory_utilization = np.array(memory_utilization)
+    network_transfer = np.array(network_transfer)
+    total_cpu_cores = np.array(total_cpu_cores)
+    total_memory_mb = np.array(total_memory_mb)
+    events_per_cpu_core = np.array(events_per_cpu_core)
+
+    # Create figure with 2x2 subplots for resource utilization
+    fig = plt.figure(figsize=(16, 12))
+    gs = fig.add_gridspec(2, 2, height_ratios=[1, 1])
+
+    # Always use short labels for plots
+    construction_labels = [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
+
+    # 1. Network Transfer Analysis
+    ax1 = fig.add_subplot(gs[0, 0])
+    x = np.arange(len(all_simulation_data))
+    ax1.bar(x, network_transfer, color='#9467bd', alpha=0.7)
+    ax1.set_xlabel("Workflow Construction")
+    ax1.set_ylabel("Network Transfer per Event (MB)")
+    ax1.set_title("Network Transfer Analysis")
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(construction_labels, rotation=45)
+    ax1.grid(True)
+
+    # 2. CPU Utilization Analysis
+    ax2 = fig.add_subplot(gs[0, 1])
+    x = np.arange(len(all_simulation_data))
+    ax2.bar(x, cpu_utilization, color='#8c564b', alpha=0.7)
+    ax2.set_xlabel("Workflow Construction")
+    ax2.set_ylabel("CPU Utilization Ratio")
+    ax2.set_title("CPU Utilization Analysis")
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(construction_labels, rotation=45)
+    ax2.set_ylim(bottom=0)
+    ax2.grid(True)
+
+    # 3. Memory Utilization Analysis
+    ax3 = fig.add_subplot(gs[1, 0])
+    x = np.arange(len(all_simulation_data))
+    ax3.bar(x, memory_utilization, color='#ff7f0e', alpha=0.7)
+    ax3.set_xlabel("Workflow Construction")
+    ax3.set_ylabel("Memory Utilization Ratio")
+    ax3.set_title("Memory Utilization Analysis")
+    ax3.set_xticks(x)
+    ax3.set_xticklabels(construction_labels, rotation=45)
+    ax3.grid(True)
+
+    # 4. Resource Cost Analysis
+    ax4 = fig.add_subplot(gs[1, 1])
+    x = np.arange(len(all_simulation_data))
+    width = 0.35
+
+    # Convert memory to GB
+    total_memory_gb = total_memory_mb / 1024.0
+
+    # Create dual y-axis plot
+    ax4_twin = ax4.twinx()
+
+    # Plot CPU cores (left axis)
+    bars1 = ax4.bar(x - width/2, total_cpu_cores, width, label='Total CPU Cores',
+                    color='#8c564b', alpha=0.7)
+    ax4.set_xlabel("Workflow Construction")
+    ax4.set_ylabel("Total CPU Cores Used", color='#8c564b')
+    ax4.tick_params(axis='y', labelcolor='#8c564b')
+
+    # Plot Memory (right axis)
+    bars2 = ax4_twin.bar(x + width/2, total_memory_gb, width, label='Total Memory (GB)',
+                         color='#ff7f0e', alpha=0.7)
+    ax4_twin.tick_params(axis='y', labelcolor='#ff7f0e')
+    ax4_twin.set_yticklabels([])  # Remove labels from right Y axis
+
+    ax4.set_title("Resource Cost Analysis")
+    ax4.set_xticks(x)
+    ax4.set_xticklabels(construction_labels, rotation=45)
+    ax4.grid(True, alpha=0.3)
+
+    # Combine legends from both axes
+    lines1, labels1 = ax4.get_legend_handles_labels()
+    lines2, labels2 = ax4_twin.get_legend_handles_labels()
+    ax4.legend(lines1 + lines2, labels1 + labels2)
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "resource_utilization_comparison.png"))
+    plt.close()
+    print(f"  => Resource utilization comparison saved to {output_dir}/resource_utilization_comparison.png")
+
+
+def plot_performance_metrics(all_simulation_data: List[Dict],
+                             sim_groups: List[Dict],
+                             jobs: List[Dict],
+                             output_dir: str = "plots",
+                             custom_labels: List[str] = None):
+    """Create performance metrics analysis plots for workflow comparison.
+
+    Plots:
+    1. Performance vs Remote Write Efficiency
+    2. Processing Efficiency Analysis (CPU Time per Event + CPU Utilization)
+    """
+    print(f"==> Creating performance metrics analysis for {len(all_simulation_data)} workflows")
+
+    # Extract metrics for comparison
+    event_throughputs = []
+    write_remote_pevt = []
+    cpu_time_per_event = []
+    cpu_utilization = []
+    construction_metrics = []  # Build this for text output
+
+    for i, sim_data in enumerate(all_simulation_data):
+        file_name = sim_data.get('_file_name', f'simulation_{i}')
+        sim_groups_for_file = [g for g in sim_groups if g.get('file_name') == file_name]
+
+        # Extract basic metrics
+        event_throughputs.append(sim_data.get('event_throughput', 0.0))
+        write_remote_pevt.append(sim_data.get('total_write_remote_mb_per_event', 0.0))
+        cpu_time_per_event.append(sim_data.get('cpu_time_per_event', 0.0))
+        cpu_utilization.append(sim_data.get('cpu_utilization', 0.0))
+
+        # Build construction metrics for text output
+        construction_metric = {
+            'groups': [g['group_id'] for g in sim_groups_for_file],
+            'num_groups': len(sim_groups_for_file),
+            'event_throughput': sim_data.get('event_throughput', 0.0),
+            'write_remote_per_event_mb': sim_data.get('total_write_remote_mb_per_event', 0.0),
+            'cpu_time_per_event': sim_data.get('cpu_time_per_event', 0.0),
+            'cpu_utilization': sim_data.get('cpu_utilization', 0.0),
+        }
+        construction_metrics.append(construction_metric)
+
+    # Convert lists to numpy arrays for numerical operations
+    event_throughputs = np.array(event_throughputs)
+    write_remote_pevt = np.array(write_remote_pevt)
+    cpu_time_per_event = np.array(cpu_time_per_event)
+    cpu_utilization = np.array(cpu_utilization)
+
+    # Create figure with 1x2 subplots for performance metrics
+    fig = plt.figure(figsize=(16, 6))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1, 1])
+
+    # Always use short labels for plots
+    construction_labels = [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
+
+    # 1. Performance vs Remote Write Efficiency
+    ax1 = fig.add_subplot(gs[0, 0])
+    scatter = ax1.scatter(event_throughputs, write_remote_pevt, c=range(len(all_simulation_data)),
+                         cmap='viridis', s=100, alpha=0.7)
+    ax1.set_xlabel("Event Throughput (events/second)")
+    ax1.set_ylabel("Remote Write Data per Event (MB)")
+    ax1.set_title("Performance vs Remote Write Efficiency")
+    ax1.grid(True, alpha=0.3)
+
+    # Set x-axis limits with proper handling for identical values
+    max_throughput = np.max(event_throughputs)
+    if max_throughput > 0:
+        ax1.set_xlim(left=0, right=max_throughput * 1.1)
+    else:
+        ax1.set_xlim(left=0, right=1.0)
+    ax1.set_ylim(bottom=0)
+
+    # 2. Processing Efficiency Analysis
+    ax2 = fig.add_subplot(gs[0, 1])
+    x = np.arange(len(all_simulation_data))
+    width = 0.6
+
+    # Create dual y-axis plot
+    ax2_twin = ax2.twinx()
+
+    # Plot CPU Time per Event (bar chart)
+    bars = ax2.bar(x, cpu_time_per_event, width, label='CPU Time per Event',
+                   color='#2ca02c', alpha=0.7)
+    ax2.set_xlabel("Workflow Construction")
+    ax2.set_ylabel("CPU Time per Event (seconds)", color='#2ca02c')
+    ax2.tick_params(axis='y', labelcolor='#2ca02c')
+
+    # Plot CPU Utilization (line plot overlay)
+    line = ax2_twin.plot(x, cpu_utilization, 'o-', color='#d62728',
+                         linewidth=2, markersize=6, label='CPU Utilization')
+    ax2_twin.set_ylabel("CPU Utilization Ratio", color='#d62728')
+    ax2_twin.tick_params(axis='y', labelcolor='#d62728')
+    ax2_twin.set_ylim(0, 1)  # Utilization is a ratio 0-1
+
+    ax2.set_title("Processing Efficiency Analysis")
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(construction_labels, rotation=45)
+    ax2.grid(True, alpha=0.3)
+
+    # Combine legends
+    lines1, labels1 = ax2.get_legend_handles_labels()
+    lines2, labels2 = ax2_twin.get_legend_handles_labels()
+    ax2.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "performance_metrics_comparison.png"))
+    plt.close()
+    print(f"  => Performance metrics comparison saved to {output_dir}/performance_metrics_comparison.png")
+
+
 def plot_workflow_comparison(all_simulation_data: List[Dict],
                              sim_groups: List[Dict],
                              jobs: List[Dict],
@@ -588,14 +1040,28 @@ if __name__ == "__main__":
         if len(all_simulation_data) > 1:
             print(f"\nGenerating workflow comparison for {len(all_simulation_data)} workflows...")
             try:
-                # Call the comparison function
-                plot_workflow_comparison(
+                # Call the specialized comparison functions
+                plot_io_patterns(
                     all_simulation_data=all_simulation_data,
                     sim_groups=groups,
                     jobs=jobs,
                     output_dir=args.output_dir
                 )
-                print(f"Workflow comparison saved to {args.output_dir}/workflow_comparison.png")
+
+                plot_resource_utilization(
+                    all_simulation_data=all_simulation_data,
+                    sim_groups=groups,
+                    jobs=jobs,
+                    output_dir=args.output_dir
+                )
+
+                plot_performance_metrics(
+                    all_simulation_data=all_simulation_data,
+                    sim_groups=groups,
+                    jobs=jobs,
+                    output_dir=args.output_dir
+                )
+
             except Exception as e:
                 print(f"Warning: Could not generate workflow comparison: {e}")
                 import traceback
