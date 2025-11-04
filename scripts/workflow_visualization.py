@@ -339,10 +339,10 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     # Plot Memory (right axis)
     bars2 = ax4_twin.bar(x + width/2, total_memory_gb, width, label='Total Memory (GB)',
                          color='#ff7f0e', alpha=0.7)
+    ax4_twin.set_ylabel("Total Memory Used (GB)", color='#ff7f0e')
     ax4_twin.tick_params(axis='y', labelcolor='#ff7f0e')
-    ax4_twin.set_yticklabels([])  # Remove labels from right Y axis
 
-    ax4.set_title("Resource Cost Analysis")
+    ax4.set_title("Overall Resource Cost Analysis")
     ax4.set_xticks(x)
     ax4.set_xticklabels(construction_labels, rotation=45)
     ax4.grid(True, alpha=0.3)
