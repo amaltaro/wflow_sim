@@ -258,7 +258,7 @@ def _get_output_path(input_path: str) -> str:
         input_path: Path to input workflow file
 
     Returns:
-        Output path in results/ directory with same structure (excluding templates/ prefix)
+        Output path in results/sim/ directory with same structure (excluding templates/ prefix)
     """
     input_path_obj = Path(input_path)
 
@@ -268,8 +268,8 @@ def _get_output_path(input_path: str) -> str:
     else:
         relative_path = input_path_obj
 
-    # Create output path: results/ + relative path
-    output_path = Path("results") / relative_path
+    # Create output path: results/sim/ + relative path
+    output_path = Path("results") / "sim" / relative_path
 
     # Ensure the output directory exists
     output_path.parent.mkdir(parents=True, exist_ok=True)

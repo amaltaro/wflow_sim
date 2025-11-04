@@ -167,6 +167,83 @@ Results are automatically saved to the `results/` directory with the same struct
 - Input: `templates/3tasks/seq/workflow.json` → Output: `results/3tasks/seq/workflow.json`
 - Input: `templates/workflow.json` → Output: `results/workflow.json`
 
+## Batch Processing with Makefile
+
+The Makefile provides convenient targets for running batch simulations and generating visualizations for multiple workflow use cases.
+
+### Quick Start
+
+Run simulations and visualizations for all configured use cases with a single command:
+
+```bash
+make all
+```
+
+This will:
+1. Simulate all workflows in the configured use cases (default: `case1_real`, `case2_homo`, `case3_hetero`)
+2. Generate visualization diagrams for all simulation results
+
+### Available Makefile Targets
+
+```bash
+# Show all available targets
+make help
+
+# Run simulations for all configured use cases
+make simulate-all
+
+# Generate visualizations for all use cases (requires existing results)
+make visualize-all
+
+# Run both simulations and visualizations (recommended)
+make all
+
+# Run a single workflow simulation (original behavior)
+make run
+
+# Clean up all generated files
+make clean
+
+# Clean only visualization outputs
+make clean-viz
+
+# Clean only simulation results
+make clean-results
+```
+
+### Customizing Use Cases
+
+You can customize which use cases to process by setting the `USE_CASES` variable:
+
+```bash
+# Run only specific use cases
+make all USE_CASES='case1_real case2_homo'
+
+# Run a single use case
+make all USE_CASES='case1_real'
+```
+
+### Configuration
+
+The Makefile uses the following default configuration (editable in `Makefile`):
+
+- **Target wallclock time**: 43200 seconds (12 hours)
+- **Max job slots**: -1 (infinite)
+- **Use cases**: `case1_real case2_homo case3_hetero`
+- **Template directory**: `templates/others/`
+- **Results directory**: `results/sim/others`
+- **Visualization output**: `results/vis/others`
+
+### Output Locations
+
+- **Simulation results**: Saved to `results/sim/others/<use_case>/` directory
+- **Visualization diagrams**: Saved to `results/vis/<use_case>/` directory
+
+The visualization script generates comparison plots including:
+- I/O patterns analysis (per event and total volumes)
+- Resource utilization (CPU, memory, network)
+- Performance metrics (throughput, efficiency)
+
 ## Workflow Data Format
 
 Workflows are defined in JSON format with the following structure:
