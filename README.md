@@ -22,7 +22,9 @@ This repository provides a **Workflow Simulator** that:
 ├── tests/         # Unit tests (pytest)
 ├── docs/          # Detailed documentation
 ├── templates/     # JSON workflow templates
-├── results/       # Simulation output (JSON)
+├── results/       # Simulation and visualization outputs
+│   ├── sim/      # Simulation results (JSON)
+│   └── vis/      # Visualization diagrams (PNG)
 ├── examples/      # Usage examples
 └── README.md      # Project overview
 ```
@@ -107,7 +109,7 @@ python src/workflow_runner.py --input-workflow-path templates/3tasks/seq/3tasks_
 python src/workflow_runner.py --help
 ```
 
-**Output Structure**: Results are automatically saved to the `results/` directory with the same structure as the input file (excluding the `templates/` prefix).
+**Output Structure**: Results are automatically saved to the `results/sim/` directory with the same structure as the input file (excluding the `templates/` prefix).
 
 ### 2. Python API Usage
 
@@ -162,10 +164,10 @@ python src/workflow_runner.py --help
 
 ### Output Structure
 
-Results are automatically saved to the `results/` directory with the same structure as the input file:
+Results are automatically saved to the `results/sim/` directory with the same structure as the input file:
 
-- Input: `templates/3tasks/seq/workflow.json` → Output: `results/3tasks/seq/workflow.json`
-- Input: `templates/workflow.json` → Output: `results/workflow.json`
+- Input: `templates/3tasks/seq/workflow.json` → Output: `results/sim/3tasks/seq/workflow.json`
+- Input: `templates/workflow.json` → Output: `results/sim/workflow.json`
 
 ## Batch Processing with Makefile
 
@@ -237,7 +239,7 @@ The Makefile uses the following default configuration (editable in `Makefile`):
 ### Output Locations
 
 - **Simulation results**: Saved to `results/sim/others/<use_case>/` directory
-- **Visualization diagrams**: Saved to `results/vis/<use_case>/` directory
+- **Visualization diagrams**: Saved to `results/vis/others/<use_case>/` directory
 
 The visualization script generates comparison plots including:
 - I/O patterns analysis (per event and total volumes)
@@ -339,6 +341,7 @@ git push origin v1.0.0
 - [Workflow Simulation Usage](docs/workflow_simulation_usage.md) - Complete simulation guide
 - [Workflow Metrics Usage](docs/workflow_metrics_usage.md) - Workflow-level metrics documentation
 - [Job Metrics Usage](docs/job_metrics_usage.md) - Job-level metrics documentation
+- [Visualization Usage](docs/visualization_usage.md) - Visualization tool documentation
 - [Release Process](docs/release-process.md) - Automated release notes system
 - [Agent Instructions](AGENTS.md) - AI agent development guidelines
 - [Contributing Guidelines](CONTRIBUTING.md) - How to contribute to the project

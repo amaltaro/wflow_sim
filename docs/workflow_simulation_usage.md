@@ -61,7 +61,7 @@ python src/workflow_simulator.py --target-wallclock-time 1800
 python src/workflow_runner.py --help
 ```
 
-**Output Structure**: Results are automatically saved to the `results/` directory with the same structure as the input file (excluding the `templates/` prefix).
+**Output Structure**: Results are automatically saved to the `results/sim/` directory with the same structure as the input file (excluding the `templates/` prefix).
 
 ### Python API Usage
 
@@ -112,11 +112,11 @@ python src/workflow_simulator.py --help
 
 ### Output Structure
 
-Results are automatically saved to the `results/` directory with the same structure as the input file:
+Results are automatically saved to the `results/sim/` directory with the same structure as the input file:
 
-- **Input**: `templates/3tasks/seq/workflow.json` → **Output**: `results/3tasks/seq/workflow.json`
-- **Input**: `templates/workflow.json` → **Output**: `results/workflow.json`
-- **Input**: `custom/path/workflow.json` → **Output**: `results/custom/path/workflow.json`
+- **Input**: `templates/3tasks/seq/workflow.json` → **Output**: `results/sim/3tasks/seq/workflow.json`
+- **Input**: `templates/workflow.json` → **Output**: `results/sim/workflow.json`
+- **Input**: `custom/path/workflow.json` → **Output**: `results/sim/custom/path/workflow.json`
 
 The system automatically creates necessary directories and preserves the file structure while removing the `templates/` prefix for cleaner organization.
 

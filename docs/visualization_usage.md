@@ -1,7 +1,7 @@
 # Workflow Simulation Visualization
 
 This directory contains tooling to visualize workflow simulation results using pandas, matplotlib,
-and seaborn. The visualizer reads completed simulation outputs from the `results/` directory and
+and seaborn. The visualizer reads completed simulation outputs from the `results/sim/` directory and
 produces comparison plots across multiple workflow constructions (JSON files).
 
 ## Overview
@@ -37,13 +37,13 @@ comparison plots across all valid files it can process.
 - Run on a directory of results (recursively):
 
 ```bash
-python scripts/workflow_visualization.py results/others/5tasks_fullsim/
+python scripts/workflow_visualization.py results/sim/others/5tasks_fullsim/
 ```
 
 - Specify a custom output directory (default: `output/`):
 
 ```bash
-python scripts/workflow_visualization.py results/others/5tasks_fullsim/ --output-dir my_plots
+python scripts/workflow_visualization.py results/sim/others/5tasks_fullsim/ --output-dir results/vis/others/5tasks_fullsim
 ```
 
 The current script always produces the full set of supported plots (no `--plots` selector).
@@ -77,7 +77,7 @@ The script generates the following files:
 
 ## Notes on Data Source
 
-- All inputs are consumed directly from existing simulation outputs under `results/`.
+- All inputs are consumed directly from existing simulation outputs under `results/sim/`.
 - Files are discovered recursively; any `*.json` in the directory tree is considered.
 - Metrics are extracted from the `metrics` object and from the first job of each group under
   `simulation_result.jobs` to keep memory usage low while enabling group-level analysis.
@@ -135,8 +135,9 @@ The visualization script can be easily customized by:
 
 The visualization tools integrate seamlessly with the workflow simulator:
 
-1. Run simulations to produce JSON under `results/`
-2. Generate visualizations using `scripts/workflow_visualization.py`
+1. Run simulations to produce JSON under `results/sim/`
+2. Generate visualizations using `scripts/workflow_visualization.py` (outputs to `results/vis/` by default)
 3. Analyze results using the generated PNG plots
 
 This provides a complete workflow analysis pipeline from simulation to visualization.
+
