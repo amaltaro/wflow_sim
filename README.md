@@ -1,4 +1,6 @@
-# Workflow Simulator
+# DAGFlowSim
+
+**DAGFlowSim** (DAG Workflow Simulator) is a comprehensive workflow simulation system for analyzing and comparing different workflow compositions in grid computing environments.
 
 [![Tests](https://github.com/amaltaro/wflow_sim/workflows/Run%20Tests/badge.svg)](https://github.com/amaltaro/wflow_sim/actions/workflows/test.yml)
 [![Release Notes](https://github.com/amaltaro/wflow_sim/workflows/Generate%20Release%20Notes/badge.svg)](https://github.com/amaltaro/wflow_sim/actions/workflows/release-notes.yml)
@@ -6,11 +8,9 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Code Style](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
-A comprehensive workflow simulation system for analyzing and comparing different workflow compositions in grid computing environments.
-
 ## Overview
 
-This repository provides a **Workflow Simulator** that:
+DAGFlowSim provides a powerful workflow simulation engine that:
 - Takes workflow descriptions as input (JSON format)
 - Simulates workflow execution with realistic timing and resource constraints
 - Produces execution metrics and performance analytics as output
@@ -79,6 +79,8 @@ This repository provides a **Workflow Simulator** that:
    ```bash
    python examples/metrics_example.py
    ```
+
+DAGFlowSim requires only Python standard library, making it easy to get started quickly.
 
 ### Optional: Install Testing Dependencies
 

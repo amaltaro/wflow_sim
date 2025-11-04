@@ -1,6 +1,6 @@
 # Release Process
 
-Automated release notes system for the Workflow Simulator project.
+Automated release notes system for the DAGFlowSim project.
 
 ## Quick Start
 

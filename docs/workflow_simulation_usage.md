@@ -1,6 +1,6 @@
 # Workflow Simulation Usage Guide
 
-This guide explains how to use the workflow simulation functionality to execute and analyze workflow compositions with group-based job scheduling.
+This guide explains how to use DAGFlowSim's workflow simulation functionality to execute and analyze workflow compositions with group-based job scheduling.
 
 ## Overview
 

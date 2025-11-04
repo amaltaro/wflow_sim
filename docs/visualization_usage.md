@@ -133,7 +133,7 @@ The visualization script can be easily customized by:
 
 ## Integration
 
-The visualization tools integrate seamlessly with the workflow simulator:
+The visualization tools integrate seamlessly with DAGFlowSim:
 
 1. Run simulations to produce JSON under `results/sim/`
 2. Generate visualizations using `scripts/workflow_visualization.py` (outputs to `results/vis/` by default)
