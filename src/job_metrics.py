@@ -15,11 +15,13 @@ class JobMetrics:
     """Job-level metrics for a single job execution."""
     total_cpu_used_time: float  # Actual CPU time used from event processing
     total_cpu_allocated_time: float  # CPU time allocated for the whole job
+    total_execution_time: float  # Total sequential execution time (tasksets execute one after another)
     total_write_local_mb: float
     total_write_remote_mb: float
     total_read_remote_mb: float
     total_read_local_mb: float
     total_network_transfer_mb: float  # remote_write + remote_read
+    job_overhead: float  # Total job overhead time in seconds
 
 
 class JobMetricsCalculator:
@@ -30,9 +32,18 @@ class JobMetricsCalculator:
     CPU time, I/O operations, and network transfers based on taskset properties.
     """
 
-    def __init__(self):
-        """Initialize the job metrics calculator."""
+    def __init__(self, taskset_overhead_seconds: float = 60.0,
+                 data_transfer_rate_mb_per_s: float = 100.0):
+        """
+        Initialize the job metrics calculator.
+
+        Args:
+            taskset_overhead_seconds: Overhead per taskset in seconds (default: 60.0)
+            data_transfer_rate_mb_per_s: Data transfer rate in MB/s for overhead calculation (default: 100.0)
+        """
         self.logger = logging.getLogger(__name__)
+        self.taskset_overhead_seconds = taskset_overhead_seconds
+        self.data_transfer_rate_mb_per_s = data_transfer_rate_mb_per_s
 
     def calculate_job_metrics(self, tasksets: List[Any], batch_size: int,
                              input_tasksets_for_other_groups: Optional[Set[str]] = None,
@@ -103,12 +114,27 @@ class JobMetricsCalculator:
         # Network transfer includes both remote write and remote read
         total_network_transfer_mb = total_write_remote_mb + total_read_remote_mb
 
+        # Calculate job overhead:
+        # 1. Taskset overhead: 60 seconds per taskset
+        taskset_overhead = len(tasksets) * self.taskset_overhead_seconds
+        # 2. Remote read overhead: 1 second per 100MB/s of data
+        remote_read_overhead = total_read_remote_mb / self.data_transfer_rate_mb_per_s
+        # 3. Remote write overhead: 1 second per 100MB/s of data
+        remote_write_overhead = total_write_remote_mb / self.data_transfer_rate_mb_per_s
+        # Total job overhead
+        job_overhead = taskset_overhead + remote_read_overhead + remote_write_overhead
+        # Add overhead to CPU metrics (overhead consumes CPU resources)
+        total_cpu_used_time += (job_overhead * 1)
+        total_cpu_allocated_time += (job_overhead * max_multicore)
+
         return JobMetrics(
             total_cpu_used_time=total_cpu_used_time,
             total_cpu_allocated_time=total_cpu_allocated_time,
+            total_execution_time=total_execution_time,
             total_write_local_mb=total_write_local_mb,
             total_write_remote_mb=total_write_remote_mb,
             total_read_remote_mb=total_read_remote_mb,
             total_read_local_mb=total_read_local_mb,
-            total_network_transfer_mb=total_network_transfer_mb
+            total_network_transfer_mb=total_network_transfer_mb,
+            job_overhead=job_overhead
         )

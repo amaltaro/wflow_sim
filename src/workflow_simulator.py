@@ -21,6 +21,10 @@ except ImportError:
     from job_metrics import JobMetricsCalculator
 
 
+# Job overhead constants
+TASKSET_OVERHEAD_SECONDS = 60.0  # Overhead per taskset in seconds
+DATA_TRANSFER_RATE_MB_PER_S = 100.0  # Data transfer rate in MB/s for overhead calculation
+
 
 @dataclass
 class ResourceConfig:
@@ -76,6 +80,8 @@ class JobInfo:
     total_read_remote_mb: float = 0.0
     total_read_local_mb: float = 0.0
     total_network_transfer_mb: float = 0.0
+    job_overhead: float = 0.0
+    total_execution_time: float = 0.0
 
 
 @dataclass
@@ -122,7 +128,10 @@ class WorkflowSimulator:
             resource_config: Resource configuration for simulation
         """
         self.resource_config = resource_config or ResourceConfig()
-        self.job_metrics_calculator = JobMetricsCalculator()
+        self.job_metrics_calculator = JobMetricsCalculator(
+            taskset_overhead_seconds=TASKSET_OVERHEAD_SECONDS,
+            data_transfer_rate_mb_per_s=DATA_TRANSFER_RATE_MB_PER_S
+        )
         self.logger = logging.getLogger(__name__)
         self._setup_logging()
 
@@ -737,7 +746,9 @@ class WorkflowSimulator:
                         total_write_remote_mb=job_metrics.total_write_remote_mb,
                         total_read_remote_mb=job_metrics.total_read_remote_mb,
                         total_read_local_mb=job_metrics.total_read_local_mb,
-                        total_network_transfer_mb=job_metrics.total_network_transfer_mb
+                        total_network_transfer_mb=job_metrics.total_network_transfer_mb,
+                        job_overhead=job_metrics.job_overhead,
+                        total_execution_time=job_metrics.total_execution_time
                     )
 
                     new_jobs.append(job)
