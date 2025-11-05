@@ -22,40 +22,48 @@ class TestJobMetrics:
         metrics = JobMetrics(
             total_cpu_used_time=1000.0,
             total_cpu_allocated_time=1500.0,
+            total_execution_time=800.0,
             total_write_local_mb=500.0,
             total_write_remote_mb=200.0,
             total_read_remote_mb=150.0,
             total_read_local_mb=100.0,
-            total_network_transfer_mb=350.0
+            total_network_transfer_mb=350.0,
+            job_overhead=200.0
         )
 
         assert metrics.total_cpu_used_time == 1000.0
         assert metrics.total_cpu_allocated_time == 1500.0
+        assert metrics.total_execution_time == 800.0
         assert metrics.total_write_local_mb == 500.0
         assert metrics.total_write_remote_mb == 200.0
         assert metrics.total_read_remote_mb == 150.0
         assert metrics.total_read_local_mb == 100.0
         assert metrics.total_network_transfer_mb == 350.0
+        assert metrics.job_overhead == 200.0
 
     def test_job_metrics_default_values(self):
         """Test JobMetrics with default values."""
         metrics = JobMetrics(
             total_cpu_used_time=0.0,
             total_cpu_allocated_time=0.0,
+            total_execution_time=0.0,
             total_write_local_mb=0.0,
             total_write_remote_mb=0.0,
             total_read_remote_mb=0.0,
             total_read_local_mb=0.0,
-            total_network_transfer_mb=0.0
+            total_network_transfer_mb=0.0,
+            job_overhead=0.0
         )
 
         assert metrics.total_cpu_used_time == 0.0
         assert metrics.total_cpu_allocated_time == 0.0
+        assert metrics.total_execution_time == 0.0
         assert metrics.total_write_local_mb == 0.0
         assert metrics.total_write_remote_mb == 0.0
         assert metrics.total_read_remote_mb == 0.0
         assert metrics.total_read_local_mb == 0.0
         assert metrics.total_network_transfer_mb == 0.0
+        assert metrics.job_overhead == 0.0
 
 
 class TestJobMetricsCalculator:
@@ -91,9 +99,13 @@ class TestJobMetricsCalculator:
         )
 
         # CPU used time: 10.0 * 1000 * 2 = 20000.0
-        # CPU allocated time: same (single taskset)
-        assert job_metrics.total_cpu_used_time == 20000.0
-        assert job_metrics.total_cpu_allocated_time == 20000.0
+        # Overhead: 60 seconds (1 taskset) + 0 (no remote read/write) = 60.0
+        # Total CPU used time: 20000.0 + 60.0 = 20060.0
+        # CPU allocated time: (10.0 * 1000) * 2 = 20000.0, plus overhead * 2 = 20120.0
+        assert job_metrics.total_execution_time == 10000.0
+        assert job_metrics.job_overhead == 60.0
+        assert job_metrics.total_cpu_used_time == 20060.0
+        assert job_metrics.total_cpu_allocated_time == 20120.0
         # Local write: (200 * 1000) / 1024 = 195.31 MB
         assert abs(job_metrics.total_write_local_mb - 195.31) < 0.01
         # Remote write: 0 (keep_output=False and not input for other groups)
@@ -127,9 +139,13 @@ class TestJobMetricsCalculator:
         )
 
         # CPU used time: 5.0 * 500 * 1 = 2500.0
-        # CPU allocated time: same (single taskset, keep_output=True doesn't affect CPU)
-        assert job_metrics.total_cpu_used_time == 2500.0
-        assert job_metrics.total_cpu_allocated_time == 2500.0
+        # Overhead: 60 seconds (1 taskset) + remote write overhead (146.48/100 = 1.46s) = 61.46s
+        # Total CPU used time: 2500.0 + 61.46 = 2561.46
+        # CPU allocated time: (5.0 * 500) * 1 = 2500.0, plus overhead * 1 = 2561.46
+        assert job_metrics.total_execution_time == 2500.0
+        assert abs(job_metrics.job_overhead - 61.46) < 0.01
+        assert abs(job_metrics.total_cpu_used_time - 2561.46) < 0.01
+        assert abs(job_metrics.total_cpu_allocated_time - 2561.46) < 0.01
         # Local write: (300 * 500) / 1024 = 146.48 MB
         assert abs(job_metrics.total_write_local_mb - 146.48) < 0.01
         # Remote write: same as local write (keep_output=True)
@@ -165,9 +181,13 @@ class TestJobMetricsCalculator:
         )
 
         # CPU used time: 15.0 * 800 * 3 = 36000.0
-        # CPU allocated time: same (single taskset)
-        assert job_metrics.total_cpu_used_time == 36000.0
-        assert job_metrics.total_cpu_allocated_time == 36000.0
+        # Overhead: 60 seconds (1 taskset) + remote read overhead (195.31/100 = 1.95s) = 61.95s
+        # Total CPU used time: 36000.0 + 61.95 = 36061.95
+        # CPU allocated time: (15.0 * 800) * 3 = 36000.0, plus overhead * 3 = 36185.86
+        assert job_metrics.total_execution_time == 12000.0
+        assert abs(job_metrics.job_overhead - 61.95) < 0.01
+        assert abs(job_metrics.total_cpu_used_time - 36061.95) < 0.01
+        assert abs(job_metrics.total_cpu_allocated_time - 36185.86) < 0.01
         # Local write: (400 * 800) / 1024 = 312.5 MB
         assert job_metrics.total_write_local_mb == 312.5
         # Remote write: 0 (keep_output=False and not input for other groups)
@@ -203,9 +223,13 @@ class TestJobMetricsCalculator:
         )
 
         # CPU used time: 8.0 * 600 * 2 = 9600.0
-        # CPU allocated time: same (single taskset)
-        assert job_metrics.total_cpu_used_time == 9600.0
-        assert job_metrics.total_cpu_allocated_time == 9600.0
+        # Overhead: 60 seconds (1 taskset) + remote write overhead (205.08/100 = 2.05s) = 62.05s
+        # Total CPU used time: 9600.0 + 62.05 = 9662.05
+        # CPU allocated time: (8.0 * 600) * 2 = 9600.0, plus overhead * 2 = 9724.10
+        assert job_metrics.total_execution_time == 4800.0
+        assert abs(job_metrics.job_overhead - 62.05) < 0.01
+        assert abs(job_metrics.total_cpu_used_time - 9662.05) < 0.01
+        assert abs(job_metrics.total_cpu_allocated_time - 9724.10) < 0.01
         # Local write: (350 * 600) / 1024 = 205.08 MB
         assert abs(job_metrics.total_write_local_mb - 205.08) < 0.01
         # Remote write: same as local write (input for other groups)
@@ -258,9 +282,13 @@ class TestJobMetricsCalculator:
         # CPU allocated time: total execution time × max multicore
         # total_execution_time = (5.0 * 200) + (10.0 * 200) = 1000 + 2000 = 3000
         # max_multicore = max(1, 2) = 2
-        # total_cpu_allocated_time = 3000 * 2 = 6000.0
-        assert job_metrics.total_cpu_used_time == 5000.0
-        assert job_metrics.total_cpu_allocated_time == 6000.0
+        # Overhead: 120 seconds (2 tasksets) + remote write overhead (39.06/100 = 0.39s) = 120.39s
+        # Total CPU used time: 5000.0 + 120.39 = 5120.39
+        # Total CPU allocated time: 3000 * 2 = 6000.0, plus overhead * 2 = 6240.78
+        assert job_metrics.total_execution_time == 3000.0
+        assert abs(job_metrics.job_overhead - 120.39) < 0.01
+        assert abs(job_metrics.total_cpu_used_time - 5120.39) < 0.01
+        assert abs(job_metrics.total_cpu_allocated_time - 6240.78) < 0.01
         # Local write: (100 * 200) / 1024 + (200 * 200) / 1024 = 19.53 + 39.06 = 58.59 MB
         assert abs(job_metrics.total_write_local_mb - 58.59) < 0.01
         # Remote write: only taskset2 (keep_output=True) = 39.06 MB
@@ -296,9 +324,13 @@ class TestJobMetricsCalculator:
         )
 
         # CPU used time: 12.0 * 1000 * 2 = 24000.0
-        # CPU allocated time: same (single taskset)
-        assert job_metrics.total_cpu_used_time == 24000.0
-        assert job_metrics.total_cpu_allocated_time == 24000.0
+        # Overhead: 60 seconds (1 taskset) + remote write (488.28/100 = 4.88s) + remote read (292.97/100 = 2.93s) = 67.81s
+        # Total CPU used time: 24000.0 + 67.81 = 24067.81
+        # CPU allocated time: (12.0 * 1000) * 2 = 24000.0, plus overhead * 2 = 24135.62
+        assert job_metrics.total_execution_time == 12000.0
+        assert abs(job_metrics.job_overhead - 67.81) < 0.01
+        assert abs(job_metrics.total_cpu_used_time - 24067.81) < 0.01
+        assert abs(job_metrics.total_cpu_allocated_time - 24135.62) < 0.01
         # Local write: (500 * 1000) / 1024 = 488.28 MB
         assert abs(job_metrics.total_write_local_mb - 488.28) < 0.01
         # Remote write: same as local write (keep_output=True)
@@ -317,6 +349,8 @@ class TestJobMetricsCalculator:
             batch_size=1000
         )
 
+        assert job_metrics.total_execution_time == 0.0
+        assert job_metrics.job_overhead == 0.0
         assert job_metrics.total_cpu_used_time == 0.0
         assert job_metrics.total_cpu_allocated_time == 0.0
         assert job_metrics.total_write_local_mb == 0.0
@@ -347,8 +381,12 @@ class TestJobMetricsCalculator:
             batch_size=0
         )
 
-        assert job_metrics.total_cpu_used_time == 0.0
-        assert job_metrics.total_cpu_allocated_time == 0.0
+        # With zero batch size, execution time is 0, but overhead is still 60 seconds (1 taskset)
+        # No remote write overhead since batch_size=0 means no data written
+        assert job_metrics.total_execution_time == 0.0
+        assert job_metrics.job_overhead == 60.0
+        assert job_metrics.total_cpu_used_time == 60.0
+        assert job_metrics.total_cpu_allocated_time == 120.0
         assert job_metrics.total_write_local_mb == 0.0
         assert job_metrics.total_write_remote_mb == 0.0
         assert job_metrics.total_read_remote_mb == 0.0
@@ -437,8 +475,11 @@ class TestJobMetricsCalculator:
             input_tasksets_for_other_groups=None
         )
 
-        assert job_metrics.total_cpu_used_time == 2500.0
-        assert job_metrics.total_cpu_allocated_time == 2500.0
+        # Overhead: 60 seconds (1 taskset), no remote read/write
+        assert job_metrics.total_execution_time == 2500.0
+        assert job_metrics.job_overhead == 60.0
+        assert job_metrics.total_cpu_used_time == 2560.0
+        assert job_metrics.total_cpu_allocated_time == 2560.0
         assert job_metrics.total_write_remote_mb == 0.0  # Should not be input for other groups
 
     def test_calculate_job_metrics_none_input_taskset_size(self):
@@ -467,8 +508,11 @@ class TestJobMetricsCalculator:
             input_taskset_size_per_event=None
         )
 
-        assert job_metrics.total_cpu_used_time == 2500.0
-        assert job_metrics.total_cpu_allocated_time == 2500.0
+        # Overhead: 60 seconds (1 taskset), no remote read/write
+        assert job_metrics.total_execution_time == 2500.0
+        assert job_metrics.job_overhead == 60.0
+        assert job_metrics.total_cpu_used_time == 2560.0
+        assert job_metrics.total_cpu_allocated_time == 2560.0
         assert job_metrics.total_read_remote_mb == 0.0  # Should not have remote read
 
 
