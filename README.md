@@ -281,7 +281,12 @@ Workflows are defined in JSON format with the following structure:
 - **Success Rate**: Percentage of successful executions
 
 ### Job-Level Metrics
-- **CPU Time**: Total CPU time per job (time_per_event × events × multicore)
+- **CPU Time**: Total CPU time per job including overhead (time_per_event × events × multicore + job_overhead)
+- **Execution Time**: Total sequential execution time for all tasksets in a job (time_per_event × events for each taskset)
+- **Job Overhead**: Realistic overhead accounting including:
+  - Taskset overhead: 60 seconds for the bootstrap of each taskset in a group.
+  - Remote read overhead: 1 second per 100MB/s of data transfer
+  - Remote write overhead: 1 second per 100MB/s of data transfer
 - **Local I/O**: Data written to local disk per job
 - **Remote I/O**: Data written to shared storage per job
 - **Network Transfer**: Complete network data transfer per job (remote writes + remote reads)

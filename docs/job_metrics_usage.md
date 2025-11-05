@@ -31,10 +31,20 @@ The `JobMetricsCalculator` is designed with clear separation of concerns:
 ## Job Metrics Calculated
 
 ### CPU Time Metrics
-- **Total CPU Used Time**: Actual CPU time used from event processing - `sum(time_per_event × input_events × multicore)` for each taskset in a job
-- **Total CPU Allocated Time**: CPU time allocated for the whole job - `total_execution_time × max_multicore`, where total execution time is the sum of all taskset execution times and max_multicore is the maximum multicore setting among all tasksets in the job
+- **Total CPU Used Time**: Actual CPU time used from event processing including overhead - `sum(time_per_event × input_events × multicore)` for each taskset + `job_overhead`
+- **Total CPU Allocated Time**: CPU time allocated for the whole job including overhead - `(total_execution_time + job_overhead) × max_multicore`, where total execution time is the sum of all taskset execution times and max_multicore is the maximum multicore setting among all tasksets in the job
+- **Total Execution Time**: Total sequential execution time for all tasksets in a job - `sum(time_per_event × batch_size)` for each taskset in the job (excluding overhead)
 
 Note: All tasksets in a job execute sequentially and share the same allocated resources (max cores needed), so allocated time represents the actual resource reservation for the job.
+
+### Job Overhead Metrics
+- **Job Overhead**: Realistic overhead time accounting for job setup and data transfer operations
+  - **Taskset Overhead**: 60 seconds per taskset in the job (default: `TASKSET_OVERHEAD_SECONDS = 60.0`)
+  - **Remote Read Overhead**: Data transfer time for remote reads - `total_read_remote_mb / 100.0` seconds (based on 100 MB/s transfer rate)
+  - **Remote Write Overhead**: Data transfer time for remote writes - `total_write_remote_mb / 100.0` seconds (based on 100 MB/s transfer rate)
+  - **Total Overhead**: `taskset_overhead + remote_read_overhead + remote_write_overhead`
+
+The overhead is automatically added to both `total_cpu_used_time` and `total_cpu_allocated_time` to provide realistic resource accounting. The batch size calculation remains unchanged (based on target wallclock time), meaning actual job wallclock time may exceed the target due to overhead.
 
 ### I/O Metrics
 - **Total Write Local MB**: All data written to local disk (regardless of `keep_output` flag)
@@ -91,6 +101,8 @@ job_metrics = calculator.calculate_job_metrics(
 # Access individual metrics
 print(f"CPU Used Time: {job_metrics.total_cpu_used_time:.2f}s")
 print(f"CPU Allocated Time: {job_metrics.total_cpu_allocated_time:.2f}s")
+print(f"Execution Time: {job_metrics.total_execution_time:.2f}s")
+print(f"Job Overhead: {job_metrics.job_overhead:.2f}s")
 print(f"Local Write: {job_metrics.total_write_local_mb:.2f} MB")
 print(f"Remote Write: {job_metrics.total_write_remote_mb:.2f} MB")
 print(f"Remote Read: {job_metrics.total_read_remote_mb:.2f} MB")
@@ -138,12 +150,15 @@ print(f"Total Network Transfer: {job_stats['total_network_transfer_mb']:.2f} MB"
 @dataclass
 class JobMetrics:
     """Job-level metrics for a single job execution."""
-    total_cpu_used_time: float  # Actual CPU time used from event processing
-    total_cpu_allocated_time: float  # CPU time allocated for the whole job
+    total_cpu_used_time: float  # Actual CPU time used from event processing (including overhead)
+    total_cpu_allocated_time: float  # CPU time allocated for the whole job (including overhead)
+    total_execution_time: float  # Total sequential execution time (tasksets execute one after another)
     total_write_local_mb: float
     total_write_remote_mb: float
     total_read_remote_mb: float
-    total_network_transfer_mb: float
+    total_read_local_mb: float
+    total_network_transfer_mb: float  # remote_write + remote_read
+    job_overhead: float  # Total job overhead time in seconds
 ```
 
 ### Job Statistics Dictionary
@@ -152,10 +167,13 @@ class JobMetrics:
 {
     'total_cpu_used_time': float,
     'total_cpu_allocated_time': float,
+    'total_execution_time': float,
     'total_write_local_mb': float,
     'total_write_remote_mb': float,
     'total_read_remote_mb': float,
-    'total_network_transfer_mb': float
+    'total_read_local_mb': float,
+    'total_network_transfer_mb': float,
+    'job_overhead': float
 }
 ```
 
@@ -185,8 +203,10 @@ Each taskset must provide:
 
 ```
 Job Metrics for group_1_job_1:
-  CPU Used Time: 1200.00s
-  CPU Allocated Time: 1500.00s
+  CPU Used Time: 1260.00s (includes 60s overhead)
+  CPU Allocated Time: 1620.00s (includes 60s overhead × 2 cores)
+  Execution Time: 1200.00s
+  Job Overhead: 60.00s (1 taskset × 60s)
   Local Write: 200.00 MB
   Remote Write: 150.00 MB
   Remote Read: 0.00 MB
@@ -194,8 +214,10 @@ Job Metrics for group_1_job_1:
 
 Aggregated Job Statistics:
   Total Jobs: 100
-  Total CPU Used Time: 120000.00s
-  Total CPU Allocated Time: 150000.00s
+  Total CPU Used Time: 126000.00s
+  Total CPU Allocated Time: 162000.00s
+  Total Execution Time: 120000.00s
+  Total Job Overhead: 6000.00s
   Total Local Write: 20000.00 MB
   Total Remote Write: 15000.00 MB
   Total Remote Read: 0.00 MB
@@ -229,9 +251,28 @@ Run the test suite to verify functionality:
 pytest tests/test_job_metrics.py -v
 ```
 
+## Overhead Configuration
+
+The overhead calculation uses configurable constants defined in `workflow_simulator.py`:
+
+- **`TASKSET_OVERHEAD_SECONDS`**: Default 60.0 seconds per taskset
+- **`DATA_TRANSFER_RATE_MB_PER_S`**: Default 100.0 MB/s for data transfer overhead calculation
+
+These can be customized when initializing `JobMetricsCalculator`:
+
+```python
+from src.job_metrics import JobMetricsCalculator
+
+# Custom overhead configuration
+calculator = JobMetricsCalculator(
+    taskset_overhead_seconds=90.0,  # 90 seconds per taskset
+    data_transfer_rate_mb_per_s=150.0  # 150 MB/s transfer rate
+)
+```
+
 ## Future Enhancements
 
-- **Network Read Metrics**: Include remote read in network transfer calculations
 - **I/O Timing**: Add I/O operation timing metrics
 - **Resource Efficiency**: Calculate I/O efficiency per job
 - **Custom Metrics**: Support for user-defined job metrics
+- **Configurable Overhead**: Runtime configuration of overhead parameters

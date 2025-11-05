@@ -36,7 +36,8 @@ The workflow simulation system provides:
 - **Sequential Within Groups**: Tasksets in the same group execute one after another
 - **Parallel Between Groups**: Independent groups can run simultaneously, if dependency allows
 - **Job Scaling**: Number of jobs = ceil(RequestNumEvents / GroupInputEvents)
-- **Wallclock Constraints**: Each job respects target wallclock time limits
+- **Wallclock Constraints**: Each job respects target wallclock time limits (batch size calculation based on target, actual wallclock may exceed target due to overhead)
+- **Job Overhead**: Realistic overhead accounting including taskset setup (60s per taskset) and data transfer operations (1s per 100MB/s)
 
 ## Quick Start
 
@@ -341,6 +342,28 @@ The simulator automatically calculates optimal batch sizes to meet wallclock con
 - Determines maximum events that fit in target wallclock time
 - Creates jobs with appropriate batch sizes
 - Logs each job's batch size and wallclock time
+
+**Important Note**: The batch size calculation is based on the target wallclock time and does not include overhead. This means:
+- Batch sizes remain unchanged regardless of overhead
+- Actual job wallclock time may exceed the target due to overhead
+- Overhead is tracked separately in `job_overhead` metric
+- CPU metrics (`total_cpu_used_time`, `total_cpu_allocated_time`) include overhead for realistic resource accounting
+
+### Job Overhead Considerations
+
+The simulation includes realistic job overhead to provide more accurate resource accounting:
+
+- **Taskset Overhead**: 60 seconds per taskset (default: `TASKSET_OVERHEAD_SECONDS = 60.0`)
+- **Data Transfer Overhead**:
+  - Remote read: 1 second per 100MB/s of data (default: `DATA_TRANSFER_RATE_MB_PER_S = 100.0`)
+  - Remote write: 1 second per 100MB/s of data
+- **Total Overhead**: Sum of all overhead components, added to CPU metrics
+
+The overhead is automatically calculated and included in:
+- `job_overhead`: Total overhead time for the job
+- `total_cpu_used_time`: CPU time includes overhead
+- `total_cpu_allocated_time`: Allocated CPU time includes overhead
+- `total_execution_time`: Execution time excludes overhead (pure computational time)
 
 ## Troubleshooting
 
