@@ -80,7 +80,7 @@ class JobInfo:
     total_read_remote_mb: float = 0.0
     total_read_local_mb: float = 0.0
     total_network_transfer_mb: float = 0.0
-    job_overhead: float = 0.0
+    job_overhead_secs: float = 0.0
     total_execution_time: float = 0.0
 
 
@@ -107,6 +107,7 @@ class SimulationResult:
     jobs: List[JobInfo]
     success: bool
     error_message: Optional[str] = None
+    overhead_enabled: bool = True  # Whether job overhead was included in calculations
 
 
 class WorkflowSimulator:
@@ -120,17 +121,25 @@ class WorkflowSimulator:
     - Respects target wallclock time constraints
     """
 
-    def __init__(self, resource_config: Optional[ResourceConfig] = None):
+    def __init__(self, resource_config: Optional[ResourceConfig] = None,
+                 no_overhead: bool = False):
         """
         Initialize the workflow simulator.
 
         Args:
             resource_config: Resource configuration for simulation
+            no_overhead: If True, disable job overhead calculations (set overhead to 0)
         """
         self.resource_config = resource_config or ResourceConfig()
+        self.no_overhead = no_overhead
+
+        # Set overhead values to 0 if disabled, otherwise use defaults
+        taskset_overhead = 0.0 if no_overhead else TASKSET_OVERHEAD_SECONDS
+        data_transfer_rate = 0.0 if no_overhead else DATA_TRANSFER_RATE_MB_PER_S
+
         self.job_metrics_calculator = JobMetricsCalculator(
-            taskset_overhead_seconds=TASKSET_OVERHEAD_SECONDS,
-            data_transfer_rate_mb_per_s=DATA_TRANSFER_RATE_MB_PER_S
+            taskset_overhead_seconds=taskset_overhead,
+            data_transfer_rate_mb_per_s=data_transfer_rate
         )
         self.logger = logging.getLogger(__name__)
         self._setup_logging()
@@ -190,7 +199,8 @@ class WorkflowSimulator:
                 groups=[],
                 jobs=[],
                 success=False,
-                error_message=str(e)
+                error_message=str(e),
+                overhead_enabled=not self.no_overhead
             )
 
         # Simulate workflow execution
@@ -208,7 +218,8 @@ class WorkflowSimulator:
                 total_turnaround_time=execution_result['total_turnaround_time'],
                 groups=groups,
                 jobs=execution_result['jobs'],
-                success=True
+                success=True,
+                overhead_enabled=not self.no_overhead
             )
 
             self.logger.info(f"Workflow simulation completed successfully. "
@@ -229,7 +240,8 @@ class WorkflowSimulator:
                 groups=[],
                 jobs=[],
                 success=False,
-                error_message=str(e)
+                error_message=str(e),
+                overhead_enabled=not self.no_overhead
             )
 
     def _extract_tasksets(self, workflow_data: Dict[str, Any]) -> List[TasksetInfo]:
@@ -747,7 +759,7 @@ class WorkflowSimulator:
                         total_read_remote_mb=job_metrics.total_read_remote_mb,
                         total_read_local_mb=job_metrics.total_read_local_mb,
                         total_network_transfer_mb=job_metrics.total_network_transfer_mb,
-                        job_overhead=job_metrics.job_overhead,
+                        job_overhead_secs=job_metrics.job_overhead_secs,
                         total_execution_time=job_metrics.total_execution_time
                     )
 
@@ -845,15 +857,17 @@ def load_workflow_from_file(filepath: Union[str, Path]) -> Dict[str, Any]:
         return json.load(f)
 
 
-def _get_output_path(input_path: str) -> str:
+def _get_output_path(input_path: str, no_overhead: bool = False) -> str:
     """
     Generate output path based on input path structure.
 
     Args:
         input_path: Path to input workflow file
+        no_overhead: If True, append '_nooverhead' suffix; otherwise append '_overhead' suffix
 
     Returns:
         Output path in results/sim/ directory with same structure (excluding templates/ prefix)
+        and appropriate overhead suffix in filename
     """
     input_path_obj = Path(input_path)
 
@@ -866,10 +880,15 @@ def _get_output_path(input_path: str) -> str:
     # Create output path: results/sim/ + relative path
     output_path = Path("results") / "sim" / relative_path
 
-    # Ensure the output directory exists
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    # Add overhead suffix before file extension
+    suffix = "_nooverhead" if no_overhead else "_overhead"
+    stem = output_path.stem
+    suffix_path = output_path.parent / f"{stem}{suffix}{output_path.suffix}"
 
-    return str(output_path)
+    # Ensure the output directory exists
+    suffix_path.parent.mkdir(parents=True, exist_ok=True)
+
+    return str(suffix_path)
 
 
 def parse_arguments():
@@ -895,6 +914,11 @@ def parse_arguments():
         default='templates/3tasks_composition_001.json',
         help='Path to input workflow JSON file (default: templates/3tasks_composition_001.json)'
     )
+    parser.add_argument(
+        '--no-overhead',
+        action='store_true',
+        help='Disable job overhead calculations (taskset overhead and data transfer overhead)'
+    )
     return parser.parse_args()
 
 
@@ -909,14 +933,14 @@ def main():
     )
 
     # Create simulator and run simulation
-    simulator = WorkflowSimulator(resource_config)
+    simulator = WorkflowSimulator(resource_config, no_overhead=args.no_overhead)
     result = simulator.simulate_workflow(args.input_workflow_path)
 
     # Print results
     simulator.print_simulation_summary(result)
 
     # Write results to file with same structure as input
-    output_path = _get_output_path(args.input_workflow_path)
+    output_path = _get_output_path(args.input_workflow_path, no_overhead=args.no_overhead)
     simulator.write_simulation_result(result, output_path)
 
 

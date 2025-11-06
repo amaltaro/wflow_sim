@@ -21,7 +21,7 @@ class JobMetrics:
     total_read_remote_mb: float
     total_read_local_mb: float
     total_network_transfer_mb: float  # remote_write + remote_read
-    job_overhead: float  # Total job overhead time in seconds
+    job_overhead_secs: float  # Total job overhead time in seconds
 
 
 class JobMetricsCalculator:
@@ -117,15 +117,17 @@ class JobMetricsCalculator:
         # Calculate job overhead:
         # 1. Taskset overhead: 60 seconds per taskset
         taskset_overhead = len(tasksets) * self.taskset_overhead_seconds
-        # 2. Remote read overhead: 1 second per 100MB/s of data
-        remote_read_overhead = total_read_remote_mb / self.data_transfer_rate_mb_per_s
-        # 3. Remote write overhead: 1 second per 100MB/s of data
-        remote_write_overhead = total_write_remote_mb / self.data_transfer_rate_mb_per_s
+        # 2. Network transfer overhead: 1 second per 100MB/s of data
+        # Handle division by zero when data_transfer_rate is 0 (overhead disabled)
+        if self.data_transfer_rate_mb_per_s > 0:
+            network_transfer_overhead = total_network_transfer_mb / self.data_transfer_rate_mb_per_s
+        else:
+            network_transfer_overhead = 0.0
         # Total job overhead
-        job_overhead = taskset_overhead + remote_read_overhead + remote_write_overhead
+        job_overhead_secs = taskset_overhead + network_transfer_overhead
         # Add overhead to CPU metrics (overhead consumes CPU resources)
-        total_cpu_used_time += (job_overhead * 1)
-        total_cpu_allocated_time += (job_overhead * max_multicore)
+        total_cpu_used_time += (job_overhead_secs * 1)
+        total_cpu_allocated_time += (job_overhead_secs * max_multicore)
 
         return JobMetrics(
             total_cpu_used_time=total_cpu_used_time,
@@ -136,5 +138,5 @@ class JobMetricsCalculator:
             total_read_remote_mb=total_read_remote_mb,
             total_read_local_mb=total_read_local_mb,
             total_network_transfer_mb=total_network_transfer_mb,
-            job_overhead=job_overhead
+            job_overhead_secs=job_overhead_secs
         )

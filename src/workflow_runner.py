@@ -28,15 +28,18 @@ class WorkflowRunner:
     a complete workflow execution and analysis solution.
     """
 
-    def __init__(self, resource_config: Optional[ResourceConfig] = None):
+    def __init__(self, resource_config: Optional[ResourceConfig] = None,
+                 no_overhead: bool = False):
         """
         Initialize the workflow runner.
 
         Args:
             resource_config: Resource configuration for simulation
+            no_overhead: If True, disable job overhead calculations
         """
         self.resource_config = resource_config or ResourceConfig()
-        self.simulator = WorkflowSimulator(self.resource_config)
+        self.no_overhead = no_overhead
+        self.simulator = WorkflowSimulator(self.resource_config, no_overhead=no_overhead)
         self.logger = logging.getLogger(__name__)
 
     def run_workflow(self, workflow_filepath: Union[str, Path]) -> Dict[str, Any]:
@@ -93,6 +96,7 @@ class WorkflowRunner:
         print(f"\n📊 SIMULATION RESULTS:")
         print(f"  Workflow ID: {simulation.workflow_id}")
         print(f"  Composition: {simulation.composition_number}")
+        print(f"  Overhead Enabled: {simulation.overhead_enabled}")
         print(f"  Total Events: {simulation.total_events:,}")
         print(f"  Total Groups: {simulation.total_groups}")
         print(f"  Total Jobs: {simulation.total_jobs}")
@@ -158,6 +162,23 @@ class WorkflowRunner:
         simulation = results['simulation_result']
         metrics = results['metrics']
 
+        # Handle case where simulation failed and metrics is None
+        if metrics is None:
+            self.logger.warning(f"Simulation failed, writing partial results without metrics to {filepath}")
+            output_data = {
+                'simulation_result': {
+                    'success': simulation.success,
+                    'error_message': simulation.error_message,
+                    'overhead_enabled': simulation.overhead_enabled,
+                    'groups': [],
+                    'jobs': []
+                }
+            }
+            with open(filepath, 'w') as f:
+                json.dump(output_data, f, indent=2)
+            self.logger.info(f"Partial results written to {filepath}")
+            return
+
         output_data = {
             'metrics': {
                 'workflow_id': metrics.workflow_id,
@@ -195,6 +216,7 @@ class WorkflowRunner:
                 # Only include raw simulation data not available in metrics
                 'success': simulation.success,
                 'error_message': simulation.error_message,
+                'overhead_enabled': simulation.overhead_enabled,
                 'groups': [
                     {
                         'group_id': group.group_id,
@@ -237,7 +259,9 @@ class WorkflowRunner:
                         'total_write_remote_mb': job.total_write_remote_mb,
                         'total_read_local_mb': job.total_read_local_mb,
                         'total_read_remote_mb': job.total_read_remote_mb,
-                        'total_network_transfer_mb': job.total_network_transfer_mb
+                        'total_network_transfer_mb': job.total_network_transfer_mb,
+                        'total_execution_time': job.total_execution_time,
+                        'job_overhead_secs': job.job_overhead_secs
                     }
                     for job in simulation.jobs
                 ],
@@ -250,15 +274,17 @@ class WorkflowRunner:
         self.logger.info(f"Complete results written to {filepath}")
 
 
-def _get_output_path(input_path: str) -> str:
+def _get_output_path(input_path: str, no_overhead: bool = False) -> str:
     """
     Generate output path based on input path structure.
 
     Args:
         input_path: Path to input workflow file
+        no_overhead: If True, append '_nooverhead' suffix; otherwise append '_overhead' suffix
 
     Returns:
         Output path in results/sim/ directory with same structure (excluding templates/ prefix)
+        and appropriate overhead suffix in filename
     """
     input_path_obj = Path(input_path)
 
@@ -271,10 +297,15 @@ def _get_output_path(input_path: str) -> str:
     # Create output path: results/sim/ + relative path
     output_path = Path("results") / "sim" / relative_path
 
-    # Ensure the output directory exists
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    # Add overhead suffix before file extension
+    suffix = "_nooverhead" if no_overhead else "_overhead"
+    stem = output_path.stem
+    suffix_path = output_path.parent / f"{stem}{suffix}{output_path.suffix}"
 
-    return str(output_path)
+    # Ensure the output directory exists
+    suffix_path.parent.mkdir(parents=True, exist_ok=True)
+
+    return str(suffix_path)
 
 
 def parse_arguments():
@@ -300,6 +331,11 @@ def parse_arguments():
         default='templates/3tasks_composition_001.json',
         help='Path to input workflow JSON file (default: templates/3tasks_composition_001.json)'
     )
+    parser.add_argument(
+        '--no-overhead',
+        action='store_true',
+        help='Disable job overhead calculations (taskset overhead and data transfer overhead)'
+    )
     return parser.parse_args()
 
 
@@ -314,14 +350,14 @@ def main():
     )
 
     # Create runner and execute workflow
-    runner = WorkflowRunner(resource_config)
+    runner = WorkflowRunner(resource_config, no_overhead=args.no_overhead)
     results = runner.run_workflow(args.input_workflow_path)
 
     # Print complete summary
     runner.print_complete_summary(results)
 
     # Write results to file with same structure as input
-    output_path = _get_output_path(args.input_workflow_path)
+    output_path = _get_output_path(args.input_workflow_path, no_overhead=args.no_overhead)
     runner.write_complete_results(results, output_path)
 
 
