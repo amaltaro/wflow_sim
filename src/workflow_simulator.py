@@ -81,6 +81,7 @@ class JobInfo:
     total_read_local_mb: float = 0.0
     total_network_transfer_mb: float = 0.0
     job_overhead_secs: float = 0.0
+    job_overhead_cpu_time: float = 0.0
     total_execution_time: float = 0.0
 
 
@@ -744,6 +745,9 @@ class WorkflowSimulator:
                         input_taskset_size
                     )
 
+                    # Add overhead to wallclock time (overhead is part of job execution time)
+                    job_wallclock += job_metrics.job_overhead_secs
+
                     job = JobInfo(
                         job_id=job_id,
                         group_id=group_id,
@@ -760,6 +764,7 @@ class WorkflowSimulator:
                         total_read_local_mb=job_metrics.total_read_local_mb,
                         total_network_transfer_mb=job_metrics.total_network_transfer_mb,
                         job_overhead_secs=job_metrics.job_overhead_secs,
+                        job_overhead_cpu_time=job_metrics.job_overhead_cpu_time,
                         total_execution_time=job_metrics.total_execution_time
                     )
 

@@ -22,6 +22,7 @@ class JobMetrics:
     total_read_local_mb: float
     total_network_transfer_mb: float  # remote_write + remote_read
     job_overhead_secs: float  # Total job overhead time in seconds
+    job_overhead_cpu_time: float  # Allocated CPU time caused by job overhead (job_overhead_secs * max_multicore)
 
 
 class JobMetricsCalculator:
@@ -125,9 +126,13 @@ class JobMetricsCalculator:
             network_transfer_overhead = 0.0
         # Total job overhead
         job_overhead_secs = taskset_overhead + network_transfer_overhead
+        # Calculate allocated CPU time caused by job overhead
+        job_overhead_cpu_time = job_overhead_secs * max_multicore
         # Add overhead to CPU metrics (overhead consumes CPU resources)
         total_cpu_used_time += (job_overhead_secs * 1)
-        total_cpu_allocated_time += (job_overhead_secs * max_multicore)
+        total_cpu_allocated_time += job_overhead_cpu_time
+        # Add overhead to total execution time (overhead is part of job execution time)
+        total_execution_time += job_overhead_secs
 
         return JobMetrics(
             total_cpu_used_time=total_cpu_used_time,
@@ -138,5 +143,6 @@ class JobMetricsCalculator:
             total_read_remote_mb=total_read_remote_mb,
             total_read_local_mb=total_read_local_mb,
             total_network_transfer_mb=total_network_transfer_mb,
-            job_overhead_secs=job_overhead_secs
+            job_overhead_secs=job_overhead_secs,
+            job_overhead_cpu_time=job_overhead_cpu_time
         )

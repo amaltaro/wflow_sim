@@ -261,7 +261,8 @@ class WorkflowRunner:
                         'total_read_remote_mb': job.total_read_remote_mb,
                         'total_network_transfer_mb': job.total_network_transfer_mb,
                         'total_execution_time': job.total_execution_time,
-                        'job_overhead_secs': job.job_overhead_secs
+                        'job_overhead_secs': job.job_overhead_secs,
+                        'job_overhead_cpu_time': job.job_overhead_cpu_time
                     }
                     for job in simulation.jobs
                 ],
