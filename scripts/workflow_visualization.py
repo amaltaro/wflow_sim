@@ -1056,6 +1056,151 @@ def process_simulation_directory(directory_path: str, overhead_filter: str = Non
     return all_groups, all_jobs, all_simulation_data
 
 
+def generate_summary_table(all_simulation_data: List[Dict],
+                          sim_groups: List[Dict],
+                          output_dir: str,
+                          overhead_enabled: bool) -> pd.DataFrame:
+    """Generate a summary table with key metrics for each workflow construction.
+
+    Creates CSV and formatted text versions of the summary table.
+
+    Args:
+        all_simulation_data: List of simulation data dictionaries
+        sim_groups: List of group metrics dictionaries
+        output_dir: Output directory for the table file
+        overhead_enabled: Whether overhead is enabled (True for overhead, False for nooverhead)
+
+    Returns:
+        pandas DataFrame containing the summary table
+    """
+    print(f"==> Creating summary table for {len(all_simulation_data)} workflow constructions")
+
+    # Prepare data for the table
+    table_data = []
+
+    for i, sim_data in enumerate(all_simulation_data):
+        file_name = sim_data.get('_file_name', f'simulation_{i}')
+
+        # Count total groups for this workflow
+        groups_for_file = [g for g in sim_groups if g.get('file_name') == file_name]
+        total_groups = len(groups_for_file)
+
+        # Extract metrics
+        composition_number = sim_data.get('composition_number', i + 1)
+        wall_time_per_event = sim_data.get('wall_time_per_event', 0.0)
+        cpu_time_per_event = sim_data.get('cpu_time_per_event', 0.0)
+        event_throughput = sim_data.get('event_throughput', 0.0)
+        total_write_remote_mb_per_event = sim_data.get('total_write_remote_mb_per_event', 0.0)
+        total_read_remote_mb_per_event = sim_data.get('total_read_remote_mb_per_event', 0.0)
+        network_transfer_mb_per_event = sim_data.get('network_transfer_mb_per_event', 0.0)
+
+        # Calculate per-event metrics for CPU cores and memory
+        total_events = sim_data.get('total_events_processed', 0.0)
+        total_cpu_cores_used = sim_data.get('total_cpu_cores_used', 0.0)
+        total_memory_used_mb = sim_data.get('total_memory_used_mb', 0.0)
+
+        cpu_cores_per_event = sim_data.get('cpu_cores_per_event', 0.0)
+        memory_mb_per_event = sim_data.get('memory_mb_per_event', 0.0)
+
+        # Build row data with readable column names
+        row_data = {
+            'Comp': composition_number,
+            'Groups': total_groups,
+            'Wall Time/Evt (s)': wall_time_per_event,
+            'CPU Time/Evt (s)': cpu_time_per_event,
+            'Throughput (evt/s)': event_throughput,
+            'Write Remote (MB/evt)': total_write_remote_mb_per_event,
+            'Read Remote (MB/evt)': total_read_remote_mb_per_event,
+            'Net Transfer (MB/evt)': network_transfer_mb_per_event,
+            'CPU Cores/Evt': cpu_cores_per_event,
+            'Memory/Evt (MB)': memory_mb_per_event
+        }
+
+        table_data.append(row_data)
+
+    # Create DataFrame
+    df = pd.DataFrame(table_data)
+
+    # Sort by composition_number if available
+    if 'Comp' in df.columns:
+        df = df.sort_values('Comp').reset_index(drop=True)
+
+    suffix = "_nooverhead" if not overhead_enabled else "_overhead"
+
+    # Save as CSV (with original column names for compatibility)
+    csv_filename = f"workflow_summary_table{suffix}.csv"
+    csv_path = os.path.join(output_dir, csv_filename)
+    # Create a version with original column names for CSV
+    df_csv = df.copy()
+    df_csv.columns = [
+        'composition_number', 'total_groups', 'wall_time_per_event',
+        'cpu_time_per_event', 'event_throughput',
+        'total_write_remote_mb_per_event', 'total_read_remote_mb_per_event',
+        'network_transfer_mb_per_event', 'cpu_cores_per_event',
+        'memory_mb_per_event'
+    ]
+    df_csv.to_csv(csv_path, index=False, float_format='%.6f')
+    print(f"  => Summary table saved to {csv_path}")
+
+    # Save as formatted text file with better formatting
+    txt_filename = f"workflow_summary_table{suffix}.txt"
+    txt_path = os.path.join(output_dir, txt_filename)
+    with open(txt_path, 'w') as f:
+        f.write("Workflow Construction Summary Table\n")
+        f.write("=" * 120 + "\n\n")
+
+        # Format with appropriate precision for different columns
+        formatted_df = df.copy()
+        time_cols = ['Wall Time/Evt (s)', 'CPU Time/Evt (s)']
+        throughput_cols = ['Throughput (evt/s)']
+        mb_cols = ['Write Remote (MB/evt)', 'Read Remote (MB/evt)',
+                   'Net Transfer (MB/evt)', 'Memory/Evt (MB)']
+        cores_cols = ['CPU Cores/Evt']
+
+        for col in time_cols:
+            if col in formatted_df.columns:
+                formatted_df[col] = formatted_df[col].apply(lambda x: f"{x:.4f}")
+        for col in throughput_cols:
+            if col in formatted_df.columns:
+                formatted_df[col] = formatted_df[col].apply(lambda x: f"{x:.4f}")
+        for col in mb_cols:
+            if col in formatted_df.columns:
+                formatted_df[col] = formatted_df[col].apply(lambda x: f"{x:.2f}")
+        for col in cores_cols:
+            if col in formatted_df.columns:
+                formatted_df[col] = formatted_df[col].apply(lambda x: f"{x:.4f}")
+
+        # Save current pandas display options
+        old_max_columns = pd.get_option('display.max_columns')
+        old_width = pd.get_option('display.width')
+        old_max_colwidth = pd.get_option('display.max_colwidth')
+
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.width', None)
+        pd.set_option('display.max_colwidth', None)
+
+        f.write(formatted_df.to_string(index=False))
+        f.write("\n\n")
+
+        # Add summary statistics if multiple workflows
+        if len(df) > 1:
+            f.write("Summary Statistics:\n")
+            f.write("-" * 120 + "\n")
+            numeric_cols = df.select_dtypes(include=[np.number]).columns
+            summary = df[numeric_cols].describe()
+            f.write(summary.to_string())
+            f.write("\n")
+
+        # Restore pandas display options
+        pd.set_option('display.max_columns', old_max_columns)
+        pd.set_option('display.width', old_width)
+        pd.set_option('display.max_colwidth', old_max_colwidth)
+
+    print(f"  => Formatted summary table saved to {txt_path}")
+
+    return df
+
+
 def generate_workflow_visualizations(all_simulation_data: List[Dict],
                                     sim_groups: List[Dict],
                                     jobs: List[Dict],
@@ -1072,38 +1217,48 @@ def generate_workflow_visualizations(all_simulation_data: List[Dict],
     """
     overhead_type = "overhead" if overhead_enabled else "nooverhead"
 
-    if len(all_simulation_data) > 1:
-        print(f"\nGenerating workflow comparison for {len(all_simulation_data)} {overhead_type} workflows...")
+    if len(all_simulation_data) > 0:
+        print(f"\nGenerating workflow comparison for {len(all_simulation_data)} {overhead_type} workflow(s)...")
         try:
-            plot_io_patterns(
+            # Generate summary table (works for any number of workflows)
+            generate_summary_table(
                 all_simulation_data=all_simulation_data,
                 sim_groups=sim_groups,
-                jobs=jobs,
                 output_dir=output_dir,
                 overhead_enabled=overhead_enabled
             )
 
-            plot_resource_utilization(
-                all_simulation_data=all_simulation_data,
-                sim_groups=sim_groups,
-                jobs=jobs,
-                output_dir=output_dir,
-                overhead_enabled=overhead_enabled
-            )
+            # Generate plots (only if more than one workflow)
+            if len(all_simulation_data) > 1:
+                plot_io_patterns(
+                    all_simulation_data=all_simulation_data,
+                    sim_groups=sim_groups,
+                    jobs=jobs,
+                    output_dir=output_dir,
+                    overhead_enabled=overhead_enabled
+                )
 
-            plot_performance_metrics(
-                all_simulation_data=all_simulation_data,
-                sim_groups=sim_groups,
-                jobs=jobs,
-                output_dir=output_dir,
-                overhead_enabled=overhead_enabled
-            )
+                plot_resource_utilization(
+                    all_simulation_data=all_simulation_data,
+                    sim_groups=sim_groups,
+                    jobs=jobs,
+                    output_dir=output_dir,
+                    overhead_enabled=overhead_enabled
+                )
+
+                plot_performance_metrics(
+                    all_simulation_data=all_simulation_data,
+                    sim_groups=sim_groups,
+                    jobs=jobs,
+                    output_dir=output_dir,
+                    overhead_enabled=overhead_enabled
+                )
+            else:
+                print(f"  => Skipping comparison plots (only {len(all_simulation_data)} workflow found)")
         except Exception as e:
             print(f"Warning: Could not generate {overhead_type} workflow comparison: {e}")
             import traceback
             traceback.print_exc()
-    elif len(all_simulation_data) == 1:
-        print(f"\nSkipping {overhead_type} workflow comparison (only {len(all_simulation_data)} workflow found)")
     else:
         print(f"\nNo {overhead_type} files found, skipping {overhead_type} visualizations")
 
