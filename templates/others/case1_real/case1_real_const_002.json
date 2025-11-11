@@ -31,7 +31,7 @@
   },
   "Taskset3": {
     "KeepOutput": true,
-    "Memory": 7000,
+    "Memory": 8000,
     "Multicore": 4,
     "RequiresGPU": "forbidden",
     "ScramArch": [
@@ -45,7 +45,7 @@
   },
   "Taskset4": {
     "KeepOutput": true,
-    "Memory": 2000,
+    "Memory": 3000,
     "Multicore": 2,
     "RequiresGPU": "forbidden",
     "ScramArch": [
@@ -59,7 +59,7 @@
   },
   "Taskset5": {
     "KeepOutput": true,
-    "Memory": 8000,
+    "Memory": 4000,
     "Multicore": 4,
     "RequiresGPU": "forbidden",
     "ScramArch": [
