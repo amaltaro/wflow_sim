@@ -27,9 +27,9 @@
     "cpu_utilization": 1.0,
     "memory_occupancy": 1.0,
     "total_cpu_cores_used": 4302,
-    "total_memory_used_mb": 7014000,
+    "total_memory_used_mb": 7162000,
     "cpu_cores_per_event": 0.0037246753246753246,
-    "memory_mb_per_event": 6.072727272727272
+    "memory_mb_per_event": 6.200865800865801
   },
   "simulation_result": {
     "success": true,
@@ -103,7 +103,7 @@
             "group_name": "group_2",
             "input_taskset": "Taskset2",
             "time_per_event": 6,
-            "memory": 7000,
+            "memory": 8000,
             "multicore": 4,
             "size_per_event": 550,
             "group_input_events": 7200,
@@ -130,7 +130,7 @@
             "group_name": "group_3",
             "input_taskset": "Taskset3",
             "time_per_event": 1,
-            "memory": 2000,
+            "memory": 3000,
             "multicore": 2,
             "size_per_event": 150,
             "group_input_events": 43200,
@@ -157,7 +157,7 @@
             "group_name": "group_4",
             "input_taskset": "Taskset4",
             "time_per_event": 0.3402,
-            "memory": 8000,
+            "memory": 4000,
             "multicore": 4,
             "size_per_event": 30.782,
             "group_input_events": 126984,
