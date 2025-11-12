@@ -10,10 +10,10 @@
     "ScramArch": [
       "el8_amd64_gcc10"
     ],
-    "SizePerEvent": 807.0317070422535,
-    "TimePerEvent": 1.6348524382189265,
+    "SizePerEvent": 801,
+    "TimePerEvent": 6.5,
     "GroupName": "group_0",
-    "GroupInputEvents": 26424
+    "GroupInputEvents": 6646
   },
   "Taskset2": {
     "KeepOutput": false,
@@ -23,11 +23,11 @@
     "ScramArch": [
       "el8_amd64_gcc10"
     ],
-    "SizePerEvent": 1200,
-    "TimePerEvent": 30,
+    "SizePerEvent": 2185,
+    "TimePerEvent": 3,
     "InputTaskset": "Taskset1",
     "GroupName": "group_1",
-    "GroupInputEvents": 1440
+    "GroupInputEvents": 14400
   },
   "Taskset3": {
     "KeepOutput": true,
@@ -37,11 +37,11 @@
     "ScramArch": [
       "el8_amd64_gcc10"
     ],
-    "SizePerEvent": 550,
-    "TimePerEvent": 6,
+    "SizePerEvent": 407.5,
+    "TimePerEvent": 4,
     "InputTaskset": "Taskset2",
     "GroupName": "group_7",
-    "GroupInputEvents": 6171
+    "GroupInputEvents": 8640
   },
   "Taskset4": {
     "KeepOutput": true,
@@ -51,11 +51,11 @@
     "ScramArch": [
       "el8_amd64_gcc11"
     ],
-    "SizePerEvent": 150,
+    "SizePerEvent": 76,
     "TimePerEvent": 1,
     "InputTaskset": "Taskset3",
     "GroupName": "group_7",
-    "GroupInputEvents": 6171
+    "GroupInputEvents": 8640
   },
   "Taskset5": {
     "KeepOutput": true,
@@ -65,11 +65,11 @@
     "ScramArch": [
       "el8_amd64_gcc11"
     ],
-    "SizePerEvent": 30.782,
-    "TimePerEvent": 0.3402,
+    "SizePerEvent": 1.65,
+    "TimePerEvent": 0.1,
     "InputTaskset": "Taskset4",
     "GroupName": "group_4",
-    "GroupInputEvents": 126984
+    "GroupInputEvents": 432000
   },
   "CompositionNumber": 14
 }
