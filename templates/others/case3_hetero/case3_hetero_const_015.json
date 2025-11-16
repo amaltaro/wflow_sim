@@ -1,7 +1,7 @@
 {
   "Comments": "Workflow Composition 15 - 4 groups",
   "NumTasks": 5,
-  "RequestNumEvents": 1155000,
+  "RequestNumEvents": 1000000,
   "Taskset1": {
     "KeepOutput": false,
     "Memory": 2000,
@@ -24,10 +24,10 @@
       "el8_amd64_gcc10"
     ],
     "SizePerEvent": 2185,
-    "TimePerEvent": 3,
+    "TimePerEvent": 5,
     "InputTaskset": "Taskset1",
     "GroupName": "group_1",
-    "GroupInputEvents": 14400
+    "GroupInputEvents": 8640
   },
   "Taskset3": {
     "KeepOutput": true,
@@ -37,11 +37,11 @@
     "ScramArch": [
       "el8_amd64_gcc10"
     ],
-    "SizePerEvent": 407.5,
-    "TimePerEvent": 4,
+    "SizePerEvent": 400.5,
+    "TimePerEvent": 6.7,
     "InputTaskset": "Taskset2",
     "GroupName": "group_2",
-    "GroupInputEvents": 10800
+    "GroupInputEvents": 6447
   },
   "Taskset4": {
     "KeepOutput": true,
@@ -51,11 +51,11 @@
     "ScramArch": [
       "el8_amd64_gcc11"
     ],
-    "SizePerEvent": 76,
-    "TimePerEvent": 1,
+    "SizePerEvent": 75.5,
+    "TimePerEvent": 0.65,
     "InputTaskset": "Taskset3",
     "GroupName": "group_8",
-    "GroupInputEvents": 39272
+    "GroupInputEvents": 56103
   },
   "Taskset5": {
     "KeepOutput": true,
@@ -66,10 +66,10 @@
       "el8_amd64_gcc11"
     ],
     "SizePerEvent": 1.65,
-    "TimePerEvent": 0.1,
+    "TimePerEvent": 0.12,
     "InputTaskset": "Taskset4",
     "GroupName": "group_8",
-    "GroupInputEvents": 39272
+    "GroupInputEvents": 56103
   },
   "CompositionNumber": 15
 }
