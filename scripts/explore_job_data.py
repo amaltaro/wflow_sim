@@ -7,7 +7,7 @@ extracting metrics similar to those simulated in the workflow simulator.
 
 The script handles two document types:
 1. condor: Condor job accounting data
-2. wmarchive: WMAgent archive data
+2. wmarchive: WMArchive data
 
 Metrics extracted:
 - Number of events processed
@@ -184,7 +184,9 @@ class JobDataExplorer:
         Extract metrics from condor producer document.
         
         Field hierarchy:
-        - Events: data.ChirpCMSSWEvents (total events processed)
+        - Events: data.ChirpCMSSW_cmsRun{N}_Events (output events from last taskset, where N = ChirpCMSSWRuns)
+                  Falls back to data.ChirpCMSSWEvents if last step field not available
+                  This accounts for filter efficiency < 1.0 (fewer events out than in)
         - Turnaround time: data.CommittedTime (seconds) - total job time
         - Payload time: data.ChirpCMSSWElapsed (seconds) - CMSSW execution time
         - Time per event: data.TimePerEvent (seconds per event)
@@ -199,9 +201,6 @@ class JobDataExplorer:
         - Memory requested: data.OriginalMemory (MB)
         - Task name: data.WMAgent_TaskType
         """
-        # Events processed
-        metrics.events_processed = data.get('ChirpCMSSWEvents', 0)
-        
         # Turnaround time (total job time including overhead)
         metrics.turnaround_time_sec = data.get('CommittedTime', 0.0)
         
@@ -234,6 +233,22 @@ class JobDataExplorer:
         # CMSSW steps
         metrics.num_cmssw_steps = data.get('ChirpCMSSWRuns', 0)
         
+        # Events processed - use output events from last taskset if available
+        # This accounts for filter efficiency < 1.0 (fewer events out than in)
+        # NOTE that for a single step job, both metrics will contain the same value (input events)
+        if metrics.num_cmssw_steps > 1:
+            # Try to get output events from the last cmsRun step
+            last_step_field = f'ChirpCMSSW_cmsRun{metrics.num_cmssw_steps}_Events'
+            last_step_events = data.get(last_step_field, None)
+            if last_step_events is not None:
+                metrics.events_processed = last_step_events
+            else:
+                # Fallback to total events processed if last step field not available
+                metrics.events_processed = data.get('ChirpCMSSWEvents', 0)
+        else:
+            # No CMSSW steps, use total events
+            metrics.events_processed = data.get('ChirpCMSSWEvents', 0)
+
         # Event rate (events per second)
         metrics.event_rate = data.get('EventRate', 0.0)
         
@@ -493,7 +508,9 @@ class JobDataExplorer:
             pass
         else:
             print("\n## Condor Producer Fields")
-        print("\n- **Events Processed**: `data.ChirpCMSSWEvents`")
+        print("\n- **Events Processed**: `data.ChirpCMSSW_cmsRun{N}_Events` (output events from last taskset, where N = ChirpCMSSWRuns)")
+        print("    Falls back to `data.ChirpCMSSWEvents` if last step field not available")
+        print("    Note: Uses last step output events to account for filter efficiency < 1.0")
         print("- **Turnaround Time**: `data.CommittedTime` (seconds)")
         print("- **Payload Time**: `data.ChirpCMSSWElapsed` (seconds, CMSSW execution)")
         print("- **Time per Event**: `data.TimePerEvent` (seconds per event)")
@@ -595,6 +612,9 @@ Examples:
 
   # Export to JSON file
   python explore_job_data.py data/const001.json --producer condor results/job_metrics.json
+
+  # Print field hierarchy documentation
+  python explore_job_data.py data/const001.json --verbose
         """
     )
     parser.add_argument('json_file', help='Path to JSON file containing Elasticsearch results')
@@ -604,14 +624,21 @@ Examples:
         choices=['condor', 'wmarchive'],
         help='Filter to specific producer type (default: analyze both)'
     )
+    parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+        help='Print field hierarchy documentation'
+    )
     
     args = parser.parse_args()
     
     explorer = JobDataExplorer(args.json_file, producer_filter=args.producer)
     explorer.load_data()
     explorer.print_summary()
-    explorer.print_field_hierarchy()
-    
+
+    if args.verbose:
+        explorer.print_field_hierarchy()
+
     if args.output_file:
         explorer.export_to_json(args.output_file)
 
