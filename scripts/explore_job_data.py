@@ -393,11 +393,126 @@ class JobDataExplorer:
         # Need to investigate which fields indicate job failure in wmarchive documents
         # Possible fields to check: meta_data.jobstate, steps[].errors, etc.
 
-    def print_summary(self) -> None:
-        """Print summary statistics."""
+    def _calculate_summary_metrics(self) -> Dict[str, Any]:
+        """
+        Calculate aggregated summary metrics from all jobs.
+
+        Returns:
+            Dictionary containing all aggregated metrics
+        """
+        if not self.jobs:
+            return {}
+
+        # Basic counts
+        total_events = sum(j.events_processed for j in self.jobs)
+
+        # Time metrics
+        total_wall_time_overhead = sum(j.turnaround_time_sec for j in self.jobs)
+        total_wall_time_non_overhead = sum(j.payload_time_sec for j in self.jobs)
+
+        # Workflow turnaround time (from first job start to last job completion)
+        job_start_dates = [j.job_start_date for j in self.jobs if j.job_start_date is not None]
+        completion_dates = [j.completion_date for j in self.jobs if j.completion_date is not None]
+        total_turnaround_time = None
+        if job_start_dates and completion_dates:
+            first_start = min(job_start_dates)
+            last_completion = max(completion_dates)
+            total_turnaround_time = last_completion - first_start
+
+        # CPU metrics
+        total_cpu_used_time = sum(j.cpu_time_sec for j in self.jobs)
+        # CPU allocated time: sum of (turnaround_time * cores_requested) for each job
+        total_cpu_allocated_time = sum(
+            j.turnaround_time_sec * j.cores_requested for j in self.jobs
+        )
+
+        # Network transfer
+        total_network_transfer_bytes = sum(j.network_transfer_bytes for j in self.jobs)
+        total_network_transfer_mb = total_network_transfer_bytes / (1024.0 * 1024.0)
+
+        # Disk I/O (note: source data doesn't distinguish local vs remote)
+        total_write_total_bytes = sum(j.write_total_bytes for j in self.jobs)
+        total_read_total_bytes = sum(j.read_total_bytes for j in self.jobs)
+        total_disk_usage_kb = sum(j.disk_usage_kb for j in self.jobs)
+
+        # Convert to MB
+        total_write_total_mb = total_write_total_bytes / (1024.0 * 1024.0)
+        total_read_total_mb = total_read_total_bytes / (1024.0 * 1024.0)
+
+        # Note: Local vs remote distinction not available in source data
+        # ChirpCMSSWWriteBytes and ChirpCMSSWReadBytes include both local and remote
+        total_write_local_mb = None  # Not available in source data
+        total_write_remote_mb = None  # Not available in source data
+        total_read_local_mb = None  # Not available in source data
+        total_read_remote_mb = None  # Not available in source data
+
+        # Resource allocation
+        total_cpu_cores_used = sum(j.cores_requested for j in self.jobs)
+        total_memory_used_mb = sum(j.memory_requested_mb for j in self.jobs)
+
+        # Per-event metrics
+        cpu_cores_per_event = (
+            total_cpu_cores_used / total_events if total_events > 0 else 0.0
+        )
+        memory_mb_per_event = (
+            total_memory_used_mb / total_events if total_events > 0 else 0.0
+        )
+
+        # Event throughput and time per event metrics
+        event_throughput = (
+            total_events / total_cpu_allocated_time if total_cpu_allocated_time > 0 else 0.0
+        )
+        wall_time_per_event = (
+            total_wall_time_non_overhead / total_events if total_events > 0 else 0.0
+        )
+        cpu_time_per_event = (
+            total_cpu_allocated_time / total_events if total_events > 0 else 0.0
+        )
+
+        return {
+            'total_jobs': len(self.jobs),
+            'condor_jobs': len(self.condor_jobs),
+            'wmarchive_jobs': len(self.wmarchive_jobs),
+            'total_events': total_events,
+            'total_wall_time_overhead': total_wall_time_overhead,
+            'total_wall_time_non_overhead': total_wall_time_non_overhead,
+            'total_turnaround_time': total_turnaround_time,
+            'total_cpu_used_time': total_cpu_used_time,
+            'total_cpu_allocated_time': total_cpu_allocated_time,
+            'total_network_transfer_bytes': total_network_transfer_bytes,
+            'total_network_transfer_mb': total_network_transfer_mb,
+            'total_write_total_bytes': total_write_total_bytes,
+            'total_write_total_mb': total_write_total_mb,
+            'total_read_total_bytes': total_read_total_bytes,
+            'total_read_total_mb': total_read_total_mb,
+            'total_write_local_mb': total_write_local_mb,
+            'total_write_remote_mb': total_write_remote_mb,
+            'total_read_local_mb': total_read_local_mb,
+            'total_read_remote_mb': total_read_remote_mb,
+            'total_disk_usage_kb': total_disk_usage_kb,
+            'total_cpu_cores_used': total_cpu_cores_used,
+            'total_memory_used_mb': total_memory_used_mb,
+            'cpu_cores_per_event': cpu_cores_per_event,
+            'memory_mb_per_event': memory_mb_per_event,
+            'event_throughput': event_throughput,
+            'wall_time_per_event': wall_time_per_event,
+            'cpu_time_per_event': cpu_time_per_event,
+        }
+
+    def print_summary(self, metrics: Optional[Dict[str, Any]] = None) -> None:
+        """
+        Print summary statistics.
+
+        Args:
+            metrics: Optional pre-calculated summary metrics. If None, will be calculated.
+        """
         if not self.jobs:
             print("No jobs to summarize")
             return
+
+        # Use provided metrics or calculate if not provided
+        if metrics is None:
+            metrics = self._calculate_summary_metrics()
 
         print("\n" + "="*80)
         print("JOB METRICS SUMMARY")
@@ -406,14 +521,14 @@ class JobDataExplorer:
         print("="*80)
 
         # Overall statistics
-        print(f"\nTotal Jobs: {len(self.jobs)}")
+        print(f"\nTotal Jobs: {metrics['total_jobs']}")
         if not self.producer_filter:
-            print(f"  - Condor: {len(self.condor_jobs)}")
-            print(f"  - WMA Archive: {len(self.wmarchive_jobs)}")
+            print(f"  - Condor: {metrics['condor_jobs']}")
+            print(f"  - WMA Archive: {metrics['wmarchive_jobs']}")
         elif self.producer_filter == 'condor':
-            print(f"  - Condor: {len(self.condor_jobs)}")
+            print(f"  - Condor: {metrics['condor_jobs']}")
         elif self.producer_filter == 'wmarchive':
-            print(f"  - WMA Archive: {len(self.wmarchive_jobs)}")
+            print(f"  - WMA Archive: {metrics['wmarchive_jobs']}")
 
         # Jobs per job type (CMS_JobType)
         job_type_counts = defaultdict(int)
@@ -436,27 +551,16 @@ class JobDataExplorer:
             print(f"  {task_type}: {count} jobs")
 
         # Events
-        total_events = sum(j.events_processed for j in self.jobs)
+        total_events = metrics['total_events']
         print(f"\nTotal Events Processed: {total_events:,}")
-        if self.jobs:
-            avg_events = total_events / len(self.jobs)
+        if metrics['total_jobs'] > 0:
+            avg_events = total_events / metrics['total_jobs']
             print(f"Average Events per Job: {avg_events:,.1f}")
 
         # Time metrics
-        # Total wall time with overhead (sum of all CommittedTime)
-        total_wall_time_overhead = sum(j.turnaround_time_sec for j in self.jobs)
-
-        # Total wall time without overhead (sum of all ChirpCMSSWElapsed)
-        total_wall_time_non_overhead = sum(j.payload_time_sec for j in self.jobs)
-
-        # Workflow turnaround time (from first job start to last job completion)
-        job_start_dates = [j.job_start_date for j in self.jobs if j.job_start_date is not None]
-        completion_dates = [j.completion_date for j in self.jobs if j.completion_date is not None]
-        total_turnaround_time = None
-        if job_start_dates and completion_dates:
-            first_start = min(job_start_dates)
-            last_completion = max(completion_dates)
-            total_turnaround_time = last_completion - first_start
+        total_wall_time_overhead = metrics['total_wall_time_overhead']
+        total_wall_time_non_overhead = metrics['total_wall_time_non_overhead']
+        total_turnaround_time = metrics['total_turnaround_time']
 
         print(f"\nTime Metrics:")
         print(f"  Total Wall Time (with overhead): {total_wall_time_overhead:,.1f} seconds ({total_wall_time_overhead/3600:.2f} hours)")
@@ -472,18 +576,20 @@ class JobDataExplorer:
         else:
             print(f"  Total Turnaround Time (workflow): Not available (missing JobStartDate or CompletionDate)")
 
-        # CPU time
-        total_cpu = sum(j.cpu_time_sec for j in self.jobs)
+        # CPU metrics
+        total_cpu_used_time = metrics['total_cpu_used_time']
+        total_cpu_allocated_time = metrics['total_cpu_allocated_time']
         print(f"\nCPU Metrics:")
-        print(f"  Total CPU Time: {total_cpu:,.1f} seconds ({total_cpu/3600:.2f} hours)")
-        if total_wall_time_non_overhead > 0:
-            cpu_efficiency = (total_cpu / total_wall_time_non_overhead) * 100
-            print(f"  CPU Efficiency: {cpu_efficiency:.1f}% (CPU time / Payload time)")
+        print(f"  Total CPU Used Time: {total_cpu_used_time:,.1f} seconds ({total_cpu_used_time/3600:.2f} hours)")
+        print(f"  Total CPU Allocated Time: {total_cpu_allocated_time:,.1f} seconds ({total_cpu_allocated_time/3600:.2f} hours)")
+        if total_cpu_allocated_time > 0:
+            cpu_efficiency = (total_cpu_used_time / total_cpu_allocated_time) * 100
+            print(f"  CPU Efficiency: {cpu_efficiency:.1f}% (CPU used time / CPU allocated time)")
 
         # Network transfer
-        total_network = sum(j.network_transfer_bytes for j in self.jobs)
+        total_network_transfer_mb = metrics['total_network_transfer_mb']
         print(f"\nNetwork Transfer:")
-        print(f"  Total Network Transfer: {total_network:,} bytes ({total_network/(1024**3):.2f} GB)")
+        print(f"  Total Network Transfer: {metrics['total_network_transfer_bytes']:,} bytes ({total_network_transfer_mb/(1024**2):.2f} GB)")
         if not self.producer_filter:
             if self.condor_jobs:
                 condor_network = sum(j.network_transfer_bytes for j in self.condor_jobs)
@@ -497,14 +603,14 @@ class JobDataExplorer:
             print(f"    (Note: Network metrics not available in wmarchive documents)")
 
         # Disk I/O
-        total_write_total = sum(j.write_total_bytes for j in self.jobs)
-        total_read_total = sum(j.read_total_bytes for j in self.jobs)
-        total_disk_usage = sum(j.disk_usage_kb for j in self.jobs)
+        total_write_total_mb = metrics['total_write_total_mb']
+        total_read_total_mb = metrics['total_read_total_mb']
+        total_disk_usage_kb = metrics['total_disk_usage_kb']
 
         print(f"\nDisk I/O:")
-        print(f"  Total Write (all): {total_write_total:,} bytes ({total_write_total/(1024**3):.2f} GB)")
-        print(f"  Total Read (all): {total_read_total:,} bytes ({total_read_total/(1024**3):.2f} GB)")
-        print(f"  Total Local Disk Usage: {total_disk_usage:,} KB ({total_disk_usage/(1024**2):.2f} GB)")
+        print(f"  Total Write (all): {metrics['total_write_total_bytes']:,} bytes ({total_write_total_mb/(1024**2):.2f} GB)")
+        print(f"  Total Read (all): {metrics['total_read_total_bytes']:,} bytes ({total_read_total_mb/(1024**2):.2f} GB)")
+        print(f"  Total Local Disk Usage: {total_disk_usage_kb:,} KB ({total_disk_usage_kb/(1024**2):.2f} GB)")
         if self.producer_filter != 'wmarchive' and self.condor_jobs:
             print(f"    (Note: ChirpCMSSWWriteBytes and ChirpCMSSWReadBytes include both local and remote)")
 
@@ -513,39 +619,38 @@ class JobDataExplorer:
         if total_steps > 0:
             print(f"\nCMSSW Steps:")
             print(f"  Total CMSSW Steps: {total_steps:,}")
-            if self.jobs:
-                avg_steps = total_steps / len(self.jobs)
+            if metrics['total_jobs'] > 0:
+                avg_steps = total_steps / metrics['total_jobs']
                 print(f"  Average Steps per Job: {avg_steps:.1f}")
 
-        # Event rate
-        total_event_rate = sum(j.event_rate for j in self.jobs)
-        if total_event_rate > 0:
-            print(f"\nEvent Throughput:")
-            if self.jobs:
-                avg_event_rate = total_event_rate / len(self.jobs)
-                print(f"  Average Event Rate: {avg_event_rate:.4f} events/second")
+        # Event throughput and time per event metrics
+        event_throughput = metrics['event_throughput']
+        wall_time_per_event = metrics['wall_time_per_event']
+        cpu_time_per_event = metrics['cpu_time_per_event']
 
-        # Time per event
-        total_time_per_event = sum(j.time_per_event_sec for j in self.jobs if j.time_per_event_sec > 0)
-        if total_time_per_event > 0:
-            jobs_with_tpe = sum(1 for j in self.jobs if j.time_per_event_sec > 0)
-            if jobs_with_tpe > 0:
-                avg_time_per_event = total_time_per_event / jobs_with_tpe
-                print(f"  Average Time per Event: {avg_time_per_event:.4f} seconds/event")
+        print(f"\nEvent Throughput:")
+        print(f"  Event Throughput: {event_throughput:.6f} events/second")
+        print(f"  Wall Time per Event: {wall_time_per_event:.6f} seconds/event")
+        print(f"  CPU Time per Event: {cpu_time_per_event:.6f} seconds/event")
 
         # Resource allocation
-        total_cores = sum(j.cores_requested for j in self.jobs)
-        total_memory = sum(j.memory_requested_mb for j in self.jobs)
+        total_cpu_cores_used = metrics['total_cpu_cores_used']
+        total_memory_used_mb = metrics['total_memory_used_mb']
+        cpu_cores_per_event = metrics['cpu_cores_per_event']
+        memory_mb_per_event = metrics['memory_mb_per_event']
 
         print(f"\nResource Allocation (Requested):")
-        print(f"  Total Cores Requested: {total_cores:,}")
-        if self.jobs:
-            avg_cores = total_cores / len(self.jobs)
+        print(f"  Total Cores Requested: {total_cpu_cores_used:,}")
+        if metrics['total_jobs'] > 0:
+            avg_cores = total_cpu_cores_used / metrics['total_jobs']
             print(f"  Average Cores per Job: {avg_cores:.1f}")
-        print(f"  Total Memory Requested: {total_memory:,.1f} MB ({total_memory/1024:.2f} GB)")
-        if self.jobs:
-            avg_memory = total_memory / len(self.jobs)
+        print(f"  Total Memory Requested: {total_memory_used_mb:,.1f} MB ({total_memory_used_mb/1024:.2f} GB)")
+        if metrics['total_jobs'] > 0:
+            avg_memory = total_memory_used_mb / metrics['total_jobs']
             print(f"  Average Memory per Job: {avg_memory:.1f} MB")
+        if total_events > 0:
+            print(f"  CPU Cores per Event: {cpu_cores_per_event:.6f} cores/event")
+            print(f"  Memory per Event: {memory_mb_per_event:.6f} MB/event")
 
         print("\n" + "="*80)
 
@@ -615,28 +720,56 @@ class JobDataExplorer:
 
         print("\n" + "="*80)
 
-    def export_to_json(self, output_file: str) -> None:
-        """Export extracted metrics to JSON file."""
-        # Calculate workflow-level time metrics
-        total_wall_time_overhead = sum(j.turnaround_time_sec for j in self.jobs)
-        total_wall_time_non_overhead = sum(j.payload_time_sec for j in self.jobs)
+    def export_to_json(self, output_file: str, metrics: Optional[Dict[str, Any]] = None) -> None:
+        """
+        Export extracted metrics to JSON file.
 
-        job_start_dates = [j.job_start_date for j in self.jobs if j.job_start_date is not None]
-        completion_dates = [j.completion_date for j in self.jobs if j.completion_date is not None]
-        total_turnaround_time = None
-        if job_start_dates and completion_dates:
-            first_start = min(job_start_dates)
-            last_completion = max(completion_dates)
-            total_turnaround_time = last_completion - first_start
+        Args:
+            output_file: Path to output JSON file
+            metrics: Optional pre-calculated summary metrics. If None, will be calculated.
+        """
+        # Use provided metrics or calculate if not provided
+        if metrics is None:
+            metrics = self._calculate_summary_metrics()
+
+        # Handle empty jobs case
+        if not metrics:
+            print("No jobs to export")
+            return
 
         output_data = {
             'summary': {
-                'total_jobs': len(self.jobs),
-                'condor_jobs': len(self.condor_jobs),
-                'wmarchive_jobs': len(self.wmarchive_jobs),
-                'total_wall_time_overhead': total_wall_time_overhead,
-                'total_wall_time_non_overhead': total_wall_time_non_overhead,
-                'total_turnaround_time': total_turnaround_time,
+                'total_jobs': metrics['total_jobs'],
+                'condor_jobs': metrics['condor_jobs'],
+                'wmarchive_jobs': metrics['wmarchive_jobs'],
+                'total_events': metrics['total_events'],
+                'total_wall_time_overhead': metrics['total_wall_time_overhead'],
+                'total_wall_time_non_overhead': metrics['total_wall_time_non_overhead'],
+                'total_turnaround_time': metrics['total_turnaround_time'],
+                'total_cpu_used_time': metrics['total_cpu_used_time'],
+                'total_cpu_allocated_time': metrics['total_cpu_allocated_time'],
+                'total_write_total_bytes': metrics['total_write_total_bytes'],
+                'total_write_total_mb': metrics['total_write_total_mb'],
+                'total_read_total_bytes': metrics['total_read_total_bytes'],
+                'total_read_total_mb': metrics['total_read_total_mb'],
+                'total_write_local_mb': metrics['total_write_local_mb'],
+                'total_write_remote_mb': metrics['total_write_remote_mb'],
+                'total_read_local_mb': metrics['total_read_local_mb'],
+                'total_read_remote_mb': metrics['total_read_remote_mb'],
+                'total_network_transfer_bytes': metrics['total_network_transfer_bytes'],
+                'total_network_transfer_mb': metrics['total_network_transfer_mb'],
+                'total_cpu_cores_used': metrics['total_cpu_cores_used'],
+                'total_memory_used_mb': metrics['total_memory_used_mb'],
+                'cpu_cores_per_event': metrics['cpu_cores_per_event'],
+                'memory_mb_per_event': metrics['memory_mb_per_event'],
+                'event_throughput': metrics['event_throughput'],
+                'wall_time_per_event': metrics['wall_time_per_event'],
+                'cpu_time_per_event': metrics['cpu_time_per_event'],
+                'total_disk_usage_kb': metrics['total_disk_usage_kb'],
+                'note_local_remote_io': (
+                    'Local vs remote I/O distinction not available in source data. '
+                    'ChirpCMSSWWriteBytes and ChirpCMSSWReadBytes include both local and remote I/O.'
+                ),
             },
             'jobs': [
                 {
@@ -711,13 +844,16 @@ Examples:
 
     explorer = JobDataExplorer(args.json_file, producer_filter=args.producer)
     explorer.load_data()
-    explorer.print_summary()
+
+    # Calculate summary metrics once and reuse for both print and export
+    summary_metrics = explorer._calculate_summary_metrics()
+    explorer.print_summary(metrics=summary_metrics)
 
     if args.verbose:
         explorer.print_field_hierarchy()
 
     if args.output_file:
-        explorer.export_to_json(args.output_file)
+        explorer.export_to_json(args.output_file, metrics=summary_metrics)
 
 
 if __name__ == '__main__':
