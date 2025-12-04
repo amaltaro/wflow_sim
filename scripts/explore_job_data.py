@@ -55,11 +55,13 @@ class JobMetrics:
     cpu_time_sec: float = 0.0  # Total CPU time used
 
     # Network transfer
-    network_transfer_bytes: int = 0  # Bytes sent + received
+    network_transfer_bytes: int = 0  # Placeholder - not used (sandbox/log files disregarded)
 
     # Disk I/O
-    write_total_bytes: int = 0  # Total bytes written (local + remote)
-    read_total_bytes: int = 0  # Total bytes read (local + remote)
+    write_local_mb: float = 0.0  # Local write megabytes
+    write_remote_mb: float = 0.0  # Remote write megabytes
+    read_local_mb: float = 0.0  # Local read megabytes
+    read_remote_mb: float = 0.0  # Remote read megabytes
     disk_usage_kb: int = 0  # Local disk usage in kilobytes
 
     # CMSSW steps
@@ -210,23 +212,35 @@ class JobDataExplorer:
         """
         Extract metrics from condor producer document.
 
-        Field hierarchy:
+        Field hierarchy (based on convert_to_json.py from cms-htcondor-es):
         - Events: data.ChirpCMSSW_cmsRun{N}_Events (output events from last taskset, where N = ChirpCMSSWRuns)
                   Falls back to data.ChirpCMSSWEvents if last step field not available
                   This accounts for filter efficiency < 1.0 (fewer events out than in)
         - Turnaround time: data.CommittedTime (seconds) - total job time including overhead
         - Payload time: data.ChirpCMSSWElapsed (seconds) - CMSSW execution time without overhead
-        - Time per event: data.TimePerEvent (seconds per event)
-        - Job start date: data.JobStartDate (Unix timestamp)
-        - Completion date: data.CompletionDate (Unix timestamp)
+        - Time per event: data.TimePerEvent (CPU seconds per event)
+                          Calculated as: 1.0 / EventRate, where EventRate = ChirpCMSSWEvents / (CoreHr * 3600.0)
+                          This is based on CPU time (CoreHr = CPU hours)
+        - Job start date: data.JobStartDate (Unix timestamp, may be in seconds or milliseconds)
+        - Completion date: data.CompletionDate (Unix timestamp, may be in seconds or milliseconds)
         - CPU time: data.ChirpCMSSWTotalCPU (seconds) or data.CpuTimeHr (hours)
-        - Network: data.BytesSent + data.BytesRecvd
-        - Total writes: data.ChirpCMSSWWriteBytes (total written, local + remote)
-        - Total reads: data.ChirpCMSSWReadBytes (total read, local + remote)
+                    CoreHr is also available (CPU hours, used for EventRate calculation)
+        - Network transfer (physics data): read_remote_mb + write_remote_mb
+          (Set to 0.0 for now since write_remote_mb is not accurately calculated)
+          Note: BytesSent + BytesRecvd (sandbox/log files) are disregarded
+        - Local writes (MB): ChirpCMSSWWriteBytes / (1024 * 1024)
+        - Remote writes (MB): 0.0 (not all written data is staged to shared storage)
+        - Local reads (MB): Always (ChirpCMSSWReadBytes - ChirpCMSSW_cmsRun1_ReadBytes) / (1024 * 1024).
+                            Note that ChirpCMSSW_cmsRun1_ReadBytes might report a value even if no data is read.
+        - Remote reads (MB): If DESIRED_CMSDataset is not None (string),
+                            then ChirpCMSSW_cmsRun1_ReadBytes / (1024 * 1024). Otherwise 0
         - Local disk usage: data.DiskUsage (kilobytes)
         - CMSSW steps: data.ChirpCMSSWRuns (number of CMSSW steps)
-        - Event rate: data.EventRate (events per second)
-        - Cores requested: data.OriginalCpus
+        - Event rate: data.EventRate (events per second, based on CPU time)
+                      Calculated as: ChirpCMSSWEvents / (CoreHr * 3600.0)
+                      Note: There's also CMSSWEventRate = ChirpCMSSWEvents / (ChirpCMSSWElapsed * RequestCpus)
+                            which is based on wall clock time, not CPU time
+        - Cores requested: data.OriginalCpus (or RequestCpus)
         - Memory requested: data.OriginalMemory (MB)
         - Task name: data.WMAgent_TaskType
         """
@@ -236,10 +250,18 @@ class JobDataExplorer:
         # Payload time (CMSSW execution time, without Condor overhead)
         metrics.payload_time_sec = data.get('ChirpCMSSWElapsed', 0.0)
 
-        # Time per event
+        # Time per event (CPU seconds per event)
+        # According to convert_to_json.py:
+        # TimePerEvent = 1.0 / EventRate if EventRate > 0
+        # where EventRate = ChirpCMSSWEvents / (CoreHr * 3600.0)
+        # This is based on CPU time, not wall clock time
+        # Note: There's also CMSSWTimePerEvent = 1.0 / CMSSWEventRate
+        #       which is based on wall clock time (payload time), but we use TimePerEvent here
         metrics.time_per_event_sec = data.get('TimePerEvent', 0.0)
 
         # CPU time - prefer ChirpCMSSWTotalCPU (more accurate), fallback to CpuTimeHr
+        # According to convert_to_json.py, CoreHr is also available (CPU hours)
+        # and is used for EventRate calculation: EventRate = ChirpCMSSWEvents / (CoreHr * 3600.0)
         chirp_cpu = data.get('ChirpCMSSWTotalCPU', 0.0)  # seconds
         cpu_time_hr = data.get('CpuTimeHr', 0.0)  # hours
         if chirp_cpu > 0:
@@ -248,13 +270,37 @@ class JobDataExplorer:
             metrics.cpu_time_sec = cpu_time_hr * 3600.0
 
         # Network transfer
+        # Note: BytesSent + BytesRecvd are for input sandbox and output log files,
+        # not physics data. These are disregarded.
+        # Physics data network transfer = read_remote_mb + write_remote_mb
+        # For now, network_transfer_mb is set to 0.0 since write_remote_mb is not accurately calculated
         bytes_sent = data.get('BytesSent', 0)
         bytes_recvd = data.get('BytesRecvd', 0)
-        metrics.network_transfer_bytes = bytes_sent + bytes_recvd
+        # Disregard sandbox/log files - not tracking these
+        metrics.network_transfer_bytes = 0  # Placeholder - not used (sandbox/log files disregarded)
 
-        # Disk I/O - total reads and writes (includes both local and remote)
-        metrics.write_total_bytes = data.get('ChirpCMSSWWriteBytes', 0)
-        metrics.read_total_bytes = data.get('ChirpCMSSWReadBytes', 0)
+        # Disk I/O - write bytes calculation with local/remote distinction
+        # For now: write_remote_mb = 0.0 (not all written data is staged to shared storage)
+        # write_local_mb = total writes converted to MB
+        write_total_bytes = data.get('ChirpCMSSWWriteBytes', 0)
+        metrics.write_local_mb = write_total_bytes / (1024.0 * 1024.0)
+        metrics.write_remote_mb = 0.0
+
+        # Read bytes calculation with local/remote distinction
+        # Local read is ALWAYS ChirpCMSSWReadBytes - ChirpCMSSW_cmsRun1_ReadBytes (regardless of DESIRED_CMSDataset)
+        # Remote read is ChirpCMSSW_cmsRun1_ReadBytes ONLY if DESIRED_CMSDataset is not None, otherwise 0
+        read_total_bytes = data.get('ChirpCMSSWReadBytes', 0)
+        desired_cms_dataset = data.get('DESIRED_CMSDataset')
+        cmsrun1_read_bytes = data.get('ChirpCMSSW_cmsRun1_ReadBytes', 0)  # Default to 0 if not present
+
+        # Local read is always total - cmsRun1
+        metrics.read_local_mb = max(0.0, (read_total_bytes - cmsrun1_read_bytes) / (1024.0 * 1024.0))
+
+        # Remote read is cmsRun1 only if DESIRED_CMSDataset is not None
+        if desired_cms_dataset is not None:
+            metrics.read_remote_mb = cmsrun1_read_bytes / (1024.0 * 1024.0)
+        else:
+            metrics.read_remote_mb = 0.0
 
         # Local disk usage (in kilobytes)
         metrics.disk_usage_kb = data.get('DiskUsage', 0)
@@ -279,6 +325,11 @@ class JobDataExplorer:
             metrics.events_processed = data.get('ChirpCMSSWEvents', 0)
 
         # Event rate (events per second)
+        # According to convert_to_json.py:
+        # EventRate = ChirpCMSSWEvents / (CoreHr * 3600.0) if CoreHr > 0
+        # This is based on CPU time (CoreHr = CPU hours), not wall clock time
+        # Note: There's also CMSSWEventRate = ChirpCMSSWEvents / (ChirpCMSSWElapsed * RequestCpus)
+        #       which is based on wall clock time (payload time), but we use EventRate here
         metrics.event_rate = data.get('EventRate', 0.0)
 
         # Resource allocation - use requested values
@@ -369,7 +420,9 @@ class JobDataExplorer:
             for out in outputs:
                 if isinstance(out, dict):
                     total_write_bytes += out.get('size', 0)
-        metrics.write_total_bytes = total_write_bytes
+        # Convert to MB (wmarchive doesn't distinguish local vs remote writes)
+        metrics.write_local_mb = total_write_bytes / (1024.0 * 1024.0)
+        metrics.write_remote_mb = 0.0
 
         # Number of CMSSW steps
         metrics.num_cmssw_steps = len([s for s in steps if s.get('WMCMSSWSubprocess')])
@@ -427,24 +480,17 @@ class JobDataExplorer:
         )
 
         # Network transfer
-        total_network_transfer_bytes = sum(j.network_transfer_bytes for j in self.jobs)
-        total_network_transfer_mb = total_network_transfer_bytes / (1024.0 * 1024.0)
+        # Physics data network transfer = read_remote_mb + write_remote_mb
+        # Note: BytesSent + BytesRecvd represent sandbox/log files and are disregarded
+        # For now, set to 0.0 since write_remote_mb is not accurately calculated
+        total_network_transfer_mb = 0.0  # Should be total_read_remote_mb + total_write_remote_mb when accurate
 
-        # Disk I/O (note: source data doesn't distinguish local vs remote)
-        total_write_total_bytes = sum(j.write_total_bytes for j in self.jobs)
-        total_read_total_bytes = sum(j.read_total_bytes for j in self.jobs)
+        # Disk I/O - only calculate local and remote (totals can be derived from sum)
+        total_write_local_mb = sum(j.write_local_mb for j in self.jobs)
+        total_write_remote_mb = sum(j.write_remote_mb for j in self.jobs)
+        total_read_local_mb = sum(j.read_local_mb for j in self.jobs)
+        total_read_remote_mb = sum(j.read_remote_mb for j in self.jobs)
         total_disk_usage_kb = sum(j.disk_usage_kb for j in self.jobs)
-
-        # Convert to MB
-        total_write_total_mb = total_write_total_bytes / (1024.0 * 1024.0)
-        total_read_total_mb = total_read_total_bytes / (1024.0 * 1024.0)
-
-        # Note: Local vs remote distinction not available in source data
-        # ChirpCMSSWWriteBytes and ChirpCMSSWReadBytes include both local and remote
-        total_write_local_mb = None  # Not available in source data
-        total_write_remote_mb = None  # Not available in source data
-        total_read_local_mb = None  # Not available in source data
-        total_read_remote_mb = None  # Not available in source data
 
         # Resource allocation
         total_cpu_cores_used = sum(j.cores_requested for j in self.jobs)
@@ -479,12 +525,7 @@ class JobDataExplorer:
             'total_turnaround_time': total_turnaround_time,
             'total_cpu_used_time': total_cpu_used_time,
             'total_cpu_allocated_time': total_cpu_allocated_time,
-            'total_network_transfer_bytes': total_network_transfer_bytes,
             'total_network_transfer_mb': total_network_transfer_mb,
-            'total_write_total_bytes': total_write_total_bytes,
-            'total_write_total_mb': total_write_total_mb,
-            'total_read_total_bytes': total_read_total_bytes,
-            'total_read_total_mb': total_read_total_mb,
             'total_write_local_mb': total_write_local_mb,
             'total_write_remote_mb': total_write_remote_mb,
             'total_read_local_mb': total_read_local_mb,
@@ -588,31 +629,37 @@ class JobDataExplorer:
 
         # Network transfer
         total_network_transfer_mb = metrics['total_network_transfer_mb']
-        print(f"\nNetwork Transfer:")
-        print(f"  Total Network Transfer: {metrics['total_network_transfer_bytes']:,} bytes ({total_network_transfer_mb/(1024**2):.2f} GB)")
-        if not self.producer_filter:
-            if self.condor_jobs:
-                condor_network = sum(j.network_transfer_bytes for j in self.condor_jobs)
-                print(f"    - Condor: {condor_network:,} bytes ({condor_network/(1024**3):.2f} GB)")
-            if self.wmarchive_jobs:
-                wma_network = sum(j.network_transfer_bytes for j in self.wmarchive_jobs)
-                print(f"    - WMA Archive: {wma_network:,} bytes ({wma_network/(1024**3):.2f} GB)")
-                if wma_network == 0:
-                    print(f"      (Note: Network metrics not available in wmarchive documents)")
-        elif self.producer_filter == 'wmarchive':
-            print(f"    (Note: Network metrics not available in wmarchive documents)")
+        print(f"\nNetwork Transfer (Physics Data):")
+        print(f"  Total Network Transfer: {total_network_transfer_mb:.2f} MB ({total_network_transfer_mb/(1024**2):.2f} GB)")
+        if total_network_transfer_mb == 0.0:
+            print(f"    (Set to 0.0 for now. Should be read_remote_mb + write_remote_mb when write_remote_mb is accurately calculated)")
+        else:
+            print(f"    (read_remote_mb + write_remote_mb)")
+        print(f"    Note: BytesSent + BytesRecvd (sandbox/log files) are disregarded")
 
         # Disk I/O
-        total_write_total_mb = metrics['total_write_total_mb']
-        total_read_total_mb = metrics['total_read_total_mb']
+        total_write_local_mb = metrics['total_write_local_mb']
+        total_write_remote_mb = metrics['total_write_remote_mb']
+        total_read_local_mb = metrics['total_read_local_mb']
+        total_read_remote_mb = metrics['total_read_remote_mb']
         total_disk_usage_kb = metrics['total_disk_usage_kb']
 
+        # Calculate totals from local + remote
+        total_write_mb = total_write_local_mb + total_write_remote_mb
+        total_read_mb = total_read_local_mb + total_read_remote_mb
+
         print(f"\nDisk I/O:")
-        print(f"  Total Write (all): {metrics['total_write_total_bytes']:,} bytes ({total_write_total_mb/(1024**2):.2f} GB)")
-        print(f"  Total Read (all): {metrics['total_read_total_bytes']:,} bytes ({total_read_total_mb/(1024**2):.2f} GB)")
+        print(f"  Write:")
+        print(f"    - Local Write: {total_write_local_mb:.2f} MB ({total_write_local_mb/(1024**2):.2f} GB)")
+        print(f"    - Remote Write: {total_write_remote_mb:.2f} MB ({total_write_remote_mb/(1024**2):.2f} GB)")
+        print(f"    - Total Write: {total_write_mb:.2f} MB ({total_write_mb/(1024**2):.2f} GB)")
+        print(f"  Read:")
+        print(f"    - Local Read: {total_read_local_mb:.2f} MB ({total_read_local_mb/(1024**2):.2f} GB)")
+        print(f"    - Remote Read: {total_read_remote_mb:.2f} MB ({total_read_remote_mb/(1024**2):.2f} GB)")
+        print(f"    - Total Read: {total_read_mb:.2f} MB ({total_read_mb/(1024**2):.2f} GB)")
         print(f"  Total Local Disk Usage: {total_disk_usage_kb:,} KB ({total_disk_usage_kb/(1024**2):.2f} GB)")
         if self.producer_filter != 'wmarchive' and self.condor_jobs:
-            print(f"    (Note: ChirpCMSSWWriteBytes and ChirpCMSSWReadBytes include both local and remote)")
+            print(f"    (Note: write_remote_mb is set to 0.0 for now - not all written data is staged to shared storage)")
 
         # CMSSW steps
         total_steps = sum(j.num_cmssw_steps for j in self.jobs)
@@ -662,61 +709,90 @@ class JobDataExplorer:
             print(f"Producer Filter: {self.producer_filter.upper()}")
         print("="*80)
 
-        if self.producer_filter == 'wmarchive':
-            # Skip condor documentation if filtering to wmarchive
-            pass
-        else:
+        if self.producer_filter is None or self.producer_filter == 'condor':
             print("\n## Condor Producer Fields")
-        print("\n- **Events Processed**: `data.ChirpCMSSW_cmsRun{N}_Events` (output events from last taskset, where N = ChirpCMSSWRuns)")
-        print("    Falls back to `data.ChirpCMSSWEvents` if last step field not available")
-        print("    Note: Uses last step output events to account for filter efficiency < 1.0")
-        print("- **Turnaround Time (job)**: `data.CommittedTime` (seconds, total job time including overhead)")
-        print("- **Payload Time (job)**: `data.ChirpCMSSWElapsed` (seconds, CMSSW execution without overhead)")
-        print("- **Time per Event**: `data.TimePerEvent` (seconds per event)")
-        print("- **Job Start Date**: `data.JobStartDate` (Unix timestamp, auto-detected as seconds or milliseconds)")
-        print("- **Completion Date**: `data.CompletionDate` (Unix timestamp, auto-detected as seconds or milliseconds)")
-        print("\n  Workflow-level time metrics:")
-        print("  - **Total Wall Time (with overhead)**: Sum of all `CommittedTime`")
-        print("  - **Total Wall Time (without overhead)**: Sum of all `ChirpCMSSWElapsed`")
-        print("  - **Total Turnaround Time (workflow)**: `max(CompletionDate) - min(JobStartDate)`")
-        print("- **CPU Time**: `data.ChirpCMSSWTotalCPU` (seconds) or `data.CpuTimeHr` (hours)")
-        print("- **Network Transfer**: `data.BytesSent + data.BytesRecvd`")
-        print("- **Total Writes**: `data.ChirpCMSSWWriteBytes` (includes both local and remote)")
-        print("- **Total Reads**: `data.ChirpCMSSWReadBytes` (includes both local and remote)")
-        print("- **Local Disk Usage**: `data.DiskUsage` (kilobytes)")
-        print("- **CMSSW Steps**: `data.ChirpCMSSWRuns` (number of CMSSW steps executed)")
-        print("- **Event Rate**: `data.EventRate` (events per second)")
-        print("- **Cores Requested**: `data.OriginalCpus` (alternative: `GLIDEIN_Cpus` or `JobCpus`)")
-        print("- **Memory Requested**: `data.OriginalMemory` (MB, alternative: `GLIDEIN_Memory` or `MemoryProvisioned`)")
-        print("- **Task Name**: `data.WMAgent_TaskType`")
-        print("- **Job Type**: `data.CMS_JobType` (e.g., Production, Processing, Merge)")
+            print("\n- **Events Processed**: `data.ChirpCMSSW_cmsRun{N}_Events` (output events from last taskset, where N = ChirpCMSSWRuns)")
+            print("    Falls back to `data.ChirpCMSSWEvents` if last step field not available")
+            print("    Note: Uses last step output events to account for filter efficiency < 1.0")
+            print("- **Turnaround Time (job)**: `data.CommittedTime` (seconds, total job time including overhead)")
+            print("- **Payload Time (job)**: `data.ChirpCMSSWElapsed` (seconds, CMSSW execution without overhead)")
+            print("- **Time per Event**: `data.TimePerEvent` (CPU seconds per event)")
+            print("    Calculated as: `1.0 / EventRate`, where `EventRate = ChirpCMSSWEvents / (CoreHr * 3600.0)`")
+            print("    This is based on CPU time (CoreHr = CPU hours), not wall clock time")
+            print("    Note: There's also `CMSSWTimePerEvent = 1.0 / CMSSWEventRate`")
+            print("          which is based on wall clock time (payload time)")
+            print("- **Job Start Date**: `data.JobStartDate` (Unix timestamp, auto-detected as seconds or milliseconds)")
+            print("- **Completion Date**: `data.CompletionDate` (Unix timestamp, auto-detected as seconds or milliseconds)")
+            print("\n  Workflow-level time metrics:")
+            print("  - **Total Wall Time (with overhead)**: Sum of all `CommittedTime`")
+            print("  - **Total Wall Time (without overhead)**: Sum of all `ChirpCMSSWElapsed`")
+            print("  - **Total Turnaround Time (workflow)**: `max(CompletionDate) - min(JobStartDate)`")
+            print("- **CPU Time**: `data.ChirpCMSSWTotalCPU` (seconds) or `data.CpuTimeHr` (hours)")
+            print("    `CoreHr` is also available (CPU hours) and is used for EventRate calculation")
+            print("- **Network Transfer (Physics Data)**: `read_remote_mb + write_remote_mb`")
+            print("    Set to 0.0 for now (should be read_remote_mb + write_remote_mb when write_remote_mb is accurately calculated)")
+            print("    Note: `BytesSent + BytesRecvd` (sandbox/log files) are disregarded")
+            print("- **Local Writes (MB)**: `ChirpCMSSWWriteBytes / (1024 * 1024)`")
+            print("- **Remote Writes (MB)**: `0.0` (not all written data is staged to shared storage)")
+            print("- **Local Reads (MB)**: Always `(ChirpCMSSWReadBytes - ChirpCMSSW_cmsRun1_ReadBytes) / (1024 * 1024)`")
+            print("- **Remote Reads (MB)**: If `DESIRED_CMSDataset` is not None (string),")
+            print("    then `ChirpCMSSW_cmsRun1_ReadBytes / (1024 * 1024)`")
+            print("    Otherwise 0")
+            print("- **Local Disk Usage**: `data.DiskUsage` (kilobytes)")
+            print("- **CMSSW Steps**: `data.ChirpCMSSWRuns` (number of CMSSW steps executed)")
+            print("- **Event Rate**: `data.EventRate` (events per second, based on CPU time)")
+            print("    Calculated as: `ChirpCMSSWEvents / (CoreHr * 3600.0)` if CoreHr > 0")
+            print("    Note: There's also `CMSSWEventRate = ChirpCMSSWEvents / (ChirpCMSSWElapsed * RequestCpus)`")
+            print("          which is based on wall clock time (payload time), not CPU time")
+            print("- **Cores Requested**: `data.OriginalCpus` (alternative: `RequestCpus`, `GLIDEIN_Cpus`, or `JobCpus`)")
+            print("- **Memory Requested**: `data.OriginalMemory` (MB, alternative: `GLIDEIN_Memory` or `MemoryProvisioned`)")
+            print("- **Task Name**: `data.WMAgent_TaskType`")
+            print("- **Job Type**: `data.CMS_JobType` (e.g., Production, Processing, Merge)")
 
-        if self.producer_filter == 'condor':
-            # Skip wmarchive documentation if filtering to condor
-            pass
-        else:
+        if self.producer_filter is None or self.producer_filter == 'wmarchive':
             print("\n## WMA Archive Producer Fields")
-        print("\n- **Events Processed**: `sum(data.steps[].input[].events)`")
-        print("- **Turnaround Time**: `data.WMTiming.WMTotalWallClockTime` (seconds)")
-        print("- **Payload Time**: `sum(data.steps[].WMCMSSWSubprocess.wallClockTime)`")
-        print("- **CPU Time**: `sum(data.steps[].WMCMSSWSubprocess.userTime + sysTime)`")
-        print("- **Network Transfer**: Not available")
-        print("- **Remote Writes**: `sum(data.steps[].output[].size)` (bytes)")
-        print("- **Remote Reads**: Not directly available")
-        print("- **Cores**: Not available")
-        print("- **Memory**: `max(data.steps[].performance.cmssw.ApplicationMemory.PeakValueRss)` (MB)")
-        print("- **Task Name**: `data.meta_data.jobtype`")
+            print("\n- **Events Processed**: `sum(data.steps[].input[].events)`")
+            print("- **Turnaround Time**: `data.WMTiming.WMTotalWallClockTime` (seconds)")
+            print("- **Payload Time**: `sum(data.steps[].WMCMSSWSubprocess.wallClockTime)`")
+            print("- **CPU Time**: `sum(data.steps[].WMCMSSWSubprocess.userTime + sysTime)`")
+            print("- **Network Transfer**: Not available")
+            print("- **Remote Writes**: `sum(data.steps[].output[].size)` (bytes)")
+            print("- **Remote Reads**: Not directly available")
+            print("- **Cores**: Not available")
+            print("- **Memory**: `max(data.steps[].performance.cmssw.ApplicationMemory.PeakValueRss)` (MB)")
+            print("- **Task Name**: `data.meta_data.jobtype`")
 
         print("\n## Notes")
         print("\n- **Job Filtering**: Only Production and Processing jobs are included")
-        print("- **Disk I/O**: ChirpCMSSWWriteBytes and ChirpCMSSWReadBytes include both local and remote I/O")
+        print("- **Read I/O Local vs Remote**:")
+        print("  - Local read (MB) = `(ChirpCMSSWReadBytes - ChirpCMSSW_cmsRun1_ReadBytes) / (1024 * 1024)`")
+        print("    Always calculated this way (regardless of DESIRED_CMSDataset)")
+        print("  - Remote read (MB) = `ChirpCMSSW_cmsRun1_ReadBytes / (1024 * 1024)`")
+        print("    ONLY if `DESIRED_CMSDataset` is not None (string), otherwise 0")
+        print("  - If `ChirpCMSSW_cmsRun1_ReadBytes` doesn't exist, defaults to 0")
+        print("- **Write I/O Local vs Remote**:")
+        print("  - Local write (MB) = `ChirpCMSSWWriteBytes / (1024 * 1024)`")
+        print("  - Remote write (MB) = `0.0` (not all written data is staged to shared storage)")
+        print("- **Network Transfer**:")
+        print("  - Physics data: `read_remote_mb + write_remote_mb` (set to 0.0 for now)")
+        print("  - Sandbox/log files: `BytesSent + BytesRecvd` are disregarded")
+        print("- **Write I/O**: ChirpCMSSWWriteBytes includes both local and remote writes (distinction not available)")
         print("- **Local Disk**: DiskUsage provides local disk usage in kilobytes")
-        print("- **Event Rate**: May or may not include job overhead (field documentation unclear)")
-        print("- **Time per Event**: Field may need verification for accuracy")
+        print("- **Event Rate vs CMSSWEventRate**:")
+        print("  - `EventRate` is based on CPU time: `ChirpCMSSWEvents / (CoreHr * 3600.0)`")
+        print("  - `CMSSWEventRate` is based on wall clock time: `ChirpCMSSWEvents / (ChirpCMSSWElapsed * RequestCpus)`")
+        print("  - This script uses `EventRate` (CPU-based) for consistency with CPU time metrics")
+        print("- **Time per Event vs CMSSWTimePerEvent**:")
+        print("  - `TimePerEvent` is the inverse of `EventRate` (CPU-based)")
+        print("  - `CMSSWTimePerEvent` is the inverse of `CMSSWEventRate` (wall clock-based)")
+        print("  - This script uses `TimePerEvent` (CPU-based) for consistency with CPU time metrics")
         print("- **Network metrics**: Not available in wmarchive documents")
         print("- **Core count**: Not available in wmarchive documents")
         print("- **Condor data**: Provides more comprehensive metrics")
         print("- **WMA archive data**: Provides detailed step-by-step breakdown")
+        print("\n## Reference")
+        print("\nMetric definitions are based on `convert_to_json.py` from cms-htcondor-es:")
+        print("https://github.com/dmwm/cms-htcondor-es/blob/master/src/htcondor_es/convert_to_json.py")
 
         print("\n" + "="*80)
 
@@ -748,15 +824,10 @@ class JobDataExplorer:
                 'total_turnaround_time': metrics['total_turnaround_time'],
                 'total_cpu_used_time': metrics['total_cpu_used_time'],
                 'total_cpu_allocated_time': metrics['total_cpu_allocated_time'],
-                'total_write_total_bytes': metrics['total_write_total_bytes'],
-                'total_write_total_mb': metrics['total_write_total_mb'],
-                'total_read_total_bytes': metrics['total_read_total_bytes'],
-                'total_read_total_mb': metrics['total_read_total_mb'],
                 'total_write_local_mb': metrics['total_write_local_mb'],
                 'total_write_remote_mb': metrics['total_write_remote_mb'],
                 'total_read_local_mb': metrics['total_read_local_mb'],
                 'total_read_remote_mb': metrics['total_read_remote_mb'],
-                'total_network_transfer_bytes': metrics['total_network_transfer_bytes'],
                 'total_network_transfer_mb': metrics['total_network_transfer_mb'],
                 'total_cpu_cores_used': metrics['total_cpu_cores_used'],
                 'total_memory_used_mb': metrics['total_memory_used_mb'],
@@ -767,8 +838,15 @@ class JobDataExplorer:
                 'cpu_time_per_event': metrics['cpu_time_per_event'],
                 'total_disk_usage_kb': metrics['total_disk_usage_kb'],
                 'note_local_remote_io': (
-                    'Local vs remote I/O distinction not available in source data. '
-                    'ChirpCMSSWWriteBytes and ChirpCMSSWReadBytes include both local and remote I/O.'
+                    'Read local vs remote distinction (in MB) is calculated when ChirpCMSSW_cmsRun1_ReadBytes is available. '
+                    'Local read (MB) = (ChirpCMSSWReadBytes - ChirpCMSSW_cmsRun1_ReadBytes) / (1024 * 1024) always. '
+                    'Remote read (MB) = ChirpCMSSW_cmsRun1_ReadBytes / (1024 * 1024) ONLY if DESIRED_CMSDataset is not None (string), otherwise 0. '
+                    'If ChirpCMSSW_cmsRun1_ReadBytes doesn\'t exist, defaults to 0. '
+                    'Write local (MB) = ChirpCMSSWWriteBytes / (1024 * 1024). '
+                    'Write remote (MB) = 0.0 for now (not all written data is staged to shared storage). '
+                    'Network transfer (MB) = read_remote_mb + write_remote_mb (physics data only). '
+                    'Set to 0.0 for now since write_remote_mb is not accurately calculated. '
+                    'BytesSent + BytesRecvd (sandbox/log files) are disregarded.'
                 ),
             },
             'jobs': [
@@ -785,8 +863,10 @@ class JobDataExplorer:
                     'completion_date': j.completion_date,
                     'cpu_time_sec': j.cpu_time_sec,
                     'network_transfer_bytes': j.network_transfer_bytes,
-                    'write_total_bytes': j.write_total_bytes,
-                    'read_total_bytes': j.read_total_bytes,
+                    'write_local_mb': j.write_local_mb,
+                    'write_remote_mb': j.write_remote_mb,
+                    'read_local_mb': j.read_local_mb,
+                    'read_remote_mb': j.read_remote_mb,
                     'disk_usage_kb': j.disk_usage_kb,
                     'num_cmssw_steps': j.num_cmssw_steps,
                     'event_rate': j.event_rate,
