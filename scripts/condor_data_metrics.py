@@ -31,6 +31,7 @@ Note: Only jobs with CMS_JobType of 'Production' or 'Processing' are included.
 import json
 import sys
 import argparse
+import re
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from collections import defaultdict
@@ -61,6 +62,35 @@ def load_elasticsearch_data(json_filepath: str) -> List[Dict[str, Any]]:
         raise ValueError("Unexpected JSON structure. Expected Elasticsearch response format.")
 
     return hits
+
+
+def _extract_taskset_number(task_type: str) -> Optional[int]:
+    """
+    Extract the taskset number from WMAgent_TaskType.
+
+    The taskset number is the largest integer found in the task type name.
+    For example:
+    - "Task1" -> 1
+    - "Task2" -> 2
+    - "Taskset3" -> 3
+    - "SomeTask_5_Step" -> 5
+
+    Args:
+        task_type: WMAgent_TaskType string
+
+    Returns:
+        Taskset number (largest integer in the string), or None if no integer found
+    """
+    if not task_type or task_type == 'Unknown':
+        return None
+
+    # Find all integers in the string
+    integers = re.findall(r'\d+', task_type)
+    if not integers:
+        return None
+
+    # Return the largest integer found
+    return max(int(num) for num in integers)
 
 
 def _normalize_timestamp(timestamp: Any) -> Optional[float]:
@@ -171,6 +201,13 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Extract statistics from condor producer documents.
 
+    Total events calculation:
+    - Extracts taskset number from WMAgent_TaskType (largest integer in the name)
+    - Identifies the final taskset as the one with the largest taskset number
+    - Uses output events from the last CMSSW step (ChirpCMSSW_cmsRun{N}_Events)
+    - Sums events across all jobs in the final taskset to get total workflow events
+    - This ensures we count the final output events of the workflow, not intermediate taskset events
+
     Args:
         hits: List of Elasticsearch hit documents
 
@@ -181,6 +218,8 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
     condor_docs = 0
     job_type_counts = defaultdict(int)
     task_type_counts = defaultdict(int)
+    # For workflow-level total events calculation
+    job_events_by_taskset = defaultdict(list)  # Maps taskset_number -> list of events
 
     # Metrics accumulators
     total_wallclock_time_with_overhead_sec = 0.0
@@ -193,7 +232,6 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
     total_read_remote_mb = 0.0
     total_write_local_mb = 0.0
     total_write_remote_mb = 0.0
-    total_events = 0
 
     # For workflow turnaround time
     job_start_dates = []
@@ -204,17 +242,21 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         metadata = source.get('metadata', {})
         producer = metadata.get('producer', 'unknown')
 
-        # Only process condor documents
+        # Filter: only process condor documents
         if producer != 'condor':
             continue
 
         data = source.get('data', {})
 
-        # Check for internally restarted jobs
+        # Filter: only include Production and Processing jobs
+        job_type = data.get('CMS_JobType', 'Unknown')
+        if job_type not in ['Production', 'Processing']:
+            continue
+
+        # Filter: for the moment, disregard jobs that have been internally restarted
         num_shadow_starts = data.get('NumShadowStarts', 0)
         num_restarts = data.get('NumRestarts', 0)
         num_job_starts = data.get('NumJobStarts', 0)
-
         if num_shadow_starts > 1 or num_restarts > 0 or num_job_starts > 1:
             wmagent_job_id = data.get('WMAgent_JobID', 'Unknown')
             print(
@@ -225,19 +267,15 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
             )
             continue
 
-        # Extract job type (CMS_JobType)
-        job_type = data.get('CMS_JobType', 'Unknown')
-
-        # Filter: only include Production and Processing jobs
-        if job_type not in ['Production', 'Processing']:
-            continue
-
         condor_docs += 1
         job_type_counts[job_type] += 1
 
         # Extract task type (WMAgent_TaskType)
         task_type = data.get('WMAgent_TaskType', 'Unknown')
         task_type_counts[task_type] += 1
+
+        # Extract taskset number from task type
+        taskset_number = _extract_taskset_number(task_type)
 
         # Extract metrics
         job_metrics = _extract_job_metrics(data)
@@ -255,7 +293,9 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         total_read_remote_mb += job_metrics['read_remote_mb']
         total_write_local_mb += job_metrics['write_local_mb']
         total_write_remote_mb += job_metrics['write_remote_mb']
-        total_events += job_metrics['events_processed']
+
+        # intermediate taskset events are not used for the workflow-level calculation
+        job_events_by_taskset[taskset_number].append(job_metrics['events_processed'])
 
         # Collect timestamps for workflow turnaround time
         if job_metrics['job_start_date'] is not None:
@@ -278,6 +318,9 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
     memory_utilization = None
     if total_memory_allocated_mb > 0:
         memory_utilization = total_memory_used_mb / total_memory_allocated_mb
+
+    # Calculate total events processed by the workflow
+    total_events = calculate_workflow_processed_events(job_events_by_taskset)
 
     # Event throughput and time per event for wallclock time with overhead
     event_throughput_with_overhead = None
@@ -327,6 +370,31 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         'cpu_time_per_event': cpu_time_per_event,
     }
 
+def calculate_workflow_processed_events(job_events_by_taskset: Dict[int, List[int]]) -> int:
+    """
+    Calculate the total number of events processed by the workflow.
+
+    This function identifies the final taskset (the one with the largest taskset number)
+    and sums all events from jobs in that taskset. This ensures we count only the
+    final output events of the workflow, not intermediate taskset events.
+
+    Args:
+        job_events_by_taskset: Dictionary mapping taskset numbers to lists of events
+            processed by each job in that taskset. Keys are taskset numbers (integers),
+            values are lists of event counts per job.
+
+    Returns:
+        Total events processed by the workflow (sum of events from all jobs in the
+        final taskset). Returns 0 if no taskset data is provided.
+    """
+    if job_events_by_taskset:
+        max_taskset = max(job_events_by_taskset.keys())
+        total_events = sum(job_events_by_taskset[max_taskset])
+        print(f"DEBUG: Final taskset events: {total_events} from taskset {max_taskset}")
+    else:
+        total_events = 0
+        print(f"WARNING: No final taskset events found. Total workflow events: {total_events}.")
+    return total_events
 
 def print_stats(stats: Dict[str, Any]) -> None:
     """
