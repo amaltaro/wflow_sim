@@ -431,6 +431,87 @@ def print_stats(stats: Dict[str, Any]) -> None:
     print("\n" + "="*80)
 
 
+def save_stats_to_json(stats: Dict[str, Any], output_file: str) -> None:
+    """
+    Save statistics to a JSON file.
+
+    Args:
+        stats: Dictionary containing statistics
+        output_file: Path to output JSON file
+    """
+    # Create a clean dictionary for JSON output
+    output_data = {
+        'document_counts': {
+            'total_docs': stats['total_docs'],
+            'condor_docs': stats['condor_docs'],
+            'job_type_counts': stats['job_type_counts'],
+            'task_type_counts': stats['task_type_counts'],
+        },
+        'time_metrics': {
+            'total_wallclock_time_sec': stats['total_wallclock_time_sec'],
+            'total_wallclock_time_hours': stats['total_wallclock_time_sec'] / 3600.0,
+            'workflow_turnaround_time_sec': stats['workflow_turnaround_time_sec'],
+            'workflow_turnaround_time_hours': (
+                stats['workflow_turnaround_time_sec'] / 3600.0
+                if stats['workflow_turnaround_time_sec'] is not None
+                else None
+            ),
+        },
+        'cpu_metrics': {
+            'total_cpu_time_sec': stats['total_cpu_time_used_sec'],
+            'total_cpu_time_hours': stats['total_cpu_time_used_sec'] / 3600.0,
+            'total_cpu_used_time_sec': stats['total_cpu_time_used_sec'],
+            'total_cpu_used_time_hours': stats['total_cpu_time_used_sec'] / 3600.0,
+            'total_cpu_allocated_time_sec': stats['total_cpu_time_allocated_sec'],
+            'total_cpu_allocated_time_hours': stats['total_cpu_time_allocated_sec'] / 3600.0,
+            'cpu_utilization': stats['cpu_utilization'],
+            'cpu_utilization_percent': (
+                stats['cpu_utilization'] * 100.0
+                if stats['cpu_utilization'] is not None
+                else None
+            ),
+        },
+        'memory_metrics': {
+            'total_memory_used_mb': stats['total_memory_used_mb'],
+            'total_memory_used_gb': stats['total_memory_used_mb'] / 1024.0,
+            'total_memory_allocated_mb': stats['total_memory_allocated_mb'],
+            'total_memory_allocated_gb': stats['total_memory_allocated_mb'] / 1024.0,
+            'memory_utilization': stats['memory_utilization'],
+            'memory_utilization_percent': (
+                stats['memory_utilization'] * 100.0
+                if stats['memory_utilization'] is not None
+                else None
+            ),
+        },
+        'io_metrics': {
+            'total_read_local_mb': stats['total_read_local_mb'],
+            'total_read_local_gb': stats['total_read_local_mb'] / 1024.0,
+            'total_read_remote_mb': stats['total_read_remote_mb'],
+            'total_read_remote_gb': stats['total_read_remote_mb'] / 1024.0,
+            'total_read_mb': stats['total_read_local_mb'] + stats['total_read_remote_mb'],
+            'total_read_gb': (stats['total_read_local_mb'] + stats['total_read_remote_mb']) / 1024.0,
+            'total_write_local_mb': stats['total_write_local_mb'],
+            'total_write_local_gb': stats['total_write_local_mb'] / 1024.0,
+            'total_write_remote_mb': stats['total_write_remote_mb'],
+            'total_write_remote_gb': stats['total_write_remote_mb'] / 1024.0,
+            'total_write_mb': stats['total_write_local_mb'] + stats['total_write_remote_mb'],
+            'total_write_gb': (stats['total_write_local_mb'] + stats['total_write_remote_mb']) / 1024.0,
+        },
+        'event_metrics': {
+            'total_events': stats['total_events'],
+            'event_throughput_events_per_sec': stats['event_throughput'],
+            'wallclock_time_per_event_sec': stats['wallclock_time_per_event'],
+            'cpu_time_per_event_sec': stats['cpu_time_per_event'],
+        },
+    }
+
+    # Write to JSON file
+    with open(output_file, 'w') as f:
+        json.dump(output_data, f, indent=2)
+
+    print(f"\nMetrics saved to: {output_file}")
+
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -440,9 +521,17 @@ def main():
 Examples:
   # Analyze condor documents
   python condor_data_metrics.py data/const001.json
+
+  # Analyze and save metrics to JSON file
+  python condor_data_metrics.py data/const001.json --output metrics.json
         """
     )
     parser.add_argument('json_file', help='Path to JSON file containing Elasticsearch results')
+    parser.add_argument(
+        '--output', '-o',
+        dest='output_file',
+        help='Path to output JSON file for calculated metrics'
+    )
 
     args = parser.parse_args()
 
@@ -460,6 +549,14 @@ Examples:
 
     # Print statistics
     print_stats(stats)
+
+    # Save to JSON file if specified
+    if args.output_file:
+        try:
+            save_stats_to_json(stats, args.output_file)
+        except Exception as e:
+            print(f"Error saving metrics to JSON: {e}", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == '__main__':
