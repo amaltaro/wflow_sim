@@ -20,8 +20,7 @@ Metrics provided:
   ChirpCMSSW_cmsRun1_ReadBytes
 - Total write (local and remote): Calculated from ChirpCMSSWWriteBytes
 - CPU utilization: Ratio of used CPU time to allocated CPU time
-- Memory utilization: Ratio of used memory (MemoryMB) to allocated memory
-  (OriginalMemory/RequestMemory)
+- Memory utilization: Ratio of used memory (MemoryUsage) to allocated memory OriginalMemory
 - Event throughput: Total events divided by total wallclock time (events per second)
 - Wallclock time per event: Total wallclock time divided by total events
 - CPU time per event: Total CPU time divided by total events
@@ -122,18 +121,13 @@ def _extract_job_metrics(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     core_hr = data.get('CoreHr', 0.0)  # CPU hours
     metrics['cpu_time_allocated_sec'] = core_hr * 3600.0
 
-    # Memory used: MemoryMB
-    metrics['memory_used_mb'] = data.get('MemoryMB', 0.0)
-
-    # Memory allocated: OriginalMemory or RequestMemory
-    original_memory = data.get('OriginalMemory', 0.0)
-    request_memory = data.get('RequestMemory', 0.0)
-    if original_memory > 0:
-        metrics['memory_allocated_mb'] = original_memory
-    elif request_memory > 0:
-        metrics['memory_allocated_mb'] = request_memory
-    else:
-        metrics['memory_allocated_mb'] = 0.0
+    # Memory used: Peak memory used by the job is given by MemoryUsage
+    metrics['memory_used_mb'] = data.get('MemoryUsage', 0.0)
+    # Memory allocated: OriginalMemory
+    metrics['memory_allocated_mb'] = data.get('OriginalMemory', 0.0)
+    # avoid memory overcommitment in these measurements
+    if metrics['memory_used_mb'] > metrics['memory_allocated_mb']:
+        metrics['memory_used_mb'] = metrics['memory_allocated_mb']
 
     # Read bytes: Calculate local and remote reads
     read_total_bytes = data.get('ChirpCMSSWReadBytes', 0)
@@ -384,12 +378,12 @@ def print_stats(stats: Dict[str, Any]) -> None:
     print(f"\nMemory Metrics:")
     total_memory_used_gb = stats['total_memory_used_mb'] / 1024.0
     total_memory_allocated_gb = stats['total_memory_allocated_mb'] / 1024.0
-    print(f"  Total Memory (Used): {stats['total_memory_used_mb']:,.2f} MB ({total_memory_used_gb:,.2f} GB)")
+    print(f"  Total Memory (Peak Used): {stats['total_memory_used_mb']:,.2f} MB ({total_memory_used_gb:,.2f} GB)")
     print(f"  Total Memory (Allocated): {stats['total_memory_allocated_mb']:,.2f} MB ({total_memory_allocated_gb:,.2f} GB)")
 
     if stats['memory_utilization'] is not None:
         print(f"  Memory Utilization: {stats['memory_utilization']:.4f} ({stats['memory_utilization']*100:.2f}%)")
-        print(f"    (Ratio of used memory to allocated memory)")
+        print(f"    (Ratio of **peak** used memory to allocated memory)")
     else:
         print(f"  Memory Utilization: N/A (no allocated memory data)")
 
@@ -431,16 +425,18 @@ def print_stats(stats: Dict[str, Any]) -> None:
     print("\n" + "="*80)
 
 
-def save_stats_to_json(stats: Dict[str, Any], output_file: str) -> None:
+def save_stats_to_json(stats: Dict[str, Any], output_file: str, document_name: str) -> None:
     """
     Save statistics to a JSON file.
 
     Args:
         stats: Dictionary containing statistics
         output_file: Path to output JSON file
+        document_name: Name of the input document
     """
     # Create a clean dictionary for JSON output
     output_data = {
+        'document_name': document_name,
         'document_counts': {
             'total_docs': stats['total_docs'],
             'condor_docs': stats['condor_docs'],
@@ -553,7 +549,9 @@ Examples:
     # Save to JSON file if specified
     if args.output_file:
         try:
-            save_stats_to_json(stats, args.output_file)
+            # Extract document name from input file path
+            document_name = Path(args.json_file).name
+            save_stats_to_json(stats, args.output_file, document_name)
         except Exception as e:
             print(f"Error saving metrics to JSON: {e}", file=sys.stderr)
             sys.exit(1)
