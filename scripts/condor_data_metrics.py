@@ -344,6 +344,23 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
     if total_events > 0:
         cpu_time_per_event = total_cpu_time_used_sec / total_events
 
+    # Calculate overhead metrics
+    # Overall overhead: difference between total time with and without overhead
+    total_overhead_sec = total_wallclock_time_with_overhead_sec - total_wallclock_time_non_overhead_sec
+    total_overhead_hours = total_overhead_sec / 3600.0
+
+    # Overhead ratio: overhead as a percentage of total time with overhead
+    overhead_ratio = None
+    if total_wallclock_time_with_overhead_sec > 0:
+        overhead_ratio = total_overhead_sec / total_wallclock_time_with_overhead_sec
+
+    # Per job overhead: average overhead per job
+    overhead_per_job_sec = None
+    overhead_per_job_hours = None
+    if condor_docs > 0:
+        overhead_per_job_sec = total_overhead_sec / condor_docs
+        overhead_per_job_hours = overhead_per_job_sec / 3600.0
+
     return {
         'total_docs': total_docs,
         'condor_docs': condor_docs,
@@ -368,6 +385,11 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         'wallclock_time_per_event_with_overhead': wallclock_time_per_event_with_overhead,
         'wallclock_time_per_event_non_overhead': wallclock_time_per_event_non_overhead,
         'cpu_time_per_event': cpu_time_per_event,
+        'total_overhead_sec': total_overhead_sec,
+        'total_overhead_hours': total_overhead_hours,
+        'overhead_ratio': overhead_ratio,
+        'overhead_per_job_sec': overhead_per_job_sec,
+        'overhead_per_job_hours': overhead_per_job_hours,
     }
 
 def calculate_workflow_processed_events(job_events_by_taskset: Dict[int, List[int]]) -> int:
@@ -439,6 +461,25 @@ def print_stats(stats: Dict[str, Any]) -> None:
     total_wallclock_non_overhead_hr = stats['total_wallclock_time_non_overhead_sec'] / 3600.0
     print(f"  Total Wallclock Time (non-overhead): {stats['total_wallclock_time_non_overhead_sec']:,.2f} sec ({total_wallclock_non_overhead_hr:,.2f} hours)")
     print(f"    (Only actual CMSSW processing time, using ChirpCMSSWElapsed)")
+
+    # Overhead metrics
+    total_overhead_hr = stats['total_overhead_hours']
+    print(f"  Total Overhead: {stats['total_overhead_sec']:,.2f} sec ({total_overhead_hr:,.2f} hours)")
+    print(f"    (Difference between wallclock time with and without overhead)")
+
+    if stats['overhead_ratio'] is not None:
+        overhead_ratio_percent = stats['overhead_ratio'] * 100.0
+        print(f"  Overhead Ratio: {stats['overhead_ratio']:.4f} ({overhead_ratio_percent:.2f}%)")
+        print(f"    (Overhead as a percentage of total wallclock time with overhead)")
+    else:
+        print(f"  Overhead Ratio: N/A (no wallclock time data)")
+
+    if stats['overhead_per_job_sec'] is not None:
+        overhead_per_job_hr = stats['overhead_per_job_hours']
+        print(f"  Overhead per Job: {stats['overhead_per_job_sec']:,.2f} sec ({overhead_per_job_hr:,.4f} hours)")
+        print(f"    (Average overhead per job)")
+    else:
+        print(f"  Overhead per Job: N/A (no jobs found)")
 
     if stats['workflow_turnaround_time_sec'] is not None:
         workflow_turnaround_hr = stats['workflow_turnaround_time_sec'] / 3600.0
@@ -550,6 +591,20 @@ def save_stats_to_json(stats: Dict[str, Any], output_file: str, document_name: s
             'workflow_turnaround_time_hours': (
                 stats['workflow_turnaround_time_sec'] / 3600.0
                 if stats['workflow_turnaround_time_sec'] is not None
+                else None
+            ),
+            'total_overhead_sec': stats['total_overhead_sec'],
+            'total_overhead_hours': stats['total_overhead_hours'],
+            'overhead_ratio': stats['overhead_ratio'],
+            'overhead_ratio_percent': (
+                stats['overhead_ratio'] * 100.0
+                if stats['overhead_ratio'] is not None
+                else None
+            ),
+            'overhead_per_job_sec': stats['overhead_per_job_sec'],
+            'overhead_per_job_hours': (
+                stats['overhead_per_job_hours']
+                if stats['overhead_per_job_hours'] is not None
                 else None
             ),
         },
