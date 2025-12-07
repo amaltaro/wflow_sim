@@ -115,12 +115,13 @@ def _normalize_timestamp(timestamp: Any) -> Optional[float]:
         return None
 
 
-def _extract_job_metrics(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _extract_job_metrics(data: Dict[str, Any], taskset_number: Optional[int] = None) -> Optional[Dict[str, Any]]:
     """
     Extract metrics from a single condor job document.
 
     Args:
         data: Job data dictionary from Elasticsearch document
+        taskset_number: Taskset number extracted from WMAgent_TaskType (None if unknown)
 
     Returns:
         Dictionary with extracted metrics, or None if job should be skipped
@@ -162,21 +163,66 @@ def _extract_job_metrics(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     read_total_bytes = data.get('ChirpCMSSWReadBytes', 0)
     desired_cms_dataset = data.get('DESIRED_CMSDataset')
     cmsrun1_read_bytes = data.get('ChirpCMSSW_cmsRun1_ReadBytes', 0)
+    num_cmssw_steps = data.get('ChirpCMSSWRuns', 0)
 
-    # Local read is always total - cmsRun1
-    metrics['read_local_mb'] = max(0.0, (read_total_bytes - cmsrun1_read_bytes) / (1024.0 * 1024.0))
+    # Determine if this is an independent job (single taskset per job) or dependent job (multiple tasksets per job)
+    # Heuristic:
+    # - If taskset_number is known AND num_cmssw_steps == 1: independent job (one taskset, one cmsRun)
+    # - If taskset_number is known AND num_cmssw_steps > 1: could be independent (one taskset, multiple cmsRun)
+    #   or dependent (multiple tasksets). We'll treat as independent if taskset_number > 1 (Taskset2+),
+    #   otherwise use dependent logic for safety (to preserve const001 behavior)
+    # - If taskset_number is unknown: dependent job (use existing logic)
+    #
+    # This ensures:
+    # - const001 (dependent): taskset_number=1, num_cmssw_steps=5 → uses dependent logic ✓
+    # - const016 (independent): taskset_number=1,2,3..., num_cmssw_steps=1 → uses independent logic ✓
+    is_independent_job = (
+        taskset_number is not None and
+        (num_cmssw_steps == 1 or taskset_number > 1)
+    )
 
-    # Remote read is cmsRun1 only if DESIRED_CMSDataset is not None
-    if desired_cms_dataset is not None:
-        metrics['read_remote_mb'] = cmsrun1_read_bytes / (1024.0 * 1024.0)
+    if is_independent_job:
+        # Independent tasks in grid jobs (e.g., const016)
+        # Each job contains a single taskset (may have multiple cmsRun steps)
+        if taskset_number == 1:
+            # Taskset1: cmsRun1 reads remotely if DESIRED_CMSDataset exists, otherwise no read
+            if desired_cms_dataset is not None:
+                # cmsRun1 reads remotely
+                metrics['read_remote_mb'] = cmsrun1_read_bytes / (1024.0 * 1024.0)
+                # cmsRun2+ (if any) read locally
+                metrics['read_local_mb'] = max(0.0, (read_total_bytes - cmsrun1_read_bytes) / (1024.0 * 1024.0))
+            else:
+                # No read at all for Taskset1 if no DESIRED_CMSDataset
+                metrics['read_remote_mb'] = 0.0
+                metrics['read_local_mb'] = 0.0
+        else:
+            # Taskset2+: cmsRun1 always reads remotely, cmsRun2+ read locally
+            metrics['read_remote_mb'] = cmsrun1_read_bytes / (1024.0 * 1024.0)
+            # Local read is total - cmsRun1 (cmsRun2+ read locally)
+            metrics['read_local_mb'] = max(0.0, (read_total_bytes - cmsrun1_read_bytes) / (1024.0 * 1024.0))
     else:
-        metrics['read_remote_mb'] = 0.0
+        # Dependent tasks within a grid job (e.g., const001) - use existing logic
+        # Local read is always total - cmsRun1
+        metrics['read_local_mb'] = max(0.0, (read_total_bytes - cmsrun1_read_bytes) / (1024.0 * 1024.0))
+
+        # Remote read is cmsRun1 only if DESIRED_CMSDataset is not None
+        if desired_cms_dataset is not None:
+            metrics['read_remote_mb'] = cmsrun1_read_bytes / (1024.0 * 1024.0)
+        else:
+            metrics['read_remote_mb'] = 0.0
 
     # Write bytes: Calculate local and remote writes
     write_total_bytes = data.get('ChirpCMSSWWriteBytes', 0)
-    # For now, all writes are considered local (write_remote_mb not accurately calculated)
-    metrics['write_local_mb'] = write_total_bytes / (1024.0 * 1024.0)
-    metrics['write_remote_mb'] = 0.0
+    write_total_mb = write_total_bytes / (1024.0 * 1024.0)
+
+    # If taskset contains only one CMSSW run, writes are both local and remote
+    if num_cmssw_steps == 1:
+        metrics['write_local_mb'] = write_total_mb
+        metrics['write_remote_mb'] = write_total_mb
+    else:
+        # For multiple CMSSW runs, all writes are considered local
+        metrics['write_local_mb'] = write_total_mb
+        metrics['write_remote_mb'] = 0.0
 
     # Events processed: Use output events from last taskset if available
     num_cmssw_steps = data.get('ChirpCMSSWRuns', 0)
@@ -278,7 +324,7 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         taskset_number = _extract_taskset_number(task_type)
 
         # Extract metrics
-        job_metrics = _extract_job_metrics(data)
+        job_metrics = _extract_job_metrics(data, taskset_number)
         if job_metrics is None:
             continue
 
