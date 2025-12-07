@@ -97,15 +97,14 @@ def _extract_job_metrics(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
     metrics = {}
 
-    # Wallclock time: WallClockHr (hours) or CommittedTime (seconds)
-    wallclock_hr = data.get('WallClockHr', 0.0)
-    committed_time = data.get('CommittedTime', 0.0)
-    if wallclock_hr > 0:
-        metrics['wallclock_time_sec'] = wallclock_hr * 3600.0
-    elif committed_time > 0:
-        metrics['wallclock_time_sec'] = committed_time
-    else:
-        metrics['wallclock_time_sec'] = 0.0
+    # Wallclock time with overhead: CommittedTime (seconds)
+    # This includes pre/post CMSSW processing overhead
+    metrics['wallclock_time_with_overhead_sec'] = data.get('CommittedTime', 0.0)
+
+    # Wallclock time non-overhead: ChirpCMSSWElapsed (seconds)
+    # This is only the actual CMSSW processing time, excluding overhead
+    chirp_elapsed = data.get('ChirpCMSSWElapsed', 0.0)
+    metrics['wallclock_time_non_overhead_sec'] = chirp_elapsed
 
     # CPU time used: ChirpCMSSWTotalCPU (seconds) or CpuTimeHr (hours)
     chirp_cpu = data.get('ChirpCMSSWTotalCPU', 0.0)  # seconds
@@ -184,7 +183,8 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
     task_type_counts = defaultdict(int)
 
     # Metrics accumulators
-    total_wallclock_time_sec = 0.0
+    total_wallclock_time_with_overhead_sec = 0.0
+    total_wallclock_time_non_overhead_sec = 0.0
     total_cpu_time_used_sec = 0.0
     total_cpu_time_allocated_sec = 0.0
     total_memory_used_mb = 0.0
@@ -245,7 +245,8 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
             continue
 
         # Accumulate metrics
-        total_wallclock_time_sec += job_metrics['wallclock_time_sec']
+        total_wallclock_time_with_overhead_sec += job_metrics['wallclock_time_with_overhead_sec']
+        total_wallclock_time_non_overhead_sec += job_metrics['wallclock_time_non_overhead_sec']
         total_cpu_time_used_sec += job_metrics['cpu_time_used_sec']
         total_cpu_time_allocated_sec += job_metrics['cpu_time_allocated_sec']
         total_memory_used_mb += job_metrics['memory_used_mb']
@@ -278,13 +279,23 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
     if total_memory_allocated_mb > 0:
         memory_utilization = total_memory_used_mb / total_memory_allocated_mb
 
-    event_throughput = None
-    if total_wallclock_time_sec > 0:
-        event_throughput = total_events / total_wallclock_time_sec
+    # Event throughput and time per event for wallclock time with overhead
+    event_throughput_with_overhead = None
+    if total_wallclock_time_with_overhead_sec > 0:
+        event_throughput_with_overhead = total_events / total_wallclock_time_with_overhead_sec
 
-    wallclock_time_per_event = None
+    wallclock_time_per_event_with_overhead = None
     if total_events > 0:
-        wallclock_time_per_event = total_wallclock_time_sec / total_events
+        wallclock_time_per_event_with_overhead = total_wallclock_time_with_overhead_sec / total_events
+
+    # Event throughput and time per event for wallclock time non-overhead
+    event_throughput_non_overhead = None
+    if total_wallclock_time_non_overhead_sec > 0:
+        event_throughput_non_overhead = total_events / total_wallclock_time_non_overhead_sec
+
+    wallclock_time_per_event_non_overhead = None
+    if total_events > 0:
+        wallclock_time_per_event_non_overhead = total_wallclock_time_non_overhead_sec / total_events
 
     cpu_time_per_event = None
     if total_events > 0:
@@ -295,7 +306,8 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         'condor_docs': condor_docs,
         'job_type_counts': dict(job_type_counts),
         'task_type_counts': dict(task_type_counts),
-        'total_wallclock_time_sec': total_wallclock_time_sec,
+        'total_wallclock_time_with_overhead_sec': total_wallclock_time_with_overhead_sec,
+        'total_wallclock_time_non_overhead_sec': total_wallclock_time_non_overhead_sec,
         'workflow_turnaround_time_sec': workflow_turnaround_time_sec,
         'total_cpu_time_used_sec': total_cpu_time_used_sec,
         'total_cpu_time_allocated_sec': total_cpu_time_allocated_sec,
@@ -308,8 +320,10 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         'total_events': total_events,
         'cpu_utilization': cpu_utilization,
         'memory_utilization': memory_utilization,
-        'event_throughput': event_throughput,
-        'wallclock_time_per_event': wallclock_time_per_event,
+        'event_throughput_with_overhead': event_throughput_with_overhead,
+        'event_throughput_non_overhead': event_throughput_non_overhead,
+        'wallclock_time_per_event_with_overhead': wallclock_time_per_event_with_overhead,
+        'wallclock_time_per_event_non_overhead': wallclock_time_per_event_non_overhead,
         'cpu_time_per_event': cpu_time_per_event,
     }
 
@@ -350,8 +364,13 @@ def print_stats(stats: Dict[str, Any]) -> None:
 
     # Time metrics
     print(f"\nTime Metrics:")
-    total_wallclock_hr = stats['total_wallclock_time_sec'] / 3600.0
-    print(f"  Total Wallclock Time: {stats['total_wallclock_time_sec']:,.2f} sec ({total_wallclock_hr:,.2f} hours)")
+    total_wallclock_with_overhead_hr = stats['total_wallclock_time_with_overhead_sec'] / 3600.0
+    print(f"  Total Wallclock Time (with overhead): {stats['total_wallclock_time_with_overhead_sec']:,.2f} sec ({total_wallclock_with_overhead_hr:,.2f} hours)")
+    print(f"    (Includes pre/post CMSSW processing overhead, using CommittedTime)")
+
+    total_wallclock_non_overhead_hr = stats['total_wallclock_time_non_overhead_sec'] / 3600.0
+    print(f"  Total Wallclock Time (non-overhead): {stats['total_wallclock_time_non_overhead_sec']:,.2f} sec ({total_wallclock_non_overhead_hr:,.2f} hours)")
+    print(f"    (Only actual CMSSW processing time, using ChirpCMSSWElapsed)")
 
     if stats['workflow_turnaround_time_sec'] is not None:
         workflow_turnaround_hr = stats['workflow_turnaround_time_sec'] / 3600.0
@@ -364,7 +383,6 @@ def print_stats(stats: Dict[str, Any]) -> None:
     print(f"\nCPU Metrics:")
     total_cpu_used_hr = stats['total_cpu_time_used_sec'] / 3600.0
     total_cpu_allocated_hr = stats['total_cpu_time_allocated_sec'] / 3600.0
-    print(f"  Total CPU Time: {stats['total_cpu_time_used_sec']:,.2f} sec ({total_cpu_used_hr:,.2f} hours)")
     print(f"  Total CPU Used Time: {stats['total_cpu_time_used_sec']:,.2f} sec ({total_cpu_used_hr:,.2f} hours)")
     print(f"  Total CPU Allocated Time: {stats['total_cpu_time_allocated_sec']:,.2f} sec ({total_cpu_allocated_hr:,.2f} hours)")
 
@@ -404,17 +422,29 @@ def print_stats(stats: Dict[str, Any]) -> None:
     print(f"\nEvent Metrics:")
     print(f"  Total Events Processed: {stats['total_events']:,}")
 
-    if stats['event_throughput'] is not None:
-        print(f"  Event Throughput: {stats['event_throughput']:.6f} events/sec")
-        print(f"    (Total events / Total wallclock time)")
+    if stats['event_throughput_with_overhead'] is not None:
+        print(f"  Event Throughput (with overhead): {stats['event_throughput_with_overhead']:.6f} events/sec")
+        print(f"    (Total events / Total wallclock time with overhead)")
     else:
-        print(f"  Event Throughput: N/A (no wallclock time data)")
+        print(f"  Event Throughput (with overhead): N/A (no wallclock time data)")
 
-    if stats['wallclock_time_per_event'] is not None:
-        print(f"  Wallclock Time per Event: {stats['wallclock_time_per_event']:.6f} sec/event")
-        print(f"    (Total wallclock time / Total events)")
+    if stats['event_throughput_non_overhead'] is not None:
+        print(f"  Event Throughput (non-overhead): {stats['event_throughput_non_overhead']:.6f} events/sec")
+        print(f"    (Total events / Total wallclock time non-overhead)")
     else:
-        print(f"  Wallclock Time per Event: N/A (no events processed)")
+        print(f"  Event Throughput (non-overhead): N/A (no wallclock time data)")
+
+    if stats['wallclock_time_per_event_with_overhead'] is not None:
+        print(f"  Wallclock Time per Event (with overhead): {stats['wallclock_time_per_event_with_overhead']:.6f} sec/event")
+        print(f"    (Total wallclock time with overhead / Total events)")
+    else:
+        print(f"  Wallclock Time per Event (with overhead): N/A (no events processed)")
+
+    if stats['wallclock_time_per_event_non_overhead'] is not None:
+        print(f"  Wallclock Time per Event (non-overhead): {stats['wallclock_time_per_event_non_overhead']:.6f} sec/event")
+        print(f"    (Total wallclock time non-overhead / Total events)")
+    else:
+        print(f"  Wallclock Time per Event (non-overhead): N/A (no events processed)")
 
     if stats['cpu_time_per_event'] is not None:
         print(f"  CPU Time per Event: {stats['cpu_time_per_event']:.6f} sec/event")
@@ -444,8 +474,10 @@ def save_stats_to_json(stats: Dict[str, Any], output_file: str, document_name: s
             'task_type_counts': stats['task_type_counts'],
         },
         'time_metrics': {
-            'total_wallclock_time_sec': stats['total_wallclock_time_sec'],
-            'total_wallclock_time_hours': stats['total_wallclock_time_sec'] / 3600.0,
+            'total_wallclock_time_with_overhead_sec': stats['total_wallclock_time_with_overhead_sec'],
+            'total_wallclock_time_with_overhead_hours': stats['total_wallclock_time_with_overhead_sec'] / 3600.0,
+            'total_wallclock_time_non_overhead_sec': stats['total_wallclock_time_non_overhead_sec'],
+            'total_wallclock_time_non_overhead_hours': stats['total_wallclock_time_non_overhead_sec'] / 3600.0,
             'workflow_turnaround_time_sec': stats['workflow_turnaround_time_sec'],
             'workflow_turnaround_time_hours': (
                 stats['workflow_turnaround_time_sec'] / 3600.0
@@ -495,8 +527,10 @@ def save_stats_to_json(stats: Dict[str, Any], output_file: str, document_name: s
         },
         'event_metrics': {
             'total_events': stats['total_events'],
-            'event_throughput_events_per_sec': stats['event_throughput'],
-            'wallclock_time_per_event_sec': stats['wallclock_time_per_event'],
+            'event_throughput_with_overhead_events_per_sec': stats['event_throughput_with_overhead'],
+            'event_throughput_non_overhead_events_per_sec': stats['event_throughput_non_overhead'],
+            'wallclock_time_per_event_with_overhead_sec': stats['wallclock_time_per_event_with_overhead'],
+            'wallclock_time_per_event_non_overhead_sec': stats['wallclock_time_per_event_non_overhead'],
             'cpu_time_per_event_sec': stats['cpu_time_per_event'],
         },
     }
