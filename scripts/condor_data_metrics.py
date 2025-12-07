@@ -21,7 +21,8 @@ Metrics provided:
 - Total write (local and remote): Calculated from ChirpCMSSWWriteBytes
 - CPU utilization: Ratio of used CPU time to allocated CPU time
 - Memory utilization: Ratio of used memory (MemoryUsage) to allocated memory OriginalMemory
-- Event throughput: Total events divided by total wallclock time (events per second)
+- Event throughput (wallclock): Total events divided by total wallclock time (events per second)
+- Event throughput (allocated CPU): Total events divided by total allocated CPU time (events per second)
 - Wallclock time per event: Total wallclock time divided by total events
 - CPU time per event: Total CPU time divided by total events
 
@@ -390,6 +391,11 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
     if total_events > 0:
         cpu_time_per_event = total_cpu_time_used_sec / total_events
 
+    # Event throughput based on allocated CPU time
+    event_throughput_allocated_cpu = None
+    if total_cpu_time_allocated_sec > 0:
+        event_throughput_allocated_cpu = total_events / total_cpu_time_allocated_sec
+
     # Calculate overhead metrics
     # Overall overhead: difference between total time with and without overhead
     total_overhead_sec = total_wallclock_time_with_overhead_sec - total_wallclock_time_non_overhead_sec
@@ -428,6 +434,7 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         'memory_utilization': memory_utilization,
         'event_throughput_with_overhead': event_throughput_with_overhead,
         'event_throughput_non_overhead': event_throughput_non_overhead,
+        'event_throughput_allocated_cpu': event_throughput_allocated_cpu,
         'wallclock_time_per_event_with_overhead': wallclock_time_per_event_with_overhead,
         'wallclock_time_per_event_non_overhead': wallclock_time_per_event_non_overhead,
         'cpu_time_per_event': cpu_time_per_event,
@@ -589,6 +596,12 @@ def print_stats(stats: Dict[str, Any]) -> None:
     else:
         print(f"  Event Throughput (non-overhead): N/A (no wallclock time data)")
 
+    if stats['event_throughput_allocated_cpu'] is not None:
+        print(f"  Event Throughput (allocated CPU): {stats['event_throughput_allocated_cpu']:.6f} events/sec")
+        print(f"    (Total events / Total allocated CPU time)")
+    else:
+        print(f"  Event Throughput (allocated CPU): N/A (no allocated CPU time data)")
+
     if stats['wallclock_time_per_event_with_overhead'] is not None:
         print(f"  Wallclock Time per Event (with overhead): {stats['wallclock_time_per_event_with_overhead']:.6f} sec/event")
         print(f"    (Total wallclock time with overhead / Total events)")
@@ -698,6 +711,7 @@ def save_stats_to_json(stats: Dict[str, Any], output_file: str, document_name: s
             'total_events': stats['total_events'],
             'event_throughput_with_overhead_events_per_sec': stats['event_throughput_with_overhead'],
             'event_throughput_non_overhead_events_per_sec': stats['event_throughput_non_overhead'],
+            'event_throughput_allocated_cpu_events_per_sec': stats['event_throughput_allocated_cpu'],
             'wallclock_time_per_event_with_overhead_sec': stats['wallclock_time_per_event_with_overhead'],
             'wallclock_time_per_event_non_overhead_sec': stats['wallclock_time_per_event_non_overhead'],
             'cpu_time_per_event_sec': stats['cpu_time_per_event'],
