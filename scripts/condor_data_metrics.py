@@ -36,6 +36,10 @@ import re
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from collections import defaultdict
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def load_elasticsearch_data(json_filepath: str) -> List[Dict[str, Any]]:
@@ -284,6 +288,9 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
     job_start_dates = []
     completion_dates = []
 
+    # For wallclock time distribution
+    job_wallclock_times_sec = []
+
     for hit in hits:
         source = hit.get('_source', {})
         metadata = source.get('metadata', {})
@@ -298,6 +305,18 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         # Filter: only include Production and Processing jobs
         job_type = data.get('CMS_JobType', 'Unknown')
         if job_type not in ['Production', 'Processing']:
+            continue
+
+        # Filter: skip jobs that did not exit successfully
+        exit_code = data.get('ExitCode', None)
+        exit_status = data.get('ExitStatus', None)
+        if exit_code != 0 or exit_status != 0:
+            wmagent_job_id = data.get('WMAgent_JobID', 'Unknown')
+            print(
+                f"WARNING: Job did not exit successfully - skipping: WMAgent_JobID={wmagent_job_id}, "
+                f"ExitCode={exit_code}, ExitStatus={exit_status}",
+                file=sys.stderr
+            )
             continue
 
         # Filter: for the moment, disregard jobs that have been internally restarted
@@ -340,6 +359,10 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         total_read_remote_mb += job_metrics['read_remote_mb']
         total_write_local_mb += job_metrics['write_local_mb']
         total_write_remote_mb += job_metrics['write_remote_mb']
+
+        # Collect individual job wallclock times for distribution
+        if job_metrics['wallclock_time_with_overhead_sec'] > 0:
+            job_wallclock_times_sec.append(job_metrics['wallclock_time_with_overhead_sec'])
 
         # intermediate taskset events are not used for the workflow-level calculation
         job_events_by_taskset[taskset_number].append(job_metrics['events_processed'])
@@ -443,6 +466,7 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         'overhead_ratio': overhead_ratio,
         'overhead_per_job_sec': overhead_per_job_sec,
         'overhead_per_job_hours': overhead_per_job_hours,
+        'job_wallclock_times_sec': job_wallclock_times_sec,
     }
 
 def calculate_workflow_processed_events(job_events_by_taskset: Dict[int, List[int]]) -> int:
@@ -623,6 +647,90 @@ def print_stats(stats: Dict[str, Any]) -> None:
     print("\n" + "="*80)
 
 
+def plot_wallclock_time_distribution(
+    wallclock_times_sec: List[float],
+    output_file: Optional[str] = None
+) -> None:
+    """
+    Create a simple histogram distribution of job wallclock times.
+
+    Args:
+        wallclock_times_sec: List of wallclock times in seconds for each job
+        output_file: Optional path to save the plot. If None, displays to stdout.
+    """
+    if not wallclock_times_sec:
+        print("WARNING: No wallclock time data available for distribution plot.")
+        return
+
+    # Convert to numpy array for easier manipulation
+    times = np.array(wallclock_times_sec)
+
+    # Convert to hours for better readability
+    times_hours = times / 3600.0
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Create histogram
+    n_bins = min(50, max(10, int(np.sqrt(len(times)))))  # Adaptive bin count
+    counts, bins, patches = ax.hist(
+        times_hours,
+        bins=n_bins,
+        edgecolor='black',
+        alpha=0.7,
+        color='steelblue'
+    )
+
+    # Add statistics text
+    mean_time = np.mean(times_hours)
+    median_time = np.median(times_hours)
+    std_time = np.std(times_hours)
+    min_time = np.min(times_hours)
+    max_time = np.max(times_hours)
+
+    stats_text = (
+        f'Total Jobs: {len(times):,}\n'
+        f'Mean: {mean_time:.2f} hours\n'
+        f'Median: {median_time:.2f} hours\n'
+        f'Std Dev: {std_time:.2f} hours\n'
+        f'Min: {min_time:.2f} hours\n'
+        f'Max: {max_time:.2f} hours'
+    )
+
+    ax.text(
+        0.98, 0.98, stats_text,
+        transform=ax.transAxes,
+        verticalalignment='top',
+        horizontalalignment='right',
+        bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8),
+        fontsize=10,
+        family='monospace'
+    )
+
+    # Add vertical lines for mean and median
+    ax.axvline(mean_time, color='red', linestyle='--', linewidth=2, label=f'Mean: {mean_time:.2f}h')
+    ax.axvline(median_time, color='green', linestyle='--', linewidth=2, label=f'Median: {median_time:.2f}h')
+
+    # Labels and title
+    ax.set_xlabel('Job Wallclock Time (hours)', fontsize=12)
+    ax.set_ylabel('Number of Jobs', fontsize=12)
+    ax.set_title('Distribution of Job Wallclock Times', fontsize=14, fontweight='bold')
+    ax.legend(loc='upper right')
+    ax.grid(True, alpha=0.3)
+
+    # Save or show
+    if output_file:
+        plt.savefig(output_file, dpi=150, bbox_inches='tight')
+        print(f"\nWallclock time distribution plot saved to: {output_file}")
+    else:
+        # Save to a default filename based on current directory
+        default_file = 'wallclock_time_distribution.png'
+        plt.savefig(default_file, dpi=150, bbox_inches='tight')
+        print(f"\nWallclock time distribution plot saved to: {default_file}")
+
+    plt.close()
+
+
 def save_stats_to_json(stats: Dict[str, Any], output_file: str, document_name: str) -> None:
     """
     Save statistics to a JSON file.
@@ -737,6 +845,9 @@ Examples:
 
   # Analyze and save metrics to JSON file
   python condor_data_metrics.py data/const001.json --output metrics.json
+
+  # Analyze and create wallclock time distribution plot
+  python condor_data_metrics.py data/const001.json --plot wallclock_dist.png
         """
     )
     parser.add_argument('json_file', help='Path to JSON file containing Elasticsearch results')
@@ -744,6 +855,11 @@ Examples:
         '--output', '-o',
         dest='output_file',
         help='Path to output JSON file for calculated metrics'
+    )
+    parser.add_argument(
+        '--plot',
+        dest='plot_file',
+        help='Path to output PNG file for wallclock time distribution plot'
     )
 
     args = parser.parse_args()
@@ -763,12 +879,25 @@ Examples:
     # Print statistics
     print_stats(stats)
 
+    # Create wallclock time distribution plot
+    if 'job_wallclock_times_sec' in stats and stats['job_wallclock_times_sec']:
+        try:
+            plot_wallclock_time_distribution(
+                stats['job_wallclock_times_sec'],
+                output_file=args.plot_file
+            )
+        except Exception as e:
+            print(f"Error creating wallclock time distribution plot: {e}", file=sys.stderr)
+
     # Save to JSON file if specified
     if args.output_file:
         try:
             # Extract document name from input file path
             document_name = Path(args.json_file).name
-            save_stats_to_json(stats, args.output_file, document_name)
+            # Don't include the full list of wallclock times in JSON (too large)
+            stats_for_json = stats.copy()
+            stats_for_json.pop('job_wallclock_times_sec', None)
+            save_stats_to_json(stats_for_json, args.output_file, document_name)
         except Exception as e:
             print(f"Error saving metrics to JSON: {e}", file=sys.stderr)
             sys.exit(1)
