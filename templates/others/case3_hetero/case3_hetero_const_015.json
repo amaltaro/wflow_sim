@@ -10,66 +10,66 @@
     "ScramArch": [
       "el8_amd64_gcc10"
     ],
-    "SizePerEvent": 801,
-    "TimePerEvent": 6.5,
+    "SizePerEvent": 800.0,
+    "TimePerEvent": 3.8,
     "GroupName": "group_0",
-    "GroupInputEvents": 6646
+    "GroupInputEvents": 11368
   },
   "Taskset2": {
     "KeepOutput": false,
-    "Memory": 4000,
-    "Multicore": 2,
+    "Memory": 16000,
+    "Multicore": 8,
     "RequiresGPU": "forbidden",
     "ScramArch": [
       "el8_amd64_gcc10"
     ],
-    "SizePerEvent": 2185,
-    "TimePerEvent": 5,
+    "SizePerEvent": 2140,
+    "TimePerEvent": 1.1,
     "InputTaskset": "Taskset1",
     "GroupName": "group_1",
-    "GroupInputEvents": 8640
+    "GroupInputEvents": 39272
   },
   "Taskset3": {
+    "KeepOutput": true,
+    "Memory": 64000,
+    "Multicore": 64,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc10"
+    ],
+    "SizePerEvent": 385,
+    "TimePerEvent": 1.6,
+    "InputTaskset": "Taskset2",
+    "GroupName": "group_2",
+    "GroupInputEvents": 27000
+  },
+  "Taskset4": {
+    "KeepOutput": true,
+    "Memory": 10000,
+    "Multicore": 4,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc11"
+    ],
+    "SizePerEvent": 65,
+    "TimePerEvent": 0.35,
+    "InputTaskset": "Taskset3",
+    "GroupName": "group_8",
+    "GroupInputEvents": 108000
+  },
+  "Taskset5": {
     "KeepOutput": true,
     "Memory": 8000,
     "Multicore": 4,
     "RequiresGPU": "forbidden",
     "ScramArch": [
-      "el8_amd64_gcc10"
-    ],
-    "SizePerEvent": 400.5,
-    "TimePerEvent": 6.7,
-    "InputTaskset": "Taskset2",
-    "GroupName": "group_2",
-    "GroupInputEvents": 6447
-  },
-  "Taskset4": {
-    "KeepOutput": true,
-    "Memory": 16000,
-    "Multicore": 8,
-    "RequiresGPU": "forbidden",
-    "ScramArch": [
       "el8_amd64_gcc11"
     ],
-    "SizePerEvent": 75.5,
-    "TimePerEvent": 0.65,
-    "InputTaskset": "Taskset3",
-    "GroupName": "group_8",
-    "GroupInputEvents": 56103
-  },
-  "Taskset5": {
-    "KeepOutput": true,
-    "Memory": 24000,
-    "Multicore": 12,
-    "RequiresGPU": "forbidden",
-    "ScramArch": [
-      "el8_amd64_gcc11"
-    ],
-    "SizePerEvent": 1.65,
-    "TimePerEvent": 0.12,
+    "SizePerEvent": 10.0,
+    "TimePerEvent": 0.05,
     "InputTaskset": "Taskset4",
     "GroupName": "group_8",
-    "GroupInputEvents": 56103
+    "GroupInputEvents": 108000
   },
   "CompositionNumber": 15
 }
