@@ -1,0 +1,71 @@
+{
+  "document_name": "const001_1M.json",
+  "document_counts": {
+    "total_docs": 385,
+    "condor_docs": 133,
+    "skipped_jobs": 31,
+    "job_type_counts": {
+      "Production": 133
+    },
+    "task_type_counts": {
+      "Taskset1": 133
+    }
+  },
+  "time_metrics": {
+    "total_wallclock_time_with_overhead_sec": 5813748.0,
+    "total_wallclock_time_with_overhead_hours": 1614.93,
+    "total_wallclock_time_non_overhead_sec": 5739265.0,
+    "total_wallclock_time_non_overhead_hours": 1594.2402777777777,
+    "workflow_turnaround_time_sec": 111551.0,
+    "workflow_turnaround_time_hours": 30.98638888888889,
+    "total_overhead_sec": 74483.0,
+    "total_overhead_hours": 20.689722222222223,
+    "overhead_ratio": 0.012811528810674284,
+    "overhead_ratio_percent": 1.2811528810674284,
+    "overhead_per_job_sec": 560.0225563909775,
+    "overhead_per_job_hours": 0.15556182121971596,
+    "wallclock_time_per_event_overhead_sec": 6.981518708254977,
+    "wallclock_time_per_event_non_overhead_sec": 6.892074780181907
+  },
+  "cpu_metrics": {
+    "total_cpu_time_sec": 31393331.30513699,
+    "total_cpu_time_hours": 8720.369806982497,
+    "total_cpu_used_time_sec": 31393331.30513699,
+    "total_cpu_used_time_hours": 8720.369806982497,
+    "total_cpu_allocated_time_sec": 46510016.0,
+    "total_cpu_allocated_time_hours": 12919.448888888888,
+    "cpu_utilization": 0.6749800151678509,
+    "cpu_utilization_percent": 67.4980015167851
+  },
+  "memory_metrics": {
+    "total_memory_used_mb": 1039481.0,
+    "total_memory_used_gb": 1015.1181640625,
+    "total_memory_allocated_mb": 1064000.0,
+    "total_memory_allocated_gb": 1039.0625,
+    "memory_utilization": 0.9769558270676691,
+    "memory_utilization_percent": 97.69558270676691
+  },
+  "io_metrics": {
+    "total_read_local_mb": 4452605.157633781,
+    "total_read_local_gb": 4348.24722425174,
+    "total_read_remote_mb": 0.0,
+    "total_read_remote_gb": 0.0,
+    "total_read_mb": 4452605.157633781,
+    "total_read_gb": 4348.24722425174,
+    "total_write_local_mb": 2743408.7982988358,
+    "total_write_local_gb": 2679.110154588707,
+    "total_write_remote_mb": 0.0,
+    "total_write_remote_gb": 0.0,
+    "total_write_mb": 2743408.7982988358,
+    "total_write_gb": 2679.110154588707
+  },
+  "event_metrics": {
+    "total_events": 832734,
+    "event_throughput_with_overhead_events_per_sec": 0.14323531050881463,
+    "event_throughput_non_overhead_events_per_sec": 0.1450941888900408,
+    "event_throughput_allocated_cpu_events_per_sec": 0.01790440149493821,
+    "wallclock_time_per_event_overhead_sec": 6.981518708254977,
+    "wallclock_time_per_event_non_overhead_sec": 6.892074780181907,
+    "cpu_time_per_event_sec": 37.69911076662775
+  }
+}
