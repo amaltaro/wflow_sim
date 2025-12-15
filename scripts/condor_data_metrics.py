@@ -864,23 +864,15 @@ Examples:
   # Analyze condor documents
   python condor_data_metrics.py data/const001.json
 
-  # Analyze and save metrics to JSON file
-  python condor_data_metrics.py data/const001.json --output metrics.json
-
-  # Analyze and create wallclock time distribution plot
-  python condor_data_metrics.py data/const001.json --plot output_dir/
+  # Analyze and save metrics to JSON file and create wallclock time distribution plot
+  python condor_data_metrics.py data/const001.json --output-dir output_dir/
         """
     )
     parser.add_argument('json_file', help='Path to JSON file containing Elasticsearch results')
     parser.add_argument(
-        '--output', '-o',
-        dest='output_file',
-        help='Path to output JSON file for calculated metrics'
-    )
-    parser.add_argument(
-        '--plot',
-        dest='plot_dir',
-        help='Output directory for wallclock time distribution plot (filename auto-generated from input file)'
+        '--output-dir', '-o',
+        dest='output_dir',
+        help='Output directory for JSON summary and PNG plot files (filenames auto-generated from input file)'
     )
 
     args = parser.parse_args()
@@ -900,31 +892,35 @@ Examples:
     # Print statistics
     print_stats(stats)
 
-    # Create wallclock time distribution plot (only if --plot option is provided)
-    if args.plot_dir and 'job_wallclock_times_sec' in stats and stats['job_wallclock_times_sec']:
+    # Generate output files if output directory is specified
+    if args.output_dir:
         try:
-            # Construct output filename from input filename
+            # Extract filename stem from input file
             input_file_stem = Path(args.json_file).stem  # Get filename without extension
-            output_filename = f"job_length_{input_file_stem}.png"
-            output_path = Path(args.plot_dir) / output_filename
-            plot_wallclock_time_distribution(
-                stats['job_wallclock_times_sec'],
-                output_file=str(output_path)
-            )
-        except Exception as e:
-            print(f"Error creating wallclock time distribution plot: {e}", file=sys.stderr)
+            output_dir = Path(args.output_dir)
 
-    # Save to JSON file if specified
-    if args.output_file:
-        try:
-            # Extract document name from input file path
+            # Create output directory if it doesn't exist
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            # Generate JSON file: summary_<input_file_stem>.json
+            json_filename = f"summary_{input_file_stem}.json"
+            json_path = output_dir / json_filename
             document_name = Path(args.json_file).name
             # Don't include the full list of wallclock times in JSON (too large)
             stats_for_json = stats.copy()
             stats_for_json.pop('job_wallclock_times_sec', None)
-            save_stats_to_json(stats_for_json, args.output_file, document_name)
+            save_stats_to_json(stats_for_json, str(json_path), document_name)
+
+            # Generate PNG file: job_length_<input_file_stem>.png
+            if 'job_wallclock_times_sec' in stats and stats['job_wallclock_times_sec']:
+                png_filename = f"job_length_{input_file_stem}.png"
+                png_path = output_dir / png_filename
+                plot_wallclock_time_distribution(
+                    stats['job_wallclock_times_sec'],
+                    output_file=str(png_path)
+                )
         except Exception as e:
-            print(f"Error saving metrics to JSON: {e}", file=sys.stderr)
+            print(f"Error generating output files: {e}", file=sys.stderr)
             sys.exit(1)
 
 
