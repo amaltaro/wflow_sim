@@ -39,6 +39,7 @@
     "total_cpu_used_time_hours": 7454.451642151108,
     "total_cpu_allocated_time_sec": 30530800.0,
     "total_cpu_allocated_time_hours": 8480.777777777777,
+    "total_cpu_cores_used": 846.0,
     "cpu_utilization": 0.878982074224848,
     "cpu_utilization_percent": 87.8982074224848
   },
@@ -71,6 +72,8 @@
     "event_throughput_allocated_cpu_events_per_sec": 0.025785698376721213,
     "wallclock_time_per_event_overhead_sec": 6.461666950351727,
     "wallclock_time_per_event_non_overhead_sec": 6.416661374034941,
-    "cpu_time_per_event_sec": 34.08796850809263
+    "cpu_time_per_event_sec": 34.08796850809263,
+    "cpu_cores_per_event": 0.0010746159454714972,
+    "memory_mb_per_event": 0.9666462582787345
   }
 }
