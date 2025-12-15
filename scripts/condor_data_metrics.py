@@ -16,6 +16,7 @@ Metrics provided:
 - Total CPU time: Sum of CpuTimeHr (hours) or ChirpCMSSWTotalCPU (seconds)
 - Total CPU used time: Same as total CPU time (CPU time actually used)
 - Total CPU allocated time: Sum of CoreHr (CPU hours allocated)
+- Total CPU cores allocated: Sum of OriginalCpus (total number of CPU cores allocated across all jobs)
 - Total read (local and remote): Calculated from ChirpCMSSWReadBytes and
   ChirpCMSSW_cmsRun1_ReadBytes
 - Total write (local and remote): Calculated from ChirpCMSSWWriteBytes
@@ -156,6 +157,9 @@ def _extract_job_metrics(data: Dict[str, Any], taskset_number: Optional[int] = N
     core_hr = data.get('CoreHr', 0.0)  # CPU hours
     metrics['cpu_time_allocated_sec'] = core_hr * 3600.0
 
+    # CPU cores allocated: OriginalCpus (number of CPU cores allocated to this job)
+    metrics['cpu_cores_allocated'] = data.get('OriginalCpus', 0.0)
+
     # Memory used: Peak memory used by the job is given by MemoryUsage
     metrics['memory_used_mb'] = data.get('MemoryUsage', 0.0)
     # Memory allocated: OriginalMemory
@@ -278,6 +282,7 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
     total_wallclock_time_non_overhead_sec = 0.0
     total_cpu_time_used_sec = 0.0
     total_cpu_time_allocated_sec = 0.0
+    total_cpu_cores_used = 0.0  # Sum of OriginalCpus across all jobs
     total_memory_used_mb = 0.0
     total_memory_allocated_mb = 0.0
     total_read_local_mb = 0.0
@@ -356,6 +361,7 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         total_wallclock_time_non_overhead_sec += job_metrics['wallclock_time_non_overhead_sec']
         total_cpu_time_used_sec += job_metrics['cpu_time_used_sec']
         total_cpu_time_allocated_sec += job_metrics['cpu_time_allocated_sec']
+        total_cpu_cores_used += job_metrics['cpu_cores_allocated']
         total_memory_used_mb += job_metrics['memory_used_mb']
         total_memory_allocated_mb += job_metrics['memory_allocated_mb']
         total_read_local_mb += job_metrics['read_local_mb']
@@ -450,6 +456,7 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         'workflow_turnaround_time_sec': workflow_turnaround_time_sec,
         'total_cpu_time_used_sec': total_cpu_time_used_sec,
         'total_cpu_time_allocated_sec': total_cpu_time_allocated_sec,
+        'total_cpu_cores_used': total_cpu_cores_used,
         'total_read_local_mb': total_read_local_mb,
         'total_read_remote_mb': total_read_remote_mb,
         'total_write_local_mb': total_write_local_mb,
@@ -589,6 +596,8 @@ def print_stats(stats: Dict[str, Any]) -> None:
     total_cpu_allocated_hr = stats['total_cpu_time_allocated_sec'] / 3600.0
     print(f"  Total CPU Used Time: {stats['total_cpu_time_used_sec']:,.2f} sec ({total_cpu_used_hr:,.2f} hours)")
     print(f"  Total CPU Allocated Time: {stats['total_cpu_time_allocated_sec']:,.2f} sec ({total_cpu_allocated_hr:,.2f} hours)")
+    print(f"  Total CPU Cores Allocated: {stats['total_cpu_cores_used']:,.0f} cores")
+    print(f"    (Sum of OriginalCpus across all jobs)")
 
     if stats['cpu_utilization'] is not None:
         print(f"  CPU Utilization: {stats['cpu_utilization']:.4f} ({stats['cpu_utilization']*100:.2f}%)")
@@ -803,6 +812,7 @@ def save_stats_to_json(stats: Dict[str, Any], output_file: str, document_name: s
             'total_cpu_used_time_hours': stats['total_cpu_time_used_sec'] / 3600.0,
             'total_cpu_allocated_time_sec': stats['total_cpu_time_allocated_sec'],
             'total_cpu_allocated_time_hours': stats['total_cpu_time_allocated_sec'] / 3600.0,
+            'total_cpu_cores_used': stats['total_cpu_cores_used'],
             'cpu_utilization': stats['cpu_utilization'],
             'cpu_utilization_percent': (
                 stats['cpu_utilization'] * 100.0
