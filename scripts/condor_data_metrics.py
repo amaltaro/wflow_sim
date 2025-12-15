@@ -267,6 +267,7 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     total_docs = len(hits)
     condor_docs = 0
+    skipped_jobs = 0
     job_type_counts = defaultdict(int)
     task_type_counts = defaultdict(int)
     # For workflow-level total events calculation
@@ -311,6 +312,7 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         exit_code = data.get('ExitCode', None)
         exit_status = data.get('ExitStatus', None)
         if exit_code != 0 or exit_status != 0:
+            skipped_jobs += 1
             wmagent_job_id = data.get('WMAgent_JobID', 'Unknown')
             print(
                 f"WARNING: Job did not exit successfully - skipping: WMAgent_JobID={wmagent_job_id}, "
@@ -324,6 +326,7 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         num_restarts = data.get('NumRestarts', 0)
         num_job_starts = data.get('NumJobStarts', 0)
         if num_shadow_starts > 1 or num_restarts > 0 or num_job_starts > 1:
+            skipped_jobs += 1
             wmagent_job_id = data.get('WMAgent_JobID', 'Unknown')
             print(
                 f"WARNING: Job internally restarted - skipping: WMAgent_JobID={wmagent_job_id}, "
@@ -397,9 +400,9 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
     if total_wallclock_time_with_overhead_sec > 0:
         event_throughput_with_overhead = total_events / total_wallclock_time_with_overhead_sec
 
-    wallclock_time_per_event_with_overhead = None
+    wallclock_time_per_event_overhead = None
     if total_events > 0:
-        wallclock_time_per_event_with_overhead = total_wallclock_time_with_overhead_sec / total_events
+        wallclock_time_per_event_overhead = total_wallclock_time_with_overhead_sec / total_events
 
     # Event throughput and time per event for wallclock time non-overhead
     event_throughput_non_overhead = None
@@ -439,6 +442,7 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
     return {
         'total_docs': total_docs,
         'condor_docs': condor_docs,
+        'skipped_jobs': skipped_jobs,
         'job_type_counts': dict(job_type_counts),
         'task_type_counts': dict(task_type_counts),
         'total_wallclock_time_with_overhead_sec': total_wallclock_time_with_overhead_sec,
@@ -458,7 +462,7 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         'event_throughput_with_overhead': event_throughput_with_overhead,
         'event_throughput_non_overhead': event_throughput_non_overhead,
         'event_throughput_allocated_cpu': event_throughput_allocated_cpu,
-        'wallclock_time_per_event_with_overhead': wallclock_time_per_event_with_overhead,
+        'wallclock_time_per_event_overhead': wallclock_time_per_event_overhead,
         'wallclock_time_per_event_non_overhead': wallclock_time_per_event_non_overhead,
         'cpu_time_per_event': cpu_time_per_event,
         'total_overhead_sec': total_overhead_sec,
@@ -510,6 +514,7 @@ def print_stats(stats: Dict[str, Any]) -> None:
     print(f"\nDocument Counts:")
     print(f"  Total Documents: {stats['total_docs']:,}")
     print(f"  Condor Documents (Production/Processing only): {stats['condor_docs']:,}")
+    print(f"  Skipped Jobs (failed exit or restarted): {stats['skipped_jobs']:,}")
 
     # Jobs per job type
     job_type_counts = stats['job_type_counts']
@@ -564,6 +569,19 @@ def print_stats(stats: Dict[str, Any]) -> None:
         print(f"    (Maximum job completion time - Minimum job start time)")
     else:
         print(f"  Workflow Turnaround Time: N/A (insufficient timing data)")
+
+    # Wallclock time per event
+    if stats['wallclock_time_per_event_overhead'] is not None:
+        print(f"  Wallclock Time per Event (with overhead): {stats['wallclock_time_per_event_overhead']:.6f} sec/event")
+        print(f"    (Total wallclock time with overhead / Total events)")
+    else:
+        print(f"  Wallclock Time per Event (with overhead): N/A (no events processed)")
+
+    if stats['wallclock_time_per_event_non_overhead'] is not None:
+        print(f"  Wallclock Time per Event (non-overhead): {stats['wallclock_time_per_event_non_overhead']:.6f} sec/event")
+        print(f"    (Total wallclock time non-overhead / Total events)")
+    else:
+        print(f"  Wallclock Time per Event (non-overhead): N/A (no events processed)")
 
     # CPU metrics
     print(f"\nCPU Metrics:")
@@ -626,8 +644,8 @@ def print_stats(stats: Dict[str, Any]) -> None:
     else:
         print(f"  Event Throughput (allocated CPU): N/A (no allocated CPU time data)")
 
-    if stats['wallclock_time_per_event_with_overhead'] is not None:
-        print(f"  Wallclock Time per Event (with overhead): {stats['wallclock_time_per_event_with_overhead']:.6f} sec/event")
+    if stats['wallclock_time_per_event_overhead'] is not None:
+        print(f"  Wallclock Time per Event (with overhead): {stats['wallclock_time_per_event_overhead']:.6f} sec/event")
         print(f"    (Total wallclock time with overhead / Total events)")
     else:
         print(f"  Wallclock Time per Event (with overhead): N/A (no events processed)")
@@ -746,6 +764,7 @@ def save_stats_to_json(stats: Dict[str, Any], output_file: str, document_name: s
         'document_counts': {
             'total_docs': stats['total_docs'],
             'condor_docs': stats['condor_docs'],
+            'skipped_jobs': stats['skipped_jobs'],
             'job_type_counts': stats['job_type_counts'],
             'task_type_counts': stats['task_type_counts'],
         },
@@ -774,6 +793,8 @@ def save_stats_to_json(stats: Dict[str, Any], output_file: str, document_name: s
                 if stats['overhead_per_job_hours'] is not None
                 else None
             ),
+            'wallclock_time_per_event_overhead_sec': stats['wallclock_time_per_event_overhead'],
+            'wallclock_time_per_event_non_overhead_sec': stats['wallclock_time_per_event_non_overhead'],
         },
         'cpu_metrics': {
             'total_cpu_time_sec': stats['total_cpu_time_used_sec'],
@@ -820,7 +841,7 @@ def save_stats_to_json(stats: Dict[str, Any], output_file: str, document_name: s
             'event_throughput_with_overhead_events_per_sec': stats['event_throughput_with_overhead'],
             'event_throughput_non_overhead_events_per_sec': stats['event_throughput_non_overhead'],
             'event_throughput_allocated_cpu_events_per_sec': stats['event_throughput_allocated_cpu'],
-            'wallclock_time_per_event_with_overhead_sec': stats['wallclock_time_per_event_with_overhead'],
+            'wallclock_time_per_event_overhead_sec': stats['wallclock_time_per_event_overhead'],
             'wallclock_time_per_event_non_overhead_sec': stats['wallclock_time_per_event_non_overhead'],
             'cpu_time_per_event_sec': stats['cpu_time_per_event'],
         },
@@ -847,7 +868,7 @@ Examples:
   python condor_data_metrics.py data/const001.json --output metrics.json
 
   # Analyze and create wallclock time distribution plot
-  python condor_data_metrics.py data/const001.json --plot wallclock_dist.png
+  python condor_data_metrics.py data/const001.json --plot output_dir/
         """
     )
     parser.add_argument('json_file', help='Path to JSON file containing Elasticsearch results')
@@ -858,8 +879,8 @@ Examples:
     )
     parser.add_argument(
         '--plot',
-        dest='plot_file',
-        help='Path to output PNG file for wallclock time distribution plot'
+        dest='plot_dir',
+        help='Output directory for wallclock time distribution plot (filename auto-generated from input file)'
     )
 
     args = parser.parse_args()
@@ -879,12 +900,16 @@ Examples:
     # Print statistics
     print_stats(stats)
 
-    # Create wallclock time distribution plot
-    if 'job_wallclock_times_sec' in stats and stats['job_wallclock_times_sec']:
+    # Create wallclock time distribution plot (only if --plot option is provided)
+    if args.plot_dir and 'job_wallclock_times_sec' in stats and stats['job_wallclock_times_sec']:
         try:
+            # Construct output filename from input filename
+            input_file_stem = Path(args.json_file).stem  # Get filename without extension
+            output_filename = f"job_length_{input_file_stem}.png"
+            output_path = Path(args.plot_dir) / output_filename
             plot_wallclock_time_distribution(
                 stats['job_wallclock_times_sec'],
-                output_file=args.plot_file
+                output_file=str(output_path)
             )
         except Exception as e:
             print(f"Error creating wallclock time distribution plot: {e}", file=sys.stderr)
