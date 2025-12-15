@@ -423,6 +423,16 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
     if total_events > 0:
         cpu_time_per_event = total_cpu_time_used_sec / total_events
 
+    # CPU cores per event
+    cpu_cores_per_event = None
+    if total_events > 0:
+        cpu_cores_per_event = total_cpu_cores_used / total_events
+
+    # Memory per event (using allocated memory for consistency with visualization)
+    memory_mb_per_event = None
+    if total_events > 0:
+        memory_mb_per_event = total_memory_allocated_mb / total_events
+
     # Event throughput based on allocated CPU time
     event_throughput_allocated_cpu = None
     if total_cpu_time_allocated_sec > 0:
@@ -472,6 +482,8 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         'wallclock_time_per_event_overhead': wallclock_time_per_event_overhead,
         'wallclock_time_per_event_non_overhead': wallclock_time_per_event_non_overhead,
         'cpu_time_per_event': cpu_time_per_event,
+        'cpu_cores_per_event': cpu_cores_per_event,
+        'memory_mb_per_event': memory_mb_per_event,
         'total_overhead_sec': total_overhead_sec,
         'total_overhead_hours': total_overhead_hours,
         'overhead_ratio': overhead_ratio,
@@ -671,6 +683,18 @@ def print_stats(stats: Dict[str, Any]) -> None:
     else:
         print(f"  CPU Time per Event: N/A (no events processed)")
 
+    if stats['cpu_cores_per_event'] is not None:
+        print(f"  CPU Cores per Event: {stats['cpu_cores_per_event']:.6f} cores/event")
+        print(f"    (Total CPU cores allocated / Total events)")
+    else:
+        print(f"  CPU Cores per Event: N/A (no events processed)")
+
+    if stats['memory_mb_per_event'] is not None:
+        print(f"  Memory per Event: {stats['memory_mb_per_event']:.6f} MB/event")
+        print(f"    (Total memory allocated / Total events)")
+    else:
+        print(f"  Memory per Event: N/A (no events processed)")
+
     print("\n" + "="*80)
 
 
@@ -854,6 +878,8 @@ def save_stats_to_json(stats: Dict[str, Any], output_file: str, document_name: s
             'wallclock_time_per_event_overhead_sec': stats['wallclock_time_per_event_overhead'],
             'wallclock_time_per_event_non_overhead_sec': stats['wallclock_time_per_event_non_overhead'],
             'cpu_time_per_event_sec': stats['cpu_time_per_event'],
+            'cpu_cores_per_event': stats['cpu_cores_per_event'],
+            'memory_mb_per_event': stats['memory_mb_per_event'],
         },
     }
 
