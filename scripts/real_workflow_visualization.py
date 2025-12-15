@@ -80,12 +80,13 @@ def transform_real_data_to_simulation_format(real_data: Dict[str, Any],
                                      total_write_remote_mb_per_event)
     total_network_transfer_mb = total_read_remote_mb + total_write_remote_mb
     
-    # Calculate CPU cores used (approximate: allocated CPU time / wallclock time)
+    # Get actual CPU cores allocated from real data (sum of OriginalCpus across all jobs)
+    total_cpu_cores_used = cpu_metrics.get('total_cpu_cores_used', 0.0)
+
+    # Get total wallclock time and CPU allocated time
     total_cpu_allocated_time = cpu_metrics.get('total_cpu_allocated_time_sec', 0.0)
     total_wallclock_time = time_metrics.get('total_wallclock_time_with_overhead_sec', 0.0)
-    total_cpu_cores_used = (total_cpu_allocated_time / total_wallclock_time 
-                           if total_wallclock_time > 0 else 0.0)
-    
+
     # Extract construction number from filename
     composition_number = extract_construction_number(file_name)
     
@@ -109,7 +110,8 @@ def transform_real_data_to_simulation_format(real_data: Dict[str, Any],
         'total_cpu_cores_used': total_cpu_cores_used,
         
         # Memory metrics
-        'total_memory_used_mb': memory_metrics.get('total_memory_used_mb', 0.0),
+        # Use allocated memory for resource cost analysis (what was allocated, not what was used)
+        'total_memory_used_mb': memory_metrics.get('total_memory_allocated_mb', 0.0),
         'memory_occupancy': memory_metrics.get('memory_utilization', 0.0),
         
         # I/O metrics - per event
@@ -126,11 +128,9 @@ def transform_real_data_to_simulation_format(real_data: Dict[str, Any],
         'total_read_local_mb': total_read_local_mb,
         'total_network_transfer_mb': total_network_transfer_mb,
         
-        # Per-event resource metrics
-        'cpu_cores_per_event': (total_cpu_cores_used / total_events 
-                               if total_events > 0 else 0.0),
-        'memory_mb_per_event': (memory_metrics.get('total_memory_used_mb', 0.0) / total_events 
-                               if total_events > 0 else 0.0),
+        # Per-event resource metrics (use pre-calculated values from JSON for consistency)
+        'cpu_cores_per_event': event_metrics.get('cpu_cores_per_event', 0.0),
+        'memory_mb_per_event': event_metrics.get('memory_mb_per_event', 0.0),
         
         # Overhead flag (real data includes overhead)
         '_overhead_enabled': True
