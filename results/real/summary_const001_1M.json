@@ -56,10 +56,10 @@
     "total_read_gb": 4348.24722425174,
     "total_write_local_mb": 2743408.7982988358,
     "total_write_local_gb": 2679.110154588707,
-    "total_write_remote_mb": 0.0,
-    "total_write_remote_gb": 0.0,
-    "total_write_mb": 2743408.7982988358,
-    "total_write_gb": 2679.110154588707
+    "total_write_remote_mb": 359590.88031578064,
+    "total_write_remote_gb": 351.16296905837953,
+    "total_write_mb": 3102999.6786146164,
+    "total_write_gb": 3030.2731236470863
   },
   "event_metrics": {
     "total_events": 832734,
