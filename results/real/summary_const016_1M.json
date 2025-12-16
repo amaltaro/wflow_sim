@@ -4,6 +4,7 @@
     "total_docs": 425,
     "condor_docs": 148,
     "skipped_jobs": 25,
+    "total_groups": 5,
     "job_type_counts": {
       "Production": 69,
       "Processing": 79
