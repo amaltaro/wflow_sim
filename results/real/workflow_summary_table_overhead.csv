@@ -1,3 +1,3 @@
 composition_number,total_groups,wall_time_per_event,cpu_time_per_event,event_throughput,total_write_remote_mb_per_event,total_read_remote_mb_per_event,network_transfer_mb_per_event,cpu_cores_per_event,memory_mb_per_event
-1,0,6.981519,37.699111,0.143235,0.000000,0.000000,0.000000,0.001278,1.277719
-16,0,6.461667,34.087969,0.154759,3.236652,5.261078,8.497730,0.001075,0.966646
+1,1,6.981519,37.699111,0.143235,0.000000,0.000000,0.000000,0.001278,1.277719
+16,5,6.461667,34.087969,0.154759,3.236652,5.261078,8.497730,0.001075,0.966646
