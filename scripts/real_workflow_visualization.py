@@ -51,6 +51,7 @@ def transform_real_data_to_simulation_format(real_data: Dict[str, Any],
     Returns:
         Dictionary in simulation format with metrics that plotting functions expect
     """
+    document_counts = real_data.get('document_counts', {})
     time_metrics = real_data.get('time_metrics', {})
     cpu_metrics = real_data.get('cpu_metrics', {})
     memory_metrics = real_data.get('memory_metrics', {})
@@ -58,6 +59,7 @@ def transform_real_data_to_simulation_format(real_data: Dict[str, Any],
     event_metrics = real_data.get('event_metrics', {})
     
     total_events = event_metrics.get('total_events', 0)
+    total_groups = document_counts.get('total_groups', 0)
     
     # Calculate per-event metrics
     total_write_remote_mb = io_metrics.get('total_write_remote_mb', 0.0)
@@ -131,7 +133,10 @@ def transform_real_data_to_simulation_format(real_data: Dict[str, Any],
         # Per-event resource metrics (use pre-calculated values from JSON for consistency)
         'cpu_cores_per_event': event_metrics.get('cpu_cores_per_event', 0.0),
         'memory_mb_per_event': event_metrics.get('memory_mb_per_event', 0.0),
-        
+
+        # Group information (from real data)
+        'total_groups': total_groups,
+
         # Overhead flag (real data includes overhead)
         '_overhead_enabled': True
     }
@@ -171,7 +176,7 @@ def process_real_data_directory(directory_path: str) -> tuple:
         
     Returns:
         tuple: (all_groups, all_jobs, all_simulation_data)
-        - all_groups: Empty list (real data doesn't have group-level detail)
+        - all_groups: List of minimal group entries (one per group) for plotting compatibility
         - all_jobs: Empty list (real data doesn't have job-level detail)
         - all_simulation_data: List of transformed simulation format dictionaries
     """
@@ -182,6 +187,7 @@ def process_real_data_directory(directory_path: str) -> tuple:
         return [], [], []
     
     all_simulation_data = []
+    all_groups = []
     files_processed = 0
     
     print(f"Processing {len(summary_files)} real data summary files")
@@ -199,6 +205,17 @@ def process_real_data_directory(directory_path: str) -> tuple:
             sim_format = transform_real_data_to_simulation_format(real_data, file_name)
             all_simulation_data.append(sim_format)
             
+            # Create minimal group entries for plotting compatibility
+            # The plotting functions use len(sim_groups_for_file) to get num_groups
+            # We create one entry per group so the count is correct
+            total_groups = sim_format.get('total_groups', 0)
+            for group_idx in range(total_groups):
+                group_entry = {
+                    'group_id': f'Group{group_idx + 1}',
+                    'file_name': file_name,
+                }
+                all_groups.append(group_entry)
+
             files_processed += 1
             
         except Exception as e:
@@ -216,8 +233,7 @@ def process_real_data_directory(directory_path: str) -> tuple:
     if all_simulation_data:
         print(f"Sample transformed metrics: {pformat(all_simulation_data[0])}")
     
-    # Real data doesn't have group/job level detail, return empty lists
-    return [], [], all_simulation_data
+    return all_groups, [], all_simulation_data
 
 
 def generate_workflow_visualizations(all_simulation_data: List[Dict],
