@@ -455,10 +455,14 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         overhead_per_job_sec = total_overhead_sec / condor_docs
         overhead_per_job_hours = overhead_per_job_sec / 3600.0
 
+    # Calculate total groups (number of distinct tasksets/task types)
+    total_groups = len(task_type_counts)
+
     return {
         'total_docs': total_docs,
         'condor_docs': condor_docs,
         'skipped_jobs': skipped_jobs,
+        'total_groups': total_groups,
         'job_type_counts': dict(job_type_counts),
         'task_type_counts': dict(task_type_counts),
         'total_wallclock_time_with_overhead_sec': total_wallclock_time_with_overhead_sec,
@@ -534,6 +538,7 @@ def print_stats(stats: Dict[str, Any]) -> None:
     print(f"  Total Documents: {stats['total_docs']:,}")
     print(f"  Condor Documents (Production/Processing only): {stats['condor_docs']:,}")
     print(f"  Skipped Jobs (failed exit or restarted): {stats['skipped_jobs']:,}")
+    print(f"  Total Groups (distinct tasksets): {stats['total_groups']:,}")
 
     # Jobs per job type
     job_type_counts = stats['job_type_counts']
@@ -798,6 +803,7 @@ def save_stats_to_json(stats: Dict[str, Any], output_file: str, document_name: s
             'total_docs': stats['total_docs'],
             'condor_docs': stats['condor_docs'],
             'skipped_jobs': stats['skipped_jobs'],
+            'total_groups': stats['total_groups'],
             'job_type_counts': stats['job_type_counts'],
             'task_type_counts': stats['task_type_counts'],
         },
