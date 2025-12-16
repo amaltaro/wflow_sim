@@ -349,6 +349,7 @@ git push origin v1.0.0
 - [Workflow Metrics Usage](docs/workflow_metrics_usage.md) - Workflow-level metrics documentation
 - [Job Metrics Usage](docs/job_metrics_usage.md) - Job-level metrics documentation
 - [Visualization Usage](docs/visualization_usage.md) - Visualization tool documentation
+- [Scripts Usage](docs/scripts_usage.md) - Utility scripts for data processing and analysis
 - [Release Process](docs/release-process.md) - Automated release notes system
 - [Agent Instructions](AGENTS.md) - AI agent development guidelines
 - [Contributing Guidelines](CONTRIBUTING.md) - How to contribute to the project
