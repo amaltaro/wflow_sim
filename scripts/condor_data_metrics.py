@@ -229,9 +229,26 @@ def _extract_job_metrics(data: Dict[str, Any], taskset_number: Optional[int] = N
         metrics['write_local_mb'] = write_total_mb
         metrics['write_remote_mb'] = write_total_mb
     else:
-        # For multiple CMSSW runs, all writes are considered local
-        metrics['write_local_mb'] = write_total_mb
-        metrics['write_remote_mb'] = 0.0
+        # For multiple CMSSW runs, logic depends on workflow construction
+        # HARD-CODED FIX: For Taskset1 with multiple CMSSW steps (e.g., const001),
+        # remote writes are from cmsRun3, cmsRun4, and cmsRun5 only.
+        # cmsRun1 and cmsRun2 outputs are considered local writes.
+        if taskset_number == 1:
+            # Calculate remote write from cmsRun3, cmsRun4, cmsRun5
+            write_remote_bytes = 0
+            for step in [3, 4, 5]:
+                step_write_bytes = data.get(f'ChirpCMSSW_cmsRun{step}_WriteBytes', 0)
+                write_remote_bytes += step_write_bytes
+
+            metrics['write_remote_mb'] = write_remote_bytes / (1024.0 * 1024.0)
+            # Everything written remotely is also written locally, plus what is only
+            # locally written - hence, consider the overall job write bytes
+            metrics['write_local_mb'] = write_total_mb
+        else:
+            # For other tasksets with multiple CMSSW runs, all writes are considered local
+            # (This is a simplified assumption - may need workflow-specific logic)
+            metrics['write_local_mb'] = write_total_mb
+            metrics['write_remote_mb'] = 0.0
 
     # Events processed: Use output events from last taskset if available
     num_cmssw_steps = data.get('ChirpCMSSWRuns', 0)
