@@ -48,6 +48,8 @@ METRICS_TO_SCALE = {
         'total_read_local_gb',
         'total_read_remote_mb',
         'total_read_remote_gb',
+        'total_read_pileup_mb',
+        'total_read_pileup_gb',
         'total_read_mb',
         'total_read_gb',
         'total_write_local_mb',
