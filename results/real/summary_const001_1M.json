@@ -48,12 +48,14 @@
     "memory_utilization_percent": 97.69558270676691
   },
   "io_metrics": {
-    "total_read_local_mb": 4452605.157633781,
-    "total_read_local_gb": 4348.24722425174,
+    "total_read_local_mb": 1796975.7024964325,
+    "total_read_local_gb": 1754.8590844691723,
     "total_read_remote_mb": 0.0,
     "total_read_remote_gb": 0.0,
-    "total_read_mb": 4452605.157633781,
-    "total_read_gb": 4348.24722425174,
+    "total_read_pileup_mb": 2655629.4551373473,
+    "total_read_pileup_gb": 2593.3881397825658,
+    "total_read_mb": 1796975.7024964325,
+    "total_read_gb": 1754.8590844691723,
     "total_write_local_mb": 2743408.7982988358,
     "total_write_local_gb": 2679.110154588707,
     "total_write_remote_mb": 359590.88031578064,
