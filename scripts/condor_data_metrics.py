@@ -168,88 +168,6 @@ def _extract_job_metrics(data: Dict[str, Any], taskset_number: Optional[int] = N
     if metrics['memory_used_mb'] > metrics['memory_allocated_mb']:
         metrics['memory_used_mb'] = metrics['memory_allocated_mb']
 
-    # Read bytes: Calculate local and remote reads
-    read_total_bytes = data.get('ChirpCMSSWReadBytes', 0)
-    desired_cms_dataset = data.get('DESIRED_CMSDataset')
-    cmsrun1_read_bytes = data.get('ChirpCMSSW_cmsRun1_ReadBytes', 0)
-    num_cmssw_steps = data.get('ChirpCMSSWRuns', 0)
-
-    # Determine if this is an independent job (single taskset per job) or dependent job (multiple tasksets per job)
-    # Heuristic:
-    # - If taskset_number is known AND num_cmssw_steps == 1: independent job (one taskset, one cmsRun)
-    # - If taskset_number is known AND num_cmssw_steps > 1: could be independent (one taskset, multiple cmsRun)
-    #   or dependent (multiple tasksets). We'll treat as independent if taskset_number > 1 (Taskset2+),
-    #   otherwise use dependent logic for safety (to preserve const001 behavior)
-    # - If taskset_number is unknown: dependent job (use existing logic)
-    #
-    # This ensures:
-    # - const001 (dependent): taskset_number=1, num_cmssw_steps=5 → uses dependent logic ✓
-    # - const016 (independent): taskset_number=1,2,3..., num_cmssw_steps=1 → uses independent logic ✓
-    is_independent_job = (
-        taskset_number is not None and
-        (num_cmssw_steps == 1 or taskset_number > 1)
-    )
-
-    if is_independent_job:
-        # Independent tasks in grid jobs (e.g., const016)
-        # Each job contains a single taskset (may have multiple cmsRun steps)
-        if taskset_number == 1:
-            # Taskset1: cmsRun1 reads remotely if DESIRED_CMSDataset exists, otherwise no read
-            if desired_cms_dataset is not None:
-                # cmsRun1 reads remotely
-                metrics['read_remote_mb'] = cmsrun1_read_bytes / (1024.0 * 1024.0)
-                # cmsRun2+ (if any) read locally
-                metrics['read_local_mb'] = max(0.0, (read_total_bytes - cmsrun1_read_bytes) / (1024.0 * 1024.0))
-            else:
-                # No read at all for Taskset1 if no DESIRED_CMSDataset
-                metrics['read_remote_mb'] = 0.0
-                metrics['read_local_mb'] = 0.0
-        else:
-            # Taskset2+: cmsRun1 always reads remotely, cmsRun2+ read locally
-            metrics['read_remote_mb'] = cmsrun1_read_bytes / (1024.0 * 1024.0)
-            # Local read is total - cmsRun1 (cmsRun2+ read locally)
-            metrics['read_local_mb'] = max(0.0, (read_total_bytes - cmsrun1_read_bytes) / (1024.0 * 1024.0))
-    else:
-        # Dependent tasks within a grid job (e.g., const001) - use existing logic
-        # Local read is always total - cmsRun1
-        metrics['read_local_mb'] = max(0.0, (read_total_bytes - cmsrun1_read_bytes) / (1024.0 * 1024.0))
-
-        # Remote read is cmsRun1 only if DESIRED_CMSDataset is not None
-        if desired_cms_dataset is not None:
-            metrics['read_remote_mb'] = cmsrun1_read_bytes / (1024.0 * 1024.0)
-        else:
-            metrics['read_remote_mb'] = 0.0
-
-    # Write bytes: Calculate local and remote writes
-    write_total_bytes = data.get('ChirpCMSSWWriteBytes', 0)
-    write_total_mb = write_total_bytes / (1024.0 * 1024.0)
-
-    # If taskset contains only one CMSSW run, writes are both local and remote
-    if num_cmssw_steps == 1:
-        metrics['write_local_mb'] = write_total_mb
-        metrics['write_remote_mb'] = write_total_mb
-    else:
-        # For multiple CMSSW runs, logic depends on workflow construction
-        # HARD-CODED FIX: For Taskset1 with multiple CMSSW steps (e.g., const001),
-        # remote writes are from cmsRun3, cmsRun4, and cmsRun5 only.
-        # cmsRun1 and cmsRun2 outputs are considered local writes.
-        if taskset_number == 1:
-            # Calculate remote write from cmsRun3, cmsRun4, cmsRun5
-            write_remote_bytes = 0
-            for step in [3, 4, 5]:
-                step_write_bytes = data.get(f'ChirpCMSSW_cmsRun{step}_WriteBytes', 0)
-                write_remote_bytes += step_write_bytes
-
-            metrics['write_remote_mb'] = write_remote_bytes / (1024.0 * 1024.0)
-            # Everything written remotely is also written locally, plus what is only
-            # locally written - hence, consider the overall job write bytes
-            metrics['write_local_mb'] = write_total_mb
-        else:
-            # For other tasksets with multiple CMSSW runs, all writes are considered local
-            # (This is a simplified assumption - may need workflow-specific logic)
-            metrics['write_local_mb'] = write_total_mb
-            metrics['write_remote_mb'] = 0.0
-
     # Events processed: Use output events from last taskset if available
     num_cmssw_steps = data.get('ChirpCMSSWRuns', 0)
     if num_cmssw_steps > 1:
@@ -261,6 +179,71 @@ def _extract_job_metrics(data: Dict[str, Any], taskset_number: Optional[int] = N
             metrics['events_processed'] = data.get('ChirpCMSSWEvents', 0)
     else:
         metrics['events_processed'] = data.get('ChirpCMSSWEvents', 0)
+
+    # NOTE: ChirpCMSSWReadBytes can also report secondary/pileup reads
+    # HARD-CODED FIX: Taskset2 in the analyzed workflow reads pileup data
+    pileup_event_bytes = 3343960.15
+    read_pileup_mb = pileup_event_bytes * metrics['events_processed'] / (1024.0 * 1024.0)
+    metrics['read_pileup_mb'] = 0.0
+
+    # Read bytes: Calculate local and remote reads
+    read_total_bytes = data.get('ChirpCMSSWReadBytes', 0)
+    desired_cms_dataset = data.get('DESIRED_CMSDataset')
+    cmsrun1_read_bytes = data.get('ChirpCMSSW_cmsRun1_ReadBytes', 0)
+    num_cmssw_steps = data.get('ChirpCMSSWRuns', 0)
+    # Write bytes: Calculate local and remote writes
+    write_total_bytes = data.get('ChirpCMSSWWriteBytes', 0)
+    write_total_mb = write_total_bytes / (1024.0 * 1024.0)
+
+    # First taskset in the workflow, with single cmsRun in
+    if taskset_number == 1 and num_cmssw_steps == 1:
+        if desired_cms_dataset:
+            metrics['read_remote_mb'] = read_total_bytes / (1024.0 * 1024.0)
+            metrics['read_local_mb'] = 0.0
+        else:
+            metrics['read_remote_mb'] = 0.0
+            metrics['read_local_mb'] = 0.0
+        # always write locally and remotely
+        metrics['write_local_mb'] = write_total_mb
+        metrics['write_remote_mb'] = write_total_mb
+    # First taskset in the workflow, with multiple cmsRun steps
+    elif taskset_number == 1:
+        if desired_cms_dataset:
+            metrics['read_remote_mb'] = cmsrun1_read_bytes / (1024.0 * 1024.0)
+        else:
+            metrics['read_remote_mb'] = 0.0
+        metrics['read_local_mb'] = max(0.0, (read_total_bytes - cmsrun1_read_bytes) / (1024.0 * 1024.0))
+        metrics['read_local_mb'] = max(0.0, metrics['read_local_mb'] - read_pileup_mb)
+        metrics['read_pileup_mb'] = read_pileup_mb
+        # HARD-CODED FIX: For Taskset1 with multiple CMSSW steps (e.g., const001),
+        # remote writes are from cmsRun3, cmsRun4, and cmsRun5 only.
+        # cmsRun1 and cmsRun2 outputs are considered local writes.
+        # Calculate remote write from cmsRun3, cmsRun4, cmsRun5
+        write_remote_bytes = 0
+        for step in [3, 4, 5]:
+            step_write_bytes = data.get(f'ChirpCMSSW_cmsRun{step}_WriteBytes', 0)
+            write_remote_bytes += step_write_bytes
+        metrics['write_remote_mb'] = write_remote_bytes / (1024.0 * 1024.0)
+        # and everything is written locally
+        metrics['write_local_mb'] = write_total_mb
+    # Follow up taskset in the workflow
+    elif taskset_number > 1:
+        # with single cmsRun step, always remote and no local read
+        if num_cmssw_steps == 1:
+            metrics['read_remote_mb'] = read_total_bytes / (1024.0 * 1024.0)
+            metrics['read_local_mb'] = 0.0
+            metrics['write_local_mb'] = write_total_mb
+            metrics['write_remote_mb'] = write_total_mb
+        # with multiple cmsRun steps, remote read from cmsRun1 and local read from cmsRun2+
+        else:
+            metrics['read_remote_mb'] = cmsrun1_read_bytes / (1024.0 * 1024.0)
+            metrics['read_local_mb'] = max(0.0, (read_total_bytes - cmsrun1_read_bytes) / (1024.0 * 1024.0))
+            metrics['write_local_mb'] = write_total_mb
+            # FIXME: for now, we cannot know what is actually written remotely
+            metrics['write_remote_mb'] = 0.0
+        if taskset_number == 2:
+            metrics['read_remote_mb'] = max(0.0, metrics['read_remote_mb'] - read_pileup_mb)
+            metrics['read_pileup_mb'] = read_pileup_mb
 
     # Job timing for workflow turnaround time calculation
     metrics['job_start_date'] = _normalize_timestamp(data.get('JobStartDate'))
@@ -304,6 +287,7 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
     total_memory_allocated_mb = 0.0
     total_read_local_mb = 0.0
     total_read_remote_mb = 0.0
+    total_read_pileup_mb = 0.0
     total_write_local_mb = 0.0
     total_write_remote_mb = 0.0
 
@@ -383,6 +367,7 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         total_memory_allocated_mb += job_metrics['memory_allocated_mb']
         total_read_local_mb += job_metrics['read_local_mb']
         total_read_remote_mb += job_metrics['read_remote_mb']
+        total_read_pileup_mb += job_metrics.get('read_pileup_mb', 0.0)
         total_write_local_mb += job_metrics['write_local_mb']
         total_write_remote_mb += job_metrics['write_remote_mb']
 
@@ -490,6 +475,7 @@ def extract_condor_stats(hits: List[Dict[str, Any]]) -> Dict[str, Any]:
         'total_cpu_cores_used': total_cpu_cores_used,
         'total_read_local_mb': total_read_local_mb,
         'total_read_remote_mb': total_read_remote_mb,
+        'total_read_pileup_mb': total_read_pileup_mb,
         'total_write_local_mb': total_write_local_mb,
         'total_write_remote_mb': total_write_remote_mb,
         'total_memory_used_mb': total_memory_used_mb,
@@ -660,6 +646,8 @@ def print_stats(stats: Dict[str, Any]) -> None:
     total_write_gb = total_write_mb / 1024.0
     print(f"  Total Read (Local): {stats['total_read_local_mb']:,.2f} MB ({stats['total_read_local_mb']/1024.0:,.2f} GB)")
     print(f"  Total Read (Remote): {stats['total_read_remote_mb']:,.2f} MB ({stats['total_read_remote_mb']/1024.0:,.2f} GB)")
+    if 'total_read_pileup_mb' in stats and stats['total_read_pileup_mb'] > 0:
+        print(f"  Total Read (Pileup): {stats['total_read_pileup_mb']:,.2f} MB ({stats['total_read_pileup_mb']/1024.0:,.2f} GB)")
     print(f"  Total Read (Local + Remote): {total_read_mb:,.2f} MB ({total_read_gb:,.2f} GB)")
     print(f"  Total Write (Local): {stats['total_write_local_mb']:,.2f} MB ({stats['total_write_local_mb']/1024.0:,.2f} GB)")
     print(f"  Total Write (Remote): {stats['total_write_remote_mb']:,.2f} MB ({stats['total_write_remote_mb']/1024.0:,.2f} GB)")
@@ -884,6 +872,8 @@ def save_stats_to_json(stats: Dict[str, Any], output_file: str, document_name: s
             'total_read_local_gb': stats['total_read_local_mb'] / 1024.0,
             'total_read_remote_mb': stats['total_read_remote_mb'],
             'total_read_remote_gb': stats['total_read_remote_mb'] / 1024.0,
+            'total_read_pileup_mb': stats.get('total_read_pileup_mb', 0.0),
+            'total_read_pileup_gb': stats.get('total_read_pileup_mb', 0.0) / 1024.0,
             'total_read_mb': stats['total_read_local_mb'] + stats['total_read_remote_mb'],
             'total_read_gb': (stats['total_read_local_mb'] + stats['total_read_remote_mb']) / 1024.0,
             'total_write_local_mb': stats['total_write_local_mb'],
