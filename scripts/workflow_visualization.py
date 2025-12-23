@@ -853,7 +853,11 @@ def plot_workflow_comparison(all_simulation_data: List[Dict],
 
 
 def find_simulation_files(directory_path: str) -> List[str]:
-    """Find all JSON simulation files in a directory."""
+    """Find all JSON simulation files in a directory.
+
+    This function recursively searches for JSON files, including in subdirectories
+    with wallclock time suffixes (e.g., case1_real_12h, case1_real_24h).
+    """
     directory = Path(directory_path)
     if not directory.exists():
         raise FileNotFoundError(f"Directory '{directory_path}' not found")
@@ -861,7 +865,7 @@ def find_simulation_files(directory_path: str) -> List[str]:
     if not directory.is_dir():
         raise NotADirectoryError(f"'{directory_path}' is not a directory")
 
-    # Find all JSON files recursively
+    # Find all JSON files recursively (handles directories with wallclock time suffixes)
     json_files = list(directory.glob("**/*.json"))
 
     if not json_files:

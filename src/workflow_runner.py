@@ -275,17 +275,19 @@ class WorkflowRunner:
         self.logger.info(f"Complete results written to {filepath}")
 
 
-def _get_output_path(input_path: str, no_overhead: bool = False) -> str:
+def _get_output_path(input_path: str, no_overhead: bool = False,
+                     target_wallclock_time: float = 43200.0) -> str:
     """
     Generate output path based on input path structure.
 
     Args:
         input_path: Path to input workflow file
         no_overhead: If True, append '_nooverhead' suffix; otherwise append '_overhead' suffix
+        target_wallclock_time: Target wallclock time in seconds (default: 43200.0 = 12 hours)
 
     Returns:
-        Output path in results/sim/ directory with same structure (excluding templates/ prefix)
-        and appropriate overhead suffix in filename
+        Output path in results/sim/ directory with same structure (excluding templates/ prefix),
+        wallclock time appended to directory name, and appropriate overhead suffix in filename
     """
     input_path_obj = Path(input_path)
 
@@ -295,8 +297,28 @@ def _get_output_path(input_path: str, no_overhead: bool = False) -> str:
     else:
         relative_path = input_path_obj
 
+    # Convert wallclock time to hours and format as "Xh"
+    wallclock_hours = int(target_wallclock_time / 3600)
+    wallclock_suffix = f"_{wallclock_hours}h"
+
     # Create output path: results/sim/ + relative path
     output_path = Path("results") / "sim" / relative_path
+
+    # Append wallclock time to the parent directory name (not the filename)
+    if len(output_path.parts) > 1:
+        # Get the parent directory and filename
+        parent_dir = output_path.parent
+        filename = output_path.name
+
+        # Append wallclock suffix to the last directory component
+        parent_parts = list(parent_dir.parts)
+        if len(parent_parts) > 0:
+            parent_parts[-1] = f"{parent_parts[-1]}{wallclock_suffix}"
+            new_parent = Path(*parent_parts)
+            output_path = new_parent / filename
+    else:
+        # If there's no parent directory, append to the stem
+        output_path = output_path.parent / f"{output_path.stem}{wallclock_suffix}{output_path.suffix}"
 
     # Add overhead suffix before file extension
     suffix = "_nooverhead" if no_overhead else "_overhead"
@@ -358,7 +380,11 @@ def main():
     runner.print_complete_summary(results)
 
     # Write results to file with same structure as input
-    output_path = _get_output_path(args.input_workflow_path, no_overhead=args.no_overhead)
+    output_path = _get_output_path(
+        args.input_workflow_path,
+        no_overhead=args.no_overhead,
+        target_wallclock_time=args.target_wallclock_time
+    )
     runner.write_complete_results(results, output_path)
 
 
