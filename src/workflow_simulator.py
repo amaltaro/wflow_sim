@@ -9,6 +9,7 @@ import json
 import logging
 import math
 import argparse
+import random
 from typing import Dict, List, Any, Optional, Tuple, Set, Union
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -24,6 +25,9 @@ except ImportError:
 # Job overhead constants
 TASKSET_OVERHEAD_SECONDS = 60.0  # Overhead per taskset in seconds
 DATA_TRANSFER_RATE_MB_PER_S = 100.0  # Data transfer rate in MB/s for overhead calculation
+RND_SEED = 42  # Random seed for reproducibility
+MAX_RETRIES = 3  # Maximum number of retries per job
+FAILURE_COST = 0.5  # Cost of failure (halved resources)
 
 
 @dataclass
@@ -83,6 +87,7 @@ class JobInfo:
     job_overhead_secs: float = 0.0
     job_overhead_cpu_time: float = 0.0
     total_execution_time: float = 0.0
+    retry_count: int = 0  # Number of times this job has been retried
 
 
 @dataclass
@@ -109,6 +114,7 @@ class SimulationResult:
     success: bool
     error_message: Optional[str] = None
     overhead_enabled: bool = True  # Whether job overhead was included in calculations
+    failure_rate: float = 0.0  # Job failure rate percentage used in simulation
 
 
 class WorkflowSimulator:
@@ -123,16 +129,26 @@ class WorkflowSimulator:
     """
 
     def __init__(self, resource_config: Optional[ResourceConfig] = None,
-                 no_overhead: bool = False):
+                 no_overhead: bool = False, failure_rate: int = 0):
         """
         Initialize the workflow simulator.
 
         Args:
             resource_config: Resource configuration for simulation
             no_overhead: If True, disable job overhead calculations (set overhead to 0)
+            failure_rate: Job failure rate as percentage (0-99)
         """
         self.resource_config = resource_config or ResourceConfig()
         self.no_overhead = no_overhead
+        self.failure_rate = float(failure_rate)
+
+        # Validate failure rate (protect against 100% which prevents convergence)
+        if self.failure_rate >= 100.0:
+            raise ValueError("Failure rate must be less than 100% to allow workflow convergence")
+
+        # Set up random seed for reproducibility (hard-coded)
+        random.seed(RND_SEED)
+        self.random = random
 
         # Set overhead values to 0 if disabled, otherwise use defaults
         taskset_overhead = 0.0 if no_overhead else TASKSET_OVERHEAD_SECONDS
@@ -201,7 +217,8 @@ class WorkflowSimulator:
                 jobs=[],
                 success=False,
                 error_message=str(e),
-                overhead_enabled=not self.no_overhead
+                overhead_enabled=not self.no_overhead,
+                failure_rate=self.failure_rate
             )
 
         # Simulate workflow execution
@@ -220,7 +237,8 @@ class WorkflowSimulator:
                 groups=groups,
                 jobs=execution_result['jobs'],
                 success=True,
-                overhead_enabled=not self.no_overhead
+                overhead_enabled=not self.no_overhead,
+                failure_rate=self.failure_rate
             )
 
             self.logger.info(f"Workflow simulation completed successfully. "
@@ -242,7 +260,8 @@ class WorkflowSimulator:
                 jobs=[],
                 success=False,
                 error_message=str(e),
-                overhead_enabled=not self.no_overhead
+                overhead_enabled=not self.no_overhead,
+                failure_rate=self.failure_rate
             )
 
     def _extract_tasksets(self, workflow_data: Dict[str, Any]) -> List[TasksetInfo]:
@@ -424,7 +443,7 @@ class WorkflowSimulator:
 
         while execution_queue or running_jobs:
             # Process completed jobs and update event buffers; propagate to dependents
-            self._process_completed_jobs(running_jobs, event_buffers, current_time)
+            self._process_completed_jobs(running_jobs, event_buffers, current_time, execution_queue)
             # After processing completions, move produced events to dependent groups and enqueue them
             for parent_group_id, buffer in event_buffers.items():
                 produced = buffer.get('processed_events', 0)
@@ -475,6 +494,10 @@ class WorkflowSimulator:
                 all_created_jobs.append(job)  # Track all created jobs
 
                 self.logger.debug(f"Started job {job.job_id}: {job.batch_size} events, {job.wallclock_time:.2f}s")
+
+            # Log running jobs status after starting new jobs
+            if new_jobs:
+                self.logger.info(f"Started {len(new_jobs)} new jobs. Total running: {len(running_jobs)} jobs")
 
             # If no jobs were created and no jobs are running, break
             if not new_jobs and not running_jobs:
@@ -632,37 +655,127 @@ class WorkflowSimulator:
                 'processed_events': 0,
                 'total_events': request_num_events,
                 'jobs': [],
-                'job_counter': 0  # Track total jobs created for this group
+                'job_counter': 0,  # Track total jobs created for this group
+                'max_retry_count': 0  # Track maximum retry count for jobs in this group
             }
 
             self.logger.debug(f"Initialized buffer for {group.group_id}: {available_events} events available")
 
         return event_buffers
 
+    def _apply_failure_metrics(self, job: JobInfo) -> None:
+        """
+        Apply failure metrics to a job by halving specific metrics.
+
+        When a job fails, we assume it consumed half the resources before failing:
+        - CPU time (used and allocated)
+        - Read operations (local and remote)
+        - Write local (but NOT write remote, as failed jobs don't write to remote storage)
+        - Overhead (time and CPU time)
+
+        Args:
+            job: JobInfo object to modify
+        """
+        job.total_cpu_used_time *= FAILURE_COST
+        job.total_cpu_allocated_time *= FAILURE_COST
+        job.total_read_local_mb *= FAILURE_COST
+        job.total_read_remote_mb *= FAILURE_COST
+        job.total_write_local_mb *= FAILURE_COST
+        # Note: total_write_remote_mb is NOT halved - failed jobs don't write to remote
+        job.total_write_remote_mb = 0.0
+        job.total_network_transfer_mb = job.total_read_remote_mb
+        job.job_overhead_secs *= FAILURE_COST
+        job.job_overhead_cpu_time *= FAILURE_COST
+
     def _process_completed_jobs(self, running_jobs: List[JobInfo],
                                event_buffers: Dict[str, Dict[str, Any]],
-                               current_time: float) -> None:
-        """Process completed jobs and update event buffers."""
+                               current_time: float,
+                               execution_queue: deque) -> None:
+        """
+        Process completed jobs and update event buffers.
+        Handles job failures and retries based on failure rate.
+
+        Args:
+            running_jobs: List of currently running jobs
+            event_buffers: Event buffers for each group
+            current_time: Current simulation time
+            execution_queue: Queue of groups ready for execution (modified in place for retries)
+        """
         completed_jobs = []
+        failed_jobs = []
 
         for job in running_jobs:
             if current_time >= job.start_time + job.wallclock_time:
-                # Job completed
+                # Job completed execution time
                 job.end_time = current_time
-                job.status = 'completed'
-                completed_jobs.append(job)
 
-                # Update event buffer
-                if job.group_id in event_buffers:
-                    buffer = event_buffers[job.group_id]
-                    buffer['processed_events'] += job.batch_size
-                    buffer['jobs'].append(job)
+                # Check if job should fail based on failure rate
+                should_fail = False
+                if self.failure_rate > 0.0:
+                    # Use random number to determine if job fails
+                    random_value = self.random.random() * 100.0
+                    should_fail = random_value < self.failure_rate
 
-                    self.logger.debug(f"Completed job {job.job_id}: processed {job.batch_size} events")
+                if should_fail:
+                    # Job failed - apply failure metrics and prepare for retry
+                    job.status = 'failed'
+                    self._apply_failure_metrics(job)
+                    failed_jobs.append(job)
 
-        # Remove completed jobs from running list
-        for job in completed_jobs:
-            running_jobs.remove(job)
+                    # Log the failure
+                    self.logger.warning(
+                        f"Job {job.job_id} (group {job.group_id}) failed to process "
+                        f"{job.batch_size} events (failure_rate={self.failure_rate}%, "
+                        f"retry_count={job.retry_count})"
+                    )
+
+                    # Check if we should retry (limit retries to prevent infinite loops)
+                    if job.retry_count < MAX_RETRIES:
+                        # Return events to buffer for retry
+                        if job.group_id in event_buffers:
+                            buffer = event_buffers[job.group_id]
+                            buffer['available_events'] += job.batch_size
+                            # Don't increment processed_events for failed jobs
+
+                            # Update max retry count for this group
+                            buffer['max_retry_count'] = max(buffer.get('max_retry_count', 0), job.retry_count + 1)
+
+                            # Add group back to execution queue for retry
+                            if job.group_id not in execution_queue:
+                                execution_queue.append(job.group_id)
+                                self.logger.debug(
+                                    f"Group {job.group_id} queued for retry after job {job.job_id} failure "
+                                    f"(retry_count will be {buffer['max_retry_count']})"
+                                )
+                    else:
+                        # Max retries exceeded - mark as permanently failed
+                        self.logger.error(
+                            f"Job {job.job_id} exceeded maximum retries ({MAX_RETRIES}). "
+                            f"Marking as permanently failed."
+                        )
+                        # Still add to completed_jobs so it's tracked, but don't retry
+                        completed_jobs.append(job)
+                        if job.group_id in event_buffers:
+                            buffer = event_buffers[job.group_id]
+                            buffer['processed_events'] += job.batch_size
+                            buffer['jobs'].append(job)
+                else:
+                    # Job succeeded
+                    job.status = 'completed'
+                    completed_jobs.append(job)
+
+                    # Update event buffer
+                    if job.group_id in event_buffers:
+                        buffer = event_buffers[job.group_id]
+                        buffer['processed_events'] += job.batch_size
+                        buffer['jobs'].append(job)
+
+                        self.logger.debug(f"Completed job {job.job_id}: processed {job.batch_size} events")
+
+        # Remove completed and failed jobs from running list
+        for job in completed_jobs + failed_jobs:
+            if job in running_jobs:
+                running_jobs.remove(job)
 
     def _create_jobs_for_ready_groups(self, groups: List[GroupInfo],
                                      event_buffers: Dict[str, Dict[str, Any]],
@@ -677,7 +790,7 @@ class WorkflowSimulator:
         slots_used = 0
 
         self.logger.debug(f"Creating jobs: {len(execution_queue)} groups in queue, {available_slots} slots available")
-        self.logger.info(f"Job creation: {len(execution_queue)} groups in queue, {available_slots} slots available, {len(running_jobs)} jobs running")
+        self.logger.info(f"Job creation (before): {len(execution_queue)} groups in queue, {available_slots} slots available, {len(running_jobs)} jobs currently running")
 
         # Process groups in queue order - create jobs in batches
         temp_queue = deque()
@@ -748,6 +861,10 @@ class WorkflowSimulator:
                     # Add overhead to wallclock time (overhead is part of job execution time)
                     job_wallclock += job_metrics.job_overhead_secs
 
+                    # Get retry count from buffer (for retry jobs)
+                    # max_retry_count tracks the maximum retry count for jobs in this group
+                    retry_count = buffer.get('max_retry_count', 0)
+
                     job = JobInfo(
                         job_id=job_id,
                         group_id=group_id,
@@ -765,7 +882,8 @@ class WorkflowSimulator:
                         total_network_transfer_mb=job_metrics.total_network_transfer_mb,
                         job_overhead_secs=job_metrics.job_overhead_secs,
                         job_overhead_cpu_time=job_metrics.job_overhead_cpu_time,
-                        total_execution_time=job_metrics.total_execution_time
+                        total_execution_time=job_metrics.total_execution_time,
+                        retry_count=retry_count
                     )
 
                     new_jobs.append(job)
@@ -823,6 +941,7 @@ class WorkflowSimulator:
         print(f"Total Jobs: {result.total_jobs}")
         print(f"Total Wall Time: {result.total_wall_time:.2f} seconds ({result.total_wall_time/3600:.2f} hours)")
         print(f"Total Turnaround Time: {result.total_turnaround_time:.2f} seconds ({result.total_turnaround_time/3600:.2f} hours)")
+        print(f"Failure Rate: {result.failure_rate:.1f}%")
         print(f"Success: {result.success}")
 
         if result.error_message:

@@ -29,17 +29,23 @@ class WorkflowRunner:
     """
 
     def __init__(self, resource_config: Optional[ResourceConfig] = None,
-                 no_overhead: bool = False):
+                 no_overhead: bool = False, failure_rate: int = 0):
         """
         Initialize the workflow runner.
 
         Args:
             resource_config: Resource configuration for simulation
             no_overhead: If True, disable job overhead calculations
+            failure_rate: Job failure rate as percentage (0-99)
         """
         self.resource_config = resource_config or ResourceConfig()
         self.no_overhead = no_overhead
-        self.simulator = WorkflowSimulator(self.resource_config, no_overhead=no_overhead)
+        self.failure_rate = failure_rate
+        self.simulator = WorkflowSimulator(
+            self.resource_config,
+            no_overhead=no_overhead,
+            failure_rate=failure_rate
+        )
         self.logger = logging.getLogger(__name__)
 
     def run_workflow(self, workflow_filepath: Union[str, Path]) -> Dict[str, Any]:
@@ -97,6 +103,7 @@ class WorkflowRunner:
         print(f"  Workflow ID: {simulation.workflow_id}")
         print(f"  Composition: {simulation.composition_number}")
         print(f"  Overhead Enabled: {simulation.overhead_enabled}")
+        print(f"  Failure Rate: {simulation.failure_rate:.1f}%")
         print(f"  Total Events: {simulation.total_events:,}")
         print(f"  Total Groups: {simulation.total_groups}")
         print(f"  Total Jobs: {simulation.total_jobs}")
@@ -170,6 +177,7 @@ class WorkflowRunner:
                     'success': simulation.success,
                     'error_message': simulation.error_message,
                     'overhead_enabled': simulation.overhead_enabled,
+                    'failure_rate': simulation.failure_rate,
                     'groups': [],
                     'jobs': []
                 }
@@ -217,6 +225,7 @@ class WorkflowRunner:
                 'success': simulation.success,
                 'error_message': simulation.error_message,
                 'overhead_enabled': simulation.overhead_enabled,
+                'failure_rate': simulation.failure_rate,
                 'groups': [
                     {
                         'group_id': group.group_id,
@@ -262,7 +271,8 @@ class WorkflowRunner:
                         'total_network_transfer_mb': job.total_network_transfer_mb,
                         'total_execution_time': job.total_execution_time,
                         'job_overhead_secs': job.job_overhead_secs,
-                        'job_overhead_cpu_time': job.job_overhead_cpu_time
+                        'job_overhead_cpu_time': job.job_overhead_cpu_time,
+                        'retry_count': job.retry_count
                     }
                     for job in simulation.jobs
                 ],
@@ -359,12 +369,28 @@ def parse_arguments():
         action='store_true',
         help='Disable job overhead calculations (taskset overhead and data transfer overhead)'
     )
+    parser.add_argument(
+        '--failure-rate',
+        type=int,
+        default=0,
+        help='Job failure rate as percentage (0-99, default: 0). Note: 100% is not allowed as it prevents workflow convergence.'
+    )
     return parser.parse_args()
 
 
 def main():
     """Main function with command line argument support."""
     args = parse_arguments()
+
+    # Validate failure rate (protect against 100% which prevents convergence)
+    if args.failure_rate >= 100:
+        print("ERROR: Failure rate must be less than 100% to allow workflow convergence.")
+        print("Please specify a failure rate between 0 and 99.")
+        return
+
+    if args.failure_rate < 0:
+        print("ERROR: Failure rate cannot be negative.")
+        return
 
     # Configure resources from command line arguments
     resource_config = ResourceConfig(
@@ -373,7 +399,11 @@ def main():
     )
 
     # Create runner and execute workflow
-    runner = WorkflowRunner(resource_config, no_overhead=args.no_overhead)
+    runner = WorkflowRunner(
+        resource_config,
+        no_overhead=args.no_overhead,
+        failure_rate=args.failure_rate
+    )
     results = runner.run_workflow(args.input_workflow_path)
 
     # Print complete summary
