@@ -1015,18 +1015,22 @@ def load_workflow_from_file(filepath: Union[str, Path]) -> Dict[str, Any]:
 
 
 def _get_output_path(input_path: str, no_overhead: bool = False,
-                     target_wallclock_time: float = 43200.0) -> str:
+                     target_wallclock_time: float = 43200.0,
+                     failure_rate: float = 0.0) -> str:
     """
-    Generate output path based on input path structure.
+    Generate output path based on input path structure with nested organization.
+
+    Creates nested structure: results/sim/{case_name}/{time_hours}/fr{failure_rate}/
 
     Args:
         input_path: Path to input workflow file
         no_overhead: If True, append '_nooverhead' suffix; otherwise append '_overhead' suffix
         target_wallclock_time: Target wallclock time in seconds (default: 43200.0 = 12 hours)
+        failure_rate: Job failure rate as percentage (default: 0.0)
 
     Returns:
-        Output path in results/sim/ directory with same structure (excluding templates/ prefix),
-        wallclock time appended to directory name, and appropriate overhead suffix in filename
+        Output path in results/sim/ directory with nested structure:
+        results/sim/{case_name}/{time_hours}/fr{failure_rate}/{filename}_{overhead_suffix}.json
     """
     input_path_obj = Path(input_path)
 
@@ -1038,26 +1042,35 @@ def _get_output_path(input_path: str, no_overhead: bool = False,
 
     # Convert wallclock time to hours and format as "Xh"
     wallclock_hours = int(target_wallclock_time / 3600)
-    wallclock_suffix = f"_{wallclock_hours}h"
+    time_dir = f"{wallclock_hours}h"
 
-    # Create output path: results/sim/ + relative path
-    output_path = Path("results") / "sim" / relative_path
+    # Format failure rate directory (e.g., fr0, fr1, fr5, fr10, fr25)
+    failure_rate_int = int(round(failure_rate))
+    fr_dir = f"fr{failure_rate_int}"
 
-    # Append wallclock time to the parent directory name (not the filename)
-    if len(output_path.parts) > 1:
-        # Get the parent directory and filename
-        parent_dir = output_path.parent
-        filename = output_path.name
-
-        # Append wallclock suffix to the last directory component
-        parent_parts = list(parent_dir.parts)
-        if len(parent_parts) > 0:
-            parent_parts[-1] = f"{parent_parts[-1]}{wallclock_suffix}"
-            new_parent = Path(*parent_parts)
-            output_path = new_parent / filename
+    # Extract case name and preserve intermediate directories (e.g., "others")
+    # Path examples:
+    #   - "others/case1_real/case1_real_const_001.json" -> case_name="case1_real", intermediate="others"
+    #   - "case1_real/case1_real_const_001.json" -> case_name="case1_real", intermediate=None
+    if len(relative_path.parts) >= 2:
+        # Path has at least one parent directory
+        case_name = relative_path.parts[-2]  # Get parent directory name (the case name)
+        filename = relative_path.name
+        
+        # Preserve intermediate directories (e.g., "others") if they exist
+        if len(relative_path.parts) >= 3:
+            # Has intermediate directories like "others"
+            intermediate_dirs = relative_path.parts[:-2]  # All parts except last two
+            output_dir = Path("results") / "sim" / Path(*intermediate_dirs) / case_name / time_dir / fr_dir
+        else:
+            # Direct case directory
+            output_dir = Path("results") / "sim" / case_name / time_dir / fr_dir
     else:
-        # If there's no parent directory, append to the stem
-        output_path = output_path.parent / f"{output_path.stem}{wallclock_suffix}{output_path.suffix}"
+        # Fallback: use stem of filename if no parent directory
+        case_name = relative_path.stem.split('_')[0] if '_' in relative_path.stem else relative_path.stem
+        filename = relative_path.name
+        output_dir = Path("results") / "sim" / case_name / time_dir / fr_dir
+    output_path = output_dir / filename
 
     # Add overhead suffix before file extension
     suffix = "_nooverhead" if no_overhead else "_overhead"
@@ -1098,12 +1111,28 @@ def parse_arguments():
         action='store_true',
         help='Disable job overhead calculations (taskset overhead and data transfer overhead)'
     )
+    parser.add_argument(
+        '--failure-rate',
+        type=int,
+        default=0,
+        help='Job failure rate as percentage (0-99, default: 0). Note: 100% is not allowed as it prevents workflow convergence.'
+    )
     return parser.parse_args()
 
 
 def main():
     """Main function with command line argument support."""
     args = parse_arguments()
+
+    # Validate failure rate (protect against 100% which prevents convergence)
+    if args.failure_rate >= 100:
+        print("ERROR: Failure rate must be less than 100% to allow workflow convergence.")
+        print("Please specify a failure rate between 0 and 99.")
+        return 1
+
+    if args.failure_rate < 0:
+        print("ERROR: Failure rate cannot be negative.")
+        return 1
 
     # Configure resources from command line arguments
     resource_config = ResourceConfig(
@@ -1112,17 +1141,22 @@ def main():
     )
 
     # Create simulator and run simulation
-    simulator = WorkflowSimulator(resource_config, no_overhead=args.no_overhead)
+    simulator = WorkflowSimulator(
+        resource_config,
+        no_overhead=args.no_overhead,
+        failure_rate=args.failure_rate
+    )
     result = simulator.simulate_workflow(args.input_workflow_path)
 
     # Print results
     simulator.print_simulation_summary(result)
 
-    # Write results to file with same structure as input
+    # Write results to file with nested structure
     output_path = _get_output_path(
         args.input_workflow_path,
         no_overhead=args.no_overhead,
-        target_wallclock_time=args.target_wallclock_time
+        target_wallclock_time=args.target_wallclock_time,
+        failure_rate=args.failure_rate
     )
     simulator.write_simulation_result(result, output_path)
 
