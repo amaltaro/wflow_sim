@@ -106,7 +106,8 @@ class WorkflowRunner:
         print(f"  Failure Rate: {simulation.failure_rate:.1f}%")
         print(f"  Total Events: {simulation.total_events:,}")
         print(f"  Total Groups: {simulation.total_groups}")
-        print(f"  Total Jobs: {simulation.total_jobs}")
+        total_logical_jobs = simulation.total_jobs - simulation.total_job_retries
+        print(f"  Total Jobs: {simulation.total_jobs} (Logical: {total_logical_jobs}, Retries: {simulation.total_job_retries})")
         print(f"  Total Wall Time: {simulation.total_wall_time:.2f}s ({simulation.total_wall_time/3600:.2f}h)")
         print(f"  Total Turnaround Time: {simulation.total_turnaround_time:.2f}s ({simulation.total_turnaround_time/3600:.2f}h)")
 
@@ -178,6 +179,7 @@ class WorkflowRunner:
                     'error_message': simulation.error_message,
                     'overhead_enabled': simulation.overhead_enabled,
                     'failure_rate': simulation.failure_rate,
+                    'total_job_retries': simulation.total_job_retries,
                     'groups': [],
                     'jobs': []
                 }
@@ -226,6 +228,7 @@ class WorkflowRunner:
                 'error_message': simulation.error_message,
                 'overhead_enabled': simulation.overhead_enabled,
                 'failure_rate': simulation.failure_rate,
+                'total_job_retries': simulation.total_job_retries,
                 'groups': [
                     {
                         'group_id': group.group_id,
@@ -272,7 +275,8 @@ class WorkflowRunner:
                         'total_execution_time': job.total_execution_time,
                         'job_overhead_secs': job.job_overhead_secs,
                         'job_overhead_cpu_time': job.job_overhead_cpu_time,
-                        'retry_count': job.retry_count
+                        'retry_count': job.retry_count,
+                        'original_job_id': job.original_job_id
                     }
                     for job in simulation.jobs
                 ],

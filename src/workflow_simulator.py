@@ -87,7 +87,8 @@ class JobInfo:
     job_overhead_secs: float = 0.0
     job_overhead_cpu_time: float = 0.0
     total_execution_time: float = 0.0
-    retry_count: int = 0  # Number of times this job has been retried
+    retry_count: int = 0  # Number of times this logical job has been retried
+    original_job_id: Optional[str] = None  # ID of the original job if this is a retry
 
 
 @dataclass
@@ -106,7 +107,7 @@ class SimulationResult:
     composition_number: int
     total_events: int
     total_groups: int
-    total_jobs: int
+    total_jobs: int  # Total jobs including retries
     total_wall_time: float  # Sum of all job wallclock times
     total_turnaround_time: float  # Time from workflow start to completion
     groups: List[GroupInfo]
@@ -115,6 +116,7 @@ class SimulationResult:
     error_message: Optional[str] = None
     overhead_enabled: bool = True  # Whether job overhead was included in calculations
     failure_rate: float = 0.0  # Job failure rate percentage used in simulation
+    total_job_retries: int = 0  # Total number of retry jobs (jobs with retry_count > 0)
 
 
 class WorkflowSimulator:
@@ -218,12 +220,16 @@ class WorkflowSimulator:
                 success=False,
                 error_message=str(e),
                 overhead_enabled=not self.no_overhead,
-                failure_rate=self.failure_rate
+                failure_rate=self.failure_rate,
+                total_job_retries=0
             )
 
         # Simulate workflow execution
         try:
             execution_result = self._simulate_execution(groups, dependency_graph, request_num_events)
+
+            # Calculate total retry jobs (jobs with retry_count > 0)
+            total_retry_jobs = sum(1 for job in execution_result['jobs'] if job.retry_count > 0)
 
             # Create simulation result
             result = SimulationResult(
@@ -231,14 +237,15 @@ class WorkflowSimulator:
                 composition_number=composition_number,
                 total_events=request_num_events,
                 total_groups=len(groups),
-                total_jobs=sum(group.job_count for group in groups),
+                total_jobs=len(execution_result['jobs']),  # Total jobs including retries
                 total_wall_time=execution_result['total_wall_time'],
                 total_turnaround_time=execution_result['total_turnaround_time'],
                 groups=groups,
                 jobs=execution_result['jobs'],
                 success=True,
                 overhead_enabled=not self.no_overhead,
-                failure_rate=self.failure_rate
+                failure_rate=self.failure_rate,
+                total_job_retries=total_retry_jobs
             )
 
             self.logger.info(f"Workflow simulation completed successfully. "
@@ -261,7 +268,8 @@ class WorkflowSimulator:
                 success=False,
                 error_message=str(e),
                 overhead_enabled=not self.no_overhead,
-                failure_rate=self.failure_rate
+                failure_rate=self.failure_rate,
+                total_job_retries=0
             )
 
     def _extract_tasksets(self, workflow_data: Dict[str, Any]) -> List[TasksetInfo]:
@@ -656,7 +664,8 @@ class WorkflowSimulator:
                 'total_events': request_num_events,
                 'jobs': [],
                 'job_counter': 0,  # Track total jobs created for this group
-                'max_retry_count': 0  # Track maximum retry count for jobs in this group
+                'pending_retries': {},  # Track pending retries: {original_job_id: retry_count}
+                'failed_job_batch_sizes': {}  # Track batch_size for failed jobs: {original_job_id: batch_size}
             }
 
             self.logger.debug(f"Initialized buffer for {group.group_id}: {available_events} events available")
@@ -737,15 +746,18 @@ class WorkflowSimulator:
                             buffer['available_events'] += job.batch_size
                             # Don't increment processed_events for failed jobs
 
-                            # Update max retry count for this group
-                            buffer['max_retry_count'] = max(buffer.get('max_retry_count', 0), job.retry_count + 1)
+                            # Track this job for retry - use original_job_id if this is already a retry
+                            original_job_id = job.original_job_id if job.original_job_id else job.job_id
+                            new_retry_count = job.retry_count + 1
+                            buffer['pending_retries'][original_job_id] = new_retry_count
+                            buffer['failed_job_batch_sizes'][original_job_id] = job.batch_size
 
                             # Add group back to execution queue for retry
                             if job.group_id not in execution_queue:
                                 execution_queue.append(job.group_id)
                                 self.logger.debug(
                                     f"Group {job.group_id} queued for retry after job {job.job_id} failure "
-                                    f"(retry_count will be {buffer['max_retry_count']})"
+                                    f"(original_job_id={original_job_id}, retry_count will be {new_retry_count})"
                                 )
                     else:
                         # Max retries exceeded - mark as permanently failed
@@ -861,9 +873,28 @@ class WorkflowSimulator:
                     # Add overhead to wallclock time (overhead is part of job execution time)
                     job_wallclock += job_metrics.job_overhead_secs
 
-                    # Get retry count from buffer (for retry jobs)
-                    # max_retry_count tracks the maximum retry count for jobs in this group
-                    retry_count = buffer.get('max_retry_count', 0)
+                    # Check if this is a retry job by matching batch_size with pending retries
+                    retry_count = 0
+                    original_job_id = None
+                    pending_retries = buffer.get('pending_retries', {})
+                    failed_batch_sizes = buffer.get('failed_job_batch_sizes', {})
+
+                    # Find matching retry: look for a pending retry where we're processing
+                    # the same batch_size (indicating this is a retry of that failed job)
+                    # Process retries in order (FIFO) to ensure correct matching
+                    for orig_id, retry_cnt in list(pending_retries.items()):
+                        # Check if this batch_size matches the failed job's batch_size
+                        if actual_batch_size == failed_batch_sizes.get(orig_id, 0):
+                            retry_count = retry_cnt
+                            original_job_id = orig_id
+                            # Remove from pending retries once we've created the retry job
+                            del pending_retries[orig_id]
+                            del failed_batch_sizes[orig_id]
+                            self.logger.debug(
+                                f"Creating retry job {job_id} for original job {original_job_id} "
+                                f"(retry_count={retry_count}, batch_size={actual_batch_size})"
+                            )
+                            break
 
                     job = JobInfo(
                         job_id=job_id,
@@ -883,7 +914,8 @@ class WorkflowSimulator:
                         job_overhead_secs=job_metrics.job_overhead_secs,
                         job_overhead_cpu_time=job_metrics.job_overhead_cpu_time,
                         total_execution_time=job_metrics.total_execution_time,
-                        retry_count=retry_count
+                        retry_count=retry_count,
+                        original_job_id=original_job_id
                     )
 
                     new_jobs.append(job)
@@ -938,7 +970,8 @@ class WorkflowSimulator:
         print(f"Composition Number: {result.composition_number}")
         print(f"Total Events: {result.total_events:,}")
         print(f"Total Groups: {result.total_groups}")
-        print(f"Total Jobs: {result.total_jobs}")
+        total_logical_jobs = result.total_jobs - result.total_job_retries
+        print(f"Total Jobs: {result.total_jobs} (Logical: {total_logical_jobs}, Retries: {result.total_job_retries})")
         print(f"Total Wall Time: {result.total_wall_time:.2f} seconds ({result.total_wall_time/3600:.2f} hours)")
         print(f"Total Turnaround Time: {result.total_turnaround_time:.2f} seconds ({result.total_turnaround_time/3600:.2f} hours)")
         print(f"Failure Rate: {result.failure_rate:.1f}%")
