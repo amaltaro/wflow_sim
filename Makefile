@@ -164,6 +164,48 @@ visualize-all:
 	done
 	@echo "All visualizations completed!"
 
+# Generate failure rate impact analysis (cross-dimensional comparison)
+# Analyzes how all 16 constructions perform across different failure rates
+# for a given workflow type and target job length
+.PHONY: analyze-failure-rate
+analyze-failure-rate:
+	@echo "Starting failure rate impact analysis"
+	@echo "Use cases: $(USE_CASES)"
+	@echo "Wallclock times: $(WALLCLOCK_TIMES) seconds (1h, 6h, 12h, 18h, 24h)"
+	@echo "Processing both overhead and nooverhead scenarios"
+	@echo ""
+	@for wallclock_time in $(WALLCLOCK_TIMES); do \
+		wallclock_hours=$$(( $$wallclock_time / 3600 )); \
+		echo "=========================================="; \
+		echo "Analyzing failure rate impact for wallclock time: $$wallclock_time seconds ($$wallclock_hours hours)"; \
+		echo "=========================================="; \
+		for use_case in $(USE_CASES); do \
+			echo "=== Analyzing use case: $$use_case ($$wallclock_hours hours) ==="; \
+			use_case_base_dir="$(RESULTS_DIR)/$$use_case/$${wallclock_hours}h"; \
+			if [ -d "$$use_case_base_dir" ]; then \
+				echo "  Processing overhead files..."; \
+				$(PYTHON) scripts/failure_rate_analysis.py \
+					$(RESULTS_DIR) \
+					$$use_case \
+					$${wallclock_hours}h \
+					--overhead-type overhead || exit 1; \
+				echo "  Processing nooverhead files..."; \
+				$(PYTHON) scripts/failure_rate_analysis.py \
+					$(RESULTS_DIR) \
+					$$use_case \
+					$${wallclock_hours}h \
+					--overhead-type nooverhead || exit 1; \
+				echo "  Results saved to: results/analysis/failure_rate/{overhead,nooverhead}/$$use_case/$${wallclock_hours}h/"; \
+			else \
+				echo "  Warning: Results base directory $$use_case_base_dir not found. Skipping."; \
+			fi; \
+			echo "=== Completed analysis for use case: $$use_case ($$wallclock_hours hours) ==="; \
+			echo ""; \
+		done; \
+		echo ""; \
+	done
+	@echo "All failure rate impact analyses completed!"
+
 # Combined target: run simulations and generate visualizations
 # Automatically handles both overhead and nooverhead scenarios for all wallclock times and failure rates
 .PHONY: all
