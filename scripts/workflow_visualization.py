@@ -1053,9 +1053,10 @@ def process_simulation_directory(directory_path: str, overhead_filter: str = Non
     print(f"Successfully processed {files_processed} simulation files")
     print(f"Extracted {len(all_groups)} groups and {len(all_jobs)} jobs")
     if all_simulation_data:
-        print(f"Sample workflow metrics: {pformat(all_simulation_data[0])}")
-        print(f"Sample group metrics: {pformat(all_groups[0])}")
-        print(f"Sample job metrics: {pformat(all_jobs[0])}")
+        continue
+        # print(f"Sample workflow metrics: {pformat(all_simulation_data[0])}")
+        # print(f"Sample group metrics: {pformat(all_groups[0])}")
+        # print(f"Sample job metrics: {pformat(all_jobs[0])}")
 
     return all_groups, all_jobs, all_simulation_data
 
