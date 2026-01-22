@@ -35,7 +35,15 @@ help:
 	@echo "  simulate-all   - Run simulations for all wallclock times and failure rates"
 	@echo "  visualize-all  - Generate visualizations for all wallclock times and failure rates"
 	@echo "  all            - Run simulations and visualizations for all combinations"
-	@echo "  clean          - Clean up generated files"
+	@echo ""
+	@echo "Analysis targets:"
+	@echo "  analyze-failure-rate           - Analyze failure rate impact across all workflow types"
+	@echo "  analyze-workflow-type-sensitivity - Analyze workflow type sensitivity (12h, fr0)"
+	@echo ""
+	@echo "Cleanup targets:"
+	@echo "  clean          - Clean up all generated files"
+	@echo "  clean-viz      - Clean only visualization outputs"
+	@echo "  clean-results  - Clean only simulation results"
 	@echo ""
 	@echo "Use cases configured: $(USE_CASES)"
 	@echo "Wallclock times configured: $(WALLCLOCK_TIMES) seconds (1h, 6h, 12h, 18h, 24h)"
@@ -205,6 +213,33 @@ analyze-failure-rate:
 		echo ""; \
 	done
 	@echo "All failure rate impact analyses completed!"
+
+# Generate workflow type sensitivity analysis (cross-dimensional comparison)
+# Analyzes how different workflow types respond to hybrid constructions
+# for a given target job length and failure rate
+.PHONY: analyze-workflow-type-sensitivity
+analyze-workflow-type-sensitivity:
+	@echo "Starting workflow type sensitivity analysis"
+	@echo "Use cases: $(USE_CASES)"
+	@echo "Default configuration: 12h target, fr0 failure rate"
+	@echo "Processing both overhead and nooverhead scenarios"
+	@echo ""
+	@echo "Processing overhead files..."
+	$(PYTHON) scripts/workflow_type_sensitivity.py \
+		$(RESULTS_DIR) \
+		12h \
+		fr0 \
+		--overhead-type overhead || exit 1
+	@echo ""
+	@echo "Processing nooverhead files..."
+	$(PYTHON) scripts/workflow_type_sensitivity.py \
+		$(RESULTS_DIR) \
+		12h \
+		fr0 \
+		--overhead-type nooverhead || exit 1
+	@echo ""
+	@echo "Results saved to: results/analysis/workflow_type_sensitivity/{overhead,nooverhead}/12h/fr0/"
+	@echo "Workflow type sensitivity analysis completed!"
 
 # Combined target: run simulations and generate visualizations
 # Automatically handles both overhead and nooverhead scenarios for all wallclock times and failure rates
