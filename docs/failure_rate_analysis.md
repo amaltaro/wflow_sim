@@ -1,0 +1,192 @@
+# Failure Rate Impact Analysis
+
+This document describes the failure rate impact analysis script, which performs cross-dimensional comparisons to evaluate how different workflow constructions perform across various failure rates.
+
+## Overview
+
+**Analysis Type**: Failure Rate Impact (Comparison #1)
+
+- **Fixed Dimensions**: workflow_type + target_job_length
+- **Variable Dimension**: failure_rate (fr0, fr1, fr5, fr10, fr25)
+- **Comparison**: All 16 constructions across failure rates
+- **Primary Metric**: Event throughput
+
+## Purpose
+
+This analysis helps demonstrate:
+1. How different workflow constructions (1-16) handle increasing failure rates
+2. Which hybrid constructions (2-15) maintain better performance under failures
+3. Comparison of hybrid compositions vs. extremes (Const 1: all chained, Const 16: all independent)
+4. Identification of the best hybrid construction for each failure rate (based on event throughput, and network activity as a tiebraker)
+
+## Usage
+
+### Command Line
+
+```bash
+python scripts/failure_rate_analysis.py \
+    <base_path> \
+    <workflow_type> \
+    <target_job_length> \
+    [--output-dir OUTPUT_DIR] \
+    [--overhead-type {overhead,nooverhead}]
+```
+
+### Arguments
+
+- `base_path`: Base path to results directory (e.g., `results/sim/others`)
+- `workflow_type`: Workflow type (e.g., `case1_real`, `case2_homo`, `case3_hetero`)
+- `target_job_length`: Target job length (e.g., `12h`, `6h`, `24h`)
+- `--output-dir`: Optional output directory (default: `results/analysis/failure_rate/{overhead_type}/{workflow_type}/{target_job_length}`)
+- `--overhead-type`: Process `overhead` or `nooverhead` files (default: `overhead`)
+
+### Examples
+
+#### Single Analysis
+
+```bash
+# Analyze case1_real at 12h with overhead
+python scripts/failure_rate_analysis.py \
+    results/sim/others \
+    case1_real \
+    12h \
+    --overhead-type overhead
+
+# Analyze case1_real at 12h without overhead
+python scripts/failure_rate_analysis.py \
+    results/sim/others \
+    case1_real \
+    12h \
+    --overhead-type nooverhead
+```
+
+#### Using Makefile
+
+```bash
+# Run analysis for all workflow types, all target job lengths
+make analyze-failure-rate
+```
+
+## Output Location
+
+Results are saved to:
+```
+results/analysis/failure_rate/{overhead_type}/{workflow_type}/{target_job_length}/
+```
+
+This structure separates cross-dimensional analysis outputs from standard simulation results (`results/sim/`) and standard visualizations (`results/vis/`).
+
+## Output Files
+
+The script generates the following outputs in the specified output directory:
+
+### Visualizations
+
+1. **`throughput_vs_failure_rate_{overhead|nooverhead}.png`**
+   - Line chart showing event throughput vs. failure rate for all 16 constructions
+   - Const 1 (all chained) highlighted in red
+   - Const 16 (all independent) highlighted in green
+   - Hybrid constructions (2-15) shown as lighter lines
+
+2. **`throughput_degradation_{overhead|nooverhead}.png`**
+   - Line chart showing throughput degradation percentage (relative to fr0) vs. failure rate
+   - Helps identify which constructions are most resilient to failures
+   - Negative values indicate improvement (shouldn't happen), zero is baseline
+
+3. **`network_activity_vs_failure_rate_{overhead|nooverhead}.png`**
+   - Two-panel visualization showing network activity patterns
+   - **Left panel**: Network transfer per event vs. failure rate for all 16 constructions
+   - **Right panel**: Remote read vs. remote write breakdown for Const 1, Const 16, and best hybrid
+   - Helps identify which constructions maintain efficient network usage under failures
+   - Shows how failure rates affect remote I/O patterns
+
+4. **`best_hybrid_comparison_{overhead|nooverhead}.png`**
+   - Bar chart comparing Const 1, Const 16, and the best hybrid construction for each failure rate
+   - Best hybrid is identified based on event throughput
+   - Shows which hybrid construction performs best at each failure rate
+
+### Data Tables
+
+5. **`failure_rate_analysis_summary_{overhead|nooverhead}.csv`**
+   - Comprehensive table with all metrics for all constructions across all failure rates
+   - Columns include:
+     - Composition number
+     - Failure rate
+     - Event throughput
+     - Wall time per event
+     - CPU time per event
+     - Network transfer per event
+     - CPU utilization
+     - Memory occupancy
+     - Total groups
+
+## Interpretation Guide
+
+### Throughput vs. Failure Rate Plot
+
+- **Steeper negative slopes** indicate constructions that degrade more with failures
+- **Flatter lines** indicate more resilient constructions
+- **Higher lines** indicate better absolute performance
+- Look for hybrid constructions that maintain higher throughput across all failure rates
+
+### Throughput Degradation Plot
+
+- **Lower values** (closer to zero) indicate better resilience
+- **Higher positive values** indicate worse degradation
+- Compare Const 1 and Const 16 to see which extreme degrades more
+- Identify hybrid constructions with minimal degradation
+
+### Network Activity Plot
+
+- **Left panel**: Shows total network transfer patterns across all constructions
+  - Lower network transfer generally indicates better efficiency
+  - Look for constructions that maintain low network usage even under failures
+- **Right panel**: Shows remote read/write breakdown for key constructions
+  - Helps understand I/O patterns: more reads indicate cross-group dependencies
+  - Const 1 typically has minimal remote read (all in one group)
+  - Const 16 typically has more remote read (groups are independent)
+  - Best hybrid should show a balanced pattern
+
+### Best Hybrid Comparison Plot
+
+- Shows which hybrid construction (2-15) performs best at each failure rate
+- Direct comparison with Const 1 and Const 16
+- Helps identify if there's a single "best" hybrid or if it varies by failure rate
+- The legend shows which construction number(s) are the best hybrid
+
+## Key Insights to Look For
+
+1. **Resilience**: Do hybrid constructions show better resilience (less degradation) than extremes?
+2. **Consistency**: Is there a single best hybrid construction, or does it vary by failure rate?
+3. **Performance Gap**: How much better are hybrids compared to Const 1 and Const 16?
+4. **Failure Rate Sensitivity**: At what failure rate do differences become most pronounced?
+5. **Network Efficiency**: Do hybrid constructions maintain better network efficiency under failures?
+6. **I/O Patterns**: How do remote read/write patterns differ between extremes and hybrids?
+
+## Requirements
+
+- Python 3.x
+- Required packages: `matplotlib`, `numpy`, `pandas`, `seaborn`
+- Simulation result JSON files organized in the hierarchical structure:
+  ```
+  results/sim/others/
+    {workflow_type}/
+      {target_job_length}/
+        fr0/
+          *_{overhead|nooverhead}.json
+        fr1/
+          *_{overhead|nooverhead}.json
+        fr5/
+          *_{overhead|nooverhead}.json
+        fr10/
+          *_{overhead|nooverhead}.json
+        fr25/
+          *_{overhead|nooverhead}.json
+  ```
+
+## Notes
+
+- The script automatically processes all available failure rate directories (fr0, fr1, fr5, fr10, fr25)
+- Missing directories are skipped with a warning
+- The best hybrid is identified using event throughput as the primary metric
+- Both overhead and nooverhead analyses should be run separately for complete comparison
