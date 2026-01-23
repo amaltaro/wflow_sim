@@ -162,9 +162,31 @@ The script generates the following outputs in the specified output directory:
    - Shows which hybrid construction performs best at each target job length
    - Helps identify if there's a single "best" hybrid or if it varies by target length
 
+5. **`failure_cost_analysis_{overhead|nooverhead}.png`** (fr25 only)
+   - Two-panel visualization showing failure cost metrics
+   - **Left panel**: Average CPU cost per failure (CPU-hours) vs. target job length
+     - Y-axis shows CPU-hours wasted per failure
+     - CPU-hours represent total CPU time wasted (can be > wall time due to parallel execution)
+     - Note: Wall-clock hours are not shown as they match the target job length (redundant)
+   - **Right panel**: Risk profile - maximum single failure cost (CPU-hours) vs. target job length
+     - Shows worst-case scenario: the maximum CPU cost of a single failure at each target length
+     - Critical for understanding risk exposure at different target lengths
+   - Shows Const 1, Const 16, and best hybrid (each best hybrid has a unique color)
+   - Reveals that longer target job lengths have much higher cost per failure
+   - Critical insight: A single 24h failure wastes 24x more CPU resources than a single 1h failure
+   - Only generated when failure data is present (skipped for fr0)
+
+6. **`failure_count_analysis_{overhead|nooverhead}.png`** (fr25 only)
+   - Two-panel visualization showing failure count distribution
+   - **Left panel**: Number of failed jobs vs. target job length
+   - **Right panel**: Actual failure rate (%) vs. target job length (with expected rate line)
+   - Shows how failure counts normalize across target lengths
+   - Reveals that shorter jobs have more failures but each failure is cheaper
+   - Only generated when failure data is present (skipped for fr0)
+
 ### Data Tables
 
-5. **`target_job_length_analysis_summary_{overhead|nooverhead}.csv`**
+7. **`target_job_length_analysis_summary_{overhead|nooverhead}.csv`**
    - Comprehensive table with all metrics for all constructions across all target job lengths
    - Columns include:
      - Composition number
@@ -176,6 +198,13 @@ The script generates the following outputs in the specified output directory:
      - CPU utilization
      - Memory occupancy
      - Total groups
+     - **Failure metrics** (for fr25):
+       - Total logical jobs (excluding retries)
+       - Total failed jobs
+       - Actual failure rate (%)
+       - Total wasted CPU/wall time and network transfer
+       - Average cost per failure (CPU/wall/network)
+       - Maximum single failure cost (risk profile)
 
 ## Interpretation Guide
 
@@ -213,6 +242,37 @@ The script generates the following outputs in the specified output directory:
 - Helps identify if there's a single "best" hybrid or if it varies by target length
 - The legend shows which construction number(s) are the best hybrid
 
+### Failure Cost Analysis Plot (fr25 only)
+
+- **Left panel (Average CPU Cost per Failure)**:
+  - Shows average CPU-hours wasted per failure across target job lengths
+  - **Key insight**: Longer target job lengths have exponentially higher cost per failure
+  - Example: 24h failures waste ~24x more CPU resources than 1h failures
+  - This reveals the hidden cost that throughput metrics mask
+  - CPU-hours can be much higher than wall-clock hours due to parallel execution
+  - Note: Wall-clock hours are not shown as they directly match the target job length (redundant)
+
+- **Right panel (Risk Profile - Max Single Failure Cost)**:
+  - Shows the maximum CPU cost of a single failure at each target job length
+  - Represents the worst-case scenario risk exposure
+  - Critical for resource planning and cost estimation
+  - Helps understand the risk profile: many small failures vs. few large failures
+  - Shows the potential maximum loss from a single failure event
+
+### Failure Count Analysis Plot (fr25 only)
+
+- **Left panel (Failure Count)**:
+  - Shows absolute number of failed jobs vs. target job length
+  - **Key insight**: Shorter jobs have many more failures (more jobs = more failure opportunities)
+  - Longer jobs have fewer failures but each failure is much more expensive
+  - The total cost may be similar, but the risk profile is very different
+
+- **Right panel (Actual Failure Rate)**:
+  - Shows the actual failure rate percentage vs. target job length
+  - Should be close to the expected failure rate (e.g., 25% for fr25)
+  - Helps verify that failures are being properly tracked
+  - Small variations are expected due to random sampling
+
 ## Key Insights to Look For
 
 1. **Time Constraint Sensitivity**: Do hybrid constructions show better performance across all target lengths?
@@ -226,6 +286,11 @@ The script generates the following outputs in the specified output directory:
    - Does the best hybrid change under failure conditions?
    - Are some constructions more resilient to failures at certain target lengths?
    - Does target job length have a more significant impact on throughput when failures are present?
+9. **Failure Cost Analysis** (fr25): Critical insights revealed by failure cost metrics:
+   - **Cost per failure**: Longer target job lengths have much higher cost per failure (24h failures waste 24x more resources than 1h failures)
+   - **Risk profile**: Maximum single failure cost shows the risk exposure at different target lengths
+   - **Failure normalization**: Shorter jobs have more failures but each failure is cheaper, while longer jobs have fewer failures but each is much more expensive
+   - **Throughput masking**: The throughput metric normalizes by total time (including retries), hiding the real cost difference between short and long job failures
 
 ## Recommended Configuration
 
