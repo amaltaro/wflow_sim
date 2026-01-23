@@ -43,6 +43,30 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
 
         metrics = data.get('metrics', {})
         sim_result = data.get('simulation_result', {})
+        jobs = sim_result.get('jobs', [])
+
+        # Extract failure-related metrics
+        first_attempt_jobs = [j for j in jobs if j.get('retry_count', 0) == 0]
+        failed_jobs = [j for j in first_attempt_jobs if j.get('status') == 'failed']
+
+        # Calculate failure cost metrics
+        total_failed_jobs = len(failed_jobs)
+        total_wasted_cpu = sum(j.get('total_cpu_used_time', 0.0) for j in failed_jobs)
+        total_wasted_wall = sum(j.get('wallclock_time', 0.0) for j in failed_jobs)
+        total_wasted_network = sum(j.get('total_network_transfer_mb', 0.0) for j in failed_jobs)
+
+        avg_cpu_per_failure = total_wasted_cpu / total_failed_jobs if total_failed_jobs > 0 else 0.0
+        avg_wall_per_failure = total_wasted_wall / total_failed_jobs if total_failed_jobs > 0 else 0.0
+        avg_network_per_failure = total_wasted_network / total_failed_jobs if total_failed_jobs > 0 else 0.0
+
+        # Risk profile: max single failure cost
+        max_cpu_failure = max((j.get('total_cpu_used_time', 0.0) for j in failed_jobs), default=0.0)
+        max_wall_failure = max((j.get('wallclock_time', 0.0) for j in failed_jobs), default=0.0)
+        max_network_failure = max((j.get('total_network_transfer_mb', 0.0) for j in failed_jobs), default=0.0)
+
+        # Total logical jobs (excluding retries)
+        total_logical_jobs = len(first_attempt_jobs)
+        failure_rate_actual = (total_failed_jobs / total_logical_jobs * 100.0) if total_logical_jobs > 0 else 0.0
 
         return {
             'composition_number': metrics.get('composition_number', 0),
@@ -57,6 +81,19 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
             'total_groups': metrics.get('total_groups', 0),
             'failure_rate': sim_result.get('failure_rate', 0.0),
             'overhead_enabled': sim_result.get('overhead_enabled', True),
+            # Failure metrics
+            'total_logical_jobs': total_logical_jobs,
+            'total_failed_jobs': total_failed_jobs,
+            'failure_rate_actual': failure_rate_actual,
+            'total_wasted_cpu_time': total_wasted_cpu,
+            'total_wasted_wall_time': total_wasted_wall,
+            'total_wasted_network_mb': total_wasted_network,
+            'avg_cpu_per_failure': avg_cpu_per_failure,
+            'avg_wall_per_failure': avg_wall_per_failure,
+            'avg_network_per_failure': avg_network_per_failure,
+            'max_cpu_per_failure': max_cpu_failure,
+            'max_wall_per_failure': max_wall_failure,
+            'max_network_per_failure': max_network_failure,
             'file_path': file_path
         }
     except Exception as e:
@@ -129,6 +166,48 @@ def target_length_to_hours(target_length: str) -> float:
     return float(target_length.replace('h', ''))
 
 
+def get_best_hybrid_colors(best_hybrids: Dict[str, Optional[int]]) -> Dict[int, str]:
+    """Get unique colors for each best hybrid construction.
+
+    Uses a color palette that excludes red (#d62728) and green (#2ca02c) used for Const 1 and Const 16.
+
+    Args:
+        best_hybrids: Dictionary mapping target_length to best hybrid composition number
+
+    Returns:
+        Dictionary mapping composition_number to color hex code
+    """
+    # Color palette for best hybrids (distinct from Const 1 red and Const 16 green)
+    # Exclude red (#d62728) and green (#2ca02c) which are reserved for Const 1 and Const 16
+    hybrid_colors = [
+        '#1f77b4',  # Blue
+        '#ff7f0e',  # Orange
+        '#9467bd',  # Purple
+        '#8c564b',  # Brown
+        '#e377c2',  # Pink
+        '#7f7f7f',  # Gray
+        '#bcbd22',  # Olive
+        '#17becf',  # Cyan
+        '#ff9896',  # Light red
+        '#98df8a',  # Light green
+        '#c5b0d5',  # Light purple
+        '#ffbb78',  # Light orange
+        '#c49c94',  # Light brown
+        '#aec7e8',  # Light blue
+        '#ffdbac',  # Peach
+    ]
+
+    # Get unique best hybrid composition numbers
+    unique_hybrids = sorted(set([h for h in best_hybrids.values() if h is not None]))
+
+    # Assign colors (cycling through palette if needed)
+    color_map = {}
+    for i, comp_num in enumerate(unique_hybrids):
+        color_map[comp_num] = hybrid_colors[i % len(hybrid_colors)]
+
+    return color_map
+
+
 def plot_throughput_vs_target_length(data_by_composition: Dict[int, List[Dict[str, Any]]],
                                      output_dir: str,
                                      overhead_type: str) -> None:
@@ -160,6 +239,9 @@ def plot_throughput_vs_target_length(data_by_composition: Dict[int, List[Dict[st
     for target_length in target_lengths:
         best_hybrids[target_length] = identify_best_hybrid(data_by_composition, target_length)
 
+    # Get color mapping for best hybrids
+    hybrid_color_map = get_best_hybrid_colors(best_hybrids)
+
     # Convert target lengths to hours for x-axis
     target_hours = [target_length_to_hours(tl) for tl in target_lengths]
 
@@ -184,22 +266,24 @@ def plot_throughput_vs_target_length(data_by_composition: Dict[int, List[Dict[st
         else:
             # Check if this is the best hybrid for any target length
             is_best_hybrid = any(best_hybrids[tl] == comp_num for tl in target_lengths if best_hybrids[tl] is not None)
-            
+
             if is_best_hybrid:
+                # Get unique color for this best hybrid
+                hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
                 # Highlight best hybrid with triangle markers
                 marker_targets = [tl for tl in target_length_values if best_hybrids.get(tl) == comp_num]
-                marker_throughput = [th for tl, th in zip(target_length_values, throughput_values) 
+                marker_throughput = [th for tl, th in zip(target_length_values, throughput_values)
                                     if best_hybrids.get(tl) == comp_num]
-                
+
                 # Plot the full line
                 ax.plot(target_hours_values, throughput_values, '-', label=label, linewidth=1.5,
                        alpha=0.7, markersize=5, zorder=5)
-                # Add triangle markers at best hybrid points
+                # Add triangle markers at best hybrid points with unique color
                 if marker_targets:
                     marker_hours = [target_length_to_hours(tl) for tl in marker_targets]
                     ax.plot(marker_hours, marker_throughput, '^', label=None, linewidth=0,
-                           color='#1f77b4', markersize=10, zorder=11, alpha=0.9,
-                           markerfacecolor='#1f77b4', markeredgecolor='white', markeredgewidth=1.5)
+                           color=hybrid_color, markersize=10, zorder=11, alpha=0.9,
+                           markerfacecolor=hybrid_color, markeredgecolor='white', markeredgewidth=1.5)
             else:
                 # Regular hybrid constructions
                 ax.plot(target_hours_values, throughput_values, '-', label=label, linewidth=1.5,
@@ -207,7 +291,7 @@ def plot_throughput_vs_target_length(data_by_composition: Dict[int, List[Dict[st
 
     # Format overhead label for title
     overhead_label = "With overhead" if overhead_type == "overhead" else "No overhead"
-    
+
     ax.set_xlabel("Target Job Length (hours)", fontsize=12)
     ax.set_ylabel("Event Throughput (events/second)", fontsize=12)
     ax.set_title(f"Event Throughput vs. Target Job Length\n({overhead_label})", fontsize=14)
@@ -284,7 +368,7 @@ def plot_throughput_improvement(data_by_composition: Dict[int, List[Dict[str, An
 
     # Format overhead label for title
     overhead_label = "With overhead" if overhead_type == "overhead" else "No overhead"
-    
+
     ax.set_xlabel("Target Job Length (hours)", fontsize=12)
     ax.set_ylabel("Throughput Improvement (%)", fontsize=12)
     ax.set_title(f"Throughput Improvement vs. Target Job Length\n(Relative to 1h, {overhead_label})",
@@ -430,6 +514,9 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
     for target_length in target_lengths:
         best_hybrids[target_length] = identify_best_hybrid(data_by_composition, target_length)
 
+    # Get color mapping for best hybrids
+    hybrid_color_map = get_best_hybrid_colors(best_hybrids)
+
     # Plot only Const 1, Const 16, and best hybrid for each target length
     constructions_to_plot = {1, 16}
     for target_length in target_lengths:
@@ -464,13 +551,14 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
                     color='#2ca02c', markersize=7, zorder=10, alpha=0.9, markerfacecolor='#2ca02c',
                     markeredgecolor='#2ca02c', markeredgewidth=1.5)
         else:
-            # Best hybrid
+            # Best hybrid with unique color
+            hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
             ax2.plot(target_hours_values, read_remote, 'o--', label=f"{label} (Read)", linewidth=2,
-                    color='#1f77b4', markersize=6, zorder=9, alpha=0.8, markerfacecolor='#1f77b4',
-                    markeredgecolor='#1f77b4', markeredgewidth=1.5)
+                    color=hybrid_color, markersize=6, zorder=9, alpha=0.8, markerfacecolor=hybrid_color,
+                    markeredgecolor=hybrid_color, markeredgewidth=1.5)
             ax2.plot(target_hours_values, write_remote, 's-', label=f"{label} (Write)", linewidth=2,
-                    color='#1f77b4', markersize=6, zorder=9, alpha=0.8, markerfacecolor='#1f77b4',
-                    markeredgecolor='#1f77b4', markeredgewidth=1.5)
+                    color=hybrid_color, markersize=6, zorder=9, alpha=0.8, markerfacecolor=hybrid_color,
+                    markeredgecolor=hybrid_color, markeredgewidth=1.5)
 
     ax2.set_xlabel("Target Job Length (hours)", fontsize=12)
     ax2.set_ylabel("Data Volume per Event (MB)", fontsize=12)
@@ -509,10 +597,13 @@ def plot_best_hybrid_comparison(data_by_composition: Dict[int, List[Dict[str, An
     target_lengths = sorted(all_target_lengths, key=target_length_to_hours)
     target_hours = [target_length_to_hours(tl) for tl in target_lengths]
 
-    # Find best hybrid for each target length
+    # Find best hybrid for each target length (each target length can have a different best hybrid)
     best_hybrids = {}
     for target_length in target_lengths:
-        best_hybrids[target_length] = identify_best_hybrid(data_by_composition, target_length)
+        best_hybrid = identify_best_hybrid(data_by_composition, target_length, verbose=True)
+        best_hybrids[target_length] = best_hybrid
+        if best_hybrid:
+            print(f"  Best hybrid for {target_length}: Const {best_hybrid}")
 
     # Extract throughput values
     const1_throughput = []
@@ -604,6 +695,254 @@ def plot_best_hybrid_comparison(data_by_composition: Dict[int, List[Dict[str, An
     print(f"  => Saved: {output_path}")
 
 
+def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any]]],
+                               output_dir: str,
+                               overhead_type: str) -> None:
+    """Plot failure cost analysis: cost per failure vs target job length.
+
+    Args:
+        data_by_composition: Dictionary mapping composition_number to metrics list
+        output_dir: Output directory for plots
+        overhead_type: 'overhead' or 'nooverhead'
+    """
+    print(f"\n==> Creating failure cost analysis plot")
+
+    # Get all target lengths and sort them
+    all_target_lengths = set()
+    for comp_data in data_by_composition.values():
+        for d in comp_data:
+            all_target_lengths.add(d['target_job_length'])
+    target_lengths = sorted(all_target_lengths, key=target_length_to_hours)
+    target_hours = [target_length_to_hours(tl) for tl in target_lengths]
+
+    # Check if we have failure data (fr25)
+    has_failures = False
+    for comp_data in data_by_composition.values():
+        for d in comp_data:
+            if d.get('total_failed_jobs', 0) > 0:
+                has_failures = True
+                break
+        if has_failures:
+            break
+
+    if not has_failures:
+        print("  => Skipping (no failure data - likely fr0)")
+        return
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
+
+    # Format overhead label for title
+    overhead_label = "With overhead" if overhead_type == "overhead" else "No overhead"
+
+    # Get color mapping for best hybrids (each target length can have a different best hybrid)
+    best_hybrids = {}
+    for tl in target_lengths:
+        best_hybrid = identify_best_hybrid(data_by_composition, tl, verbose=True)
+        best_hybrids[tl] = best_hybrid
+        if best_hybrid:
+            print(f"  Best hybrid for {tl}: Const {best_hybrid}")
+    hybrid_color_map = get_best_hybrid_colors(best_hybrids)
+
+    # Plot 1: Average cost per failure (CPU time only - wall time matches target length and is redundant)
+    for comp_num in sorted(data_by_composition.keys()):
+        comp_data = data_by_composition[comp_num]
+        comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
+
+        target_length_values = [d['target_job_length'] for d in comp_data_sorted]
+        avg_cpu_per_failure = [d.get('avg_cpu_per_failure', 0.0) / 3600.0 for d in comp_data_sorted]  # Convert to hours
+        target_hours_values = [target_length_to_hours(tl) for tl in target_length_values]
+
+        label = f"Const {comp_num}"
+        if comp_num == 1:
+            ax1.plot(target_hours_values, avg_cpu_per_failure, 'o-', label=label,
+                    linewidth=2.5, color='#d62728', markersize=8, zorder=10)
+        elif comp_num == 16:
+            ax1.plot(target_hours_values, avg_cpu_per_failure, 's-', label=label,
+                    linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
+        else:
+            # Only show best hybrid with unique colors
+            if any(best_hybrids[tl] == comp_num for tl in target_lengths if best_hybrids[tl] is not None):
+                hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
+                ax1.plot(target_hours_values, avg_cpu_per_failure, '^-', label=label,
+                        linewidth=2, color=hybrid_color, markersize=6, zorder=9, alpha=0.8)
+
+    ax1.set_xlabel("Target Job Length (hours)", fontsize=12)
+    ax1.set_ylabel("Average CPU Cost per Failure (CPU-hours)", fontsize=12)
+    ax1.set_title(f"Average Cost per Failure vs. Target Job Length\n({overhead_label})", fontsize=13)
+    ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
+    ax1.grid(True, alpha=0.3)
+    ax1.set_xticks(target_hours)
+    ax1.set_xticklabels([f"{int(h)}h" for h in target_hours])
+
+    # Plot 2: Risk profile (max single failure cost - CPU time only)
+    for comp_num in sorted(data_by_composition.keys()):
+        comp_data = data_by_composition[comp_num]
+        comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
+
+        target_length_values = [d['target_job_length'] for d in comp_data_sorted]
+        max_cpu_per_failure = [d.get('max_cpu_per_failure', 0.0) / 3600.0 for d in comp_data_sorted]  # Convert to hours
+        target_hours_values = [target_length_to_hours(tl) for tl in target_length_values]
+
+        label = f"Const {comp_num}"
+        if comp_num == 1:
+            ax2.plot(target_hours_values, max_cpu_per_failure, 'o-', label=label,
+                    linewidth=2.5, color='#d62728', markersize=8, zorder=10)
+        elif comp_num == 16:
+            ax2.plot(target_hours_values, max_cpu_per_failure, 's-', label=label,
+                    linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
+        else:
+            # Only show best hybrid with unique colors
+            if any(best_hybrids[tl] == comp_num for tl in target_lengths if best_hybrids[tl] is not None):
+                hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
+                ax2.plot(target_hours_values, max_cpu_per_failure, '^-', label=label,
+                        linewidth=2, color=hybrid_color, markersize=6, zorder=9, alpha=0.8)
+
+    ax2.set_xlabel("Target Job Length (hours)", fontsize=12)
+    ax2.set_ylabel("Max Single Failure Cost (CPU-hours)", fontsize=12)
+    ax2.set_title(f"Risk Profile: Max Single Failure Cost vs. Target Job Length\n({overhead_label})", fontsize=13)
+    ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
+    ax2.grid(True, alpha=0.3)
+    ax2.set_xticks(target_hours)
+    ax2.set_xticklabels([f"{int(h)}h" for h in target_hours])
+
+    plt.tight_layout()
+    suffix = "_nooverhead" if overhead_type == "nooverhead" else "_overhead"
+    filename = f"failure_cost_analysis{suffix}.png"
+    output_path = os.path.join(output_dir, filename)
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"  => Saved: {output_path}")
+
+
+def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, Any]]],
+                                output_dir: str,
+                                overhead_type: str) -> None:
+    """Plot failure count distribution vs target job length.
+
+    Args:
+        data_by_composition: Dictionary mapping composition_number to metrics list
+        output_dir: Output directory for plots
+        overhead_type: 'overhead' or 'nooverhead'
+    """
+    print(f"\n==> Creating failure count analysis plot")
+
+    # Get all target lengths and sort them
+    all_target_lengths = set()
+    for comp_data in data_by_composition.values():
+        for d in comp_data:
+            all_target_lengths.add(d['target_job_length'])
+    target_lengths = sorted(all_target_lengths, key=target_length_to_hours)
+    target_hours = [target_length_to_hours(tl) for tl in target_lengths]
+
+    # Check if we have failure data
+    has_failures = False
+    for comp_data in data_by_composition.values():
+        for d in comp_data:
+            if d.get('total_failed_jobs', 0) > 0:
+                has_failures = True
+                break
+        if has_failures:
+            break
+
+    if not has_failures:
+        print("  => Skipping (no failure data - likely fr0)")
+        return
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
+
+    # Format overhead label for title
+    overhead_label = "With overhead" if overhead_type == "overhead" else "No overhead"
+
+    # Get color mapping for best hybrids (each target length can have a different best hybrid)
+    best_hybrids = {}
+    for tl in target_lengths:
+        best_hybrid = identify_best_hybrid(data_by_composition, tl, verbose=True)
+        best_hybrids[tl] = best_hybrid
+        if best_hybrid:
+            print(f"  Best hybrid for {tl}: Const {best_hybrid}")
+    hybrid_color_map = get_best_hybrid_colors(best_hybrids)
+
+    # Plot 1: Failure count vs target job length
+    for comp_num in sorted(data_by_composition.keys()):
+        comp_data = data_by_composition[comp_num]
+        comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
+
+        target_length_values = [d['target_job_length'] for d in comp_data_sorted]
+        failed_counts = [d.get('total_failed_jobs', 0) for d in comp_data_sorted]
+        total_jobs = [d.get('total_logical_jobs', 0) for d in comp_data_sorted]
+        failure_rate_actual = [d.get('failure_rate_actual', 0.0) for d in comp_data_sorted]
+        target_hours_values = [target_length_to_hours(tl) for tl in target_length_values]
+
+        label = f"Const {comp_num}"
+        if comp_num == 1:
+            ax1.plot(target_hours_values, failed_counts, 'o-', label=label,
+                    linewidth=2.5, color='#d62728', markersize=8, zorder=10)
+        elif comp_num == 16:
+            ax1.plot(target_hours_values, failed_counts, 's-', label=label,
+                    linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
+        else:
+            # Only show best hybrid with unique colors
+            if any(best_hybrids[tl] == comp_num for tl in target_lengths if best_hybrids[tl] is not None):
+                hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
+                ax1.plot(target_hours_values, failed_counts, '^-', label=label,
+                        linewidth=2, color=hybrid_color, markersize=6, zorder=9, alpha=0.8)
+
+    ax1.set_xlabel("Target Job Length (hours)", fontsize=12)
+    ax1.set_ylabel("Number of Failed Jobs", fontsize=12)
+    ax1.set_title(f"Failure Count vs. Target Job Length\n({overhead_label})", fontsize=13)
+    ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
+    ax1.grid(True, alpha=0.3)
+    ax1.set_xticks(target_hours)
+    ax1.set_xticklabels([f"{int(h)}h" for h in target_hours])
+
+    # Plot 2: Failure rate (actual) vs target job length
+    for comp_num in sorted(data_by_composition.keys()):
+        comp_data = data_by_composition[comp_num]
+        comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
+
+        target_length_values = [d['target_job_length'] for d in comp_data_sorted]
+        failure_rate_actual = [d.get('failure_rate_actual', 0.0) for d in comp_data_sorted]
+        target_hours_values = [target_length_to_hours(tl) for tl in target_length_values]
+
+        label = f"Const {comp_num}"
+        if comp_num == 1:
+            ax2.plot(target_hours_values, failure_rate_actual, 'o-', label=label,
+                    linewidth=2.5, color='#d62728', markersize=8, zorder=10)
+        elif comp_num == 16:
+            ax2.plot(target_hours_values, failure_rate_actual, 's-', label=label,
+                    linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
+        else:
+            # Only show best hybrid with unique colors
+            if any(best_hybrids[tl] == comp_num for tl in target_lengths if best_hybrids[tl] is not None):
+                hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
+                ax2.plot(target_hours_values, failure_rate_actual, '^-', label=label,
+                        linewidth=2, color=hybrid_color, markersize=6, zorder=9, alpha=0.8)
+
+    ax2.set_xlabel("Target Job Length (hours)", fontsize=12)
+    ax2.set_ylabel("Actual Failure Rate (%)", fontsize=12)
+    ax2.set_title(f"Actual Failure Rate vs. Target Job Length\n({overhead_label})", fontsize=13)
+    ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
+    ax2.grid(True, alpha=0.3)
+    ax2.set_xticks(target_hours)
+    ax2.set_xticklabels([f"{int(h)}h" for h in target_hours])
+    # Add horizontal line at expected failure rate if available
+    if data_by_composition:
+        first_data = next(iter(data_by_composition.values()))[0]
+        expected_fr = first_data.get('failure_rate', 0.0)
+        if expected_fr > 0:
+            ax2.axhline(y=expected_fr, color='gray', linestyle='--', linewidth=1, alpha=0.5,
+                       label=f'Expected ({expected_fr:.1f}%)')
+            ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
+
+    plt.tight_layout()
+    suffix = "_nooverhead" if overhead_type == "nooverhead" else "_overhead"
+    filename = f"failure_count_analysis{suffix}.png"
+    output_path = os.path.join(output_dir, filename)
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"  => Saved: {output_path}")
+
+
 def generate_summary_table(data_by_composition: Dict[int, List[Dict[str, Any]]],
                           output_dir: str,
                           overhead_type: str) -> pd.DataFrame:
@@ -622,7 +961,7 @@ def generate_summary_table(data_by_composition: Dict[int, List[Dict[str, Any]]],
     table_data = []
 
     for comp_num in sorted(data_by_composition.keys()):
-        comp_data = sorted(data_by_composition[comp_num], 
+        comp_data = sorted(data_by_composition[comp_num],
                           key=lambda x: target_length_to_hours(x['target_job_length']))
 
         for metrics in comp_data:
@@ -635,7 +974,20 @@ def generate_summary_table(data_by_composition: Dict[int, List[Dict[str, Any]]],
                 'Network_Transfer_MB_Per_Event': metrics['network_transfer_mb_per_event'],
                 'CPU_Utilization': metrics['cpu_utilization'],
                 'Memory_Occupancy': metrics['memory_occupancy'],
-                'Total_Groups': metrics['total_groups']
+                'Total_Groups': metrics['total_groups'],
+                # Failure metrics
+                'Total_Logical_Jobs': metrics.get('total_logical_jobs', 0),
+                'Total_Failed_Jobs': metrics.get('total_failed_jobs', 0),
+                'Failure_Rate_Actual_%': metrics.get('failure_rate_actual', 0.0),
+                'Total_Wasted_CPU_Time_s': metrics.get('total_wasted_cpu_time', 0.0),
+                'Total_Wasted_Wall_Time_s': metrics.get('total_wasted_wall_time', 0.0),
+                'Total_Wasted_Network_MB': metrics.get('total_wasted_network_mb', 0.0),
+                'Avg_CPU_Per_Failure_s': metrics.get('avg_cpu_per_failure', 0.0),
+                'Avg_Wall_Per_Failure_s': metrics.get('avg_wall_per_failure', 0.0),
+                'Avg_Network_Per_Failure_MB': metrics.get('avg_network_per_failure', 0.0),
+                'Max_CPU_Per_Failure_s': metrics.get('max_cpu_per_failure', 0.0),
+                'Max_Wall_Per_Failure_s': metrics.get('max_wall_per_failure', 0.0),
+                'Max_Network_Per_Failure_MB': metrics.get('max_network_per_failure', 0.0)
             }
             table_data.append(row)
 
@@ -703,6 +1055,10 @@ def main():
     plot_throughput_improvement(data_by_composition, args.output_dir, args.overhead_type)
     plot_network_activity_vs_target_length(data_by_composition, args.output_dir, args.overhead_type)
     plot_best_hybrid_comparison(data_by_composition, args.output_dir, args.overhead_type)
+
+    # Generate failure cost analysis (only if failures exist)
+    plot_failure_cost_analysis(data_by_composition, args.output_dir, args.overhead_type)
+    plot_failure_count_analysis(data_by_composition, args.output_dir, args.overhead_type)
 
     # Generate summary table
     generate_summary_table(data_by_composition, args.output_dir, args.overhead_type)
