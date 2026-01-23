@@ -39,6 +39,7 @@ help:
 	@echo "Analysis targets:"
 	@echo "  analyze-failure-rate           - Analyze failure rate impact across all workflow types"
 	@echo "  analyze-workflow-type-sensitivity - Analyze workflow type sensitivity (12h, fr0)"
+	@echo "  analyze-target-job-length      - Analyze target job length optimization (all workflow types, fr0 & fr25)"
 	@echo ""
 	@echo "Cleanup targets:"
 	@echo "  clean          - Clean up all generated files"
@@ -240,6 +241,44 @@ analyze-workflow-type-sensitivity:
 	@echo ""
 	@echo "Results saved to: results/analysis/workflow_type_sensitivity/{overhead,nooverhead}/12h/fr0/"
 	@echo "Workflow type sensitivity analysis completed!"
+
+# Generate target job length optimization analysis (cross-dimensional comparison)
+# Analyzes how different workflow constructions perform across target job lengths
+# for a given workflow type and failure rate
+.PHONY: analyze-target-job-length
+analyze-target-job-length:
+	@echo "Starting target job length optimization analysis"
+	@echo "Use cases: $(USE_CASES)"
+	@echo "Failure rates: fr0, fr25"
+	@echo "Processing both overhead and nooverhead scenarios"
+	@echo ""
+	@for use_case in $(USE_CASES); do \
+		echo "=== Analyzing use case: $$use_case ==="; \
+		use_case_base_dir="$(RESULTS_DIR)/$$use_case"; \
+		if [ -d "$$use_case_base_dir" ]; then \
+			for failure_rate in fr0 fr25; do \
+				echo "  --- Failure rate: $$failure_rate ---"; \
+				echo "    Processing overhead files..."; \
+				$(PYTHON) scripts/target_job_length_analysis.py \
+					$(RESULTS_DIR) \
+					$$use_case \
+					$$failure_rate \
+					--overhead-type overhead || exit 1; \
+				echo "    Processing nooverhead files..."; \
+				$(PYTHON) scripts/target_job_length_analysis.py \
+					$(RESULTS_DIR) \
+					$$use_case \
+					$$failure_rate \
+					--overhead-type nooverhead || exit 1; \
+				echo "    Results saved to: results/analysis/target_job_length/{overhead,nooverhead}/$$use_case/$$failure_rate/"; \
+			done; \
+		else \
+			echo "  Warning: Results base directory $$use_case_base_dir not found. Skipping."; \
+		fi; \
+		echo "=== Completed analysis for use case: $$use_case ==="; \
+		echo ""; \
+	done
+	@echo "All target job length optimization analyses completed!"
 
 # Combined target: run simulations and generate visualizations
 # Automatically handles both overhead and nooverhead scenarios for all wallclock times and failure rates
