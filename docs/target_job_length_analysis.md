@@ -1,0 +1,267 @@
+# Target Job Length Optimization Analysis
+
+This document describes the target job length optimization analysis script, which performs cross-dimensional comparisons to evaluate how different workflow constructions perform across various target job lengths.
+
+## Overview
+
+**Analysis Type**: Target Job Length Optimization (Comparison #3)
+
+- **Fixed Dimensions**: workflow_type + failure_rate
+- **Variable Dimension**: target_job_length (1h, 6h, 12h, 18h, 24h)
+- **Comparison**: All 16 constructions across target job lengths
+- **Primary Metric**: Event throughput
+- **Second Metric**: Network transfer per event (as tiebreaker)
+
+## Purpose
+
+This analysis helps demonstrate:
+1. How different workflow constructions (1-16) handle varying time constraints
+2. Which hybrid constructions (2-15) maintain better performance across different target job lengths
+3. Comparison of hybrid compositions vs. extremes (Const 1: all chained, Const 16: all independent)
+4. Identification of the best hybrid construction for each target job length (based on event throughput, and network activity as a tiebreaker)
+5. Understanding of time-dependent patterns and trade-offs between job granularity and overhead
+
+## Key Insights
+
+This analysis reveals important patterns:
+
+1. **Overhead Sensitivity**: 
+   - At shorter target lengths (1h, 6h), constructions with many groups may be penalized by overhead
+   - At longer target lengths (18h, 24h), constructions with few groups may miss parallelism opportunities
+   - Hybrid constructions may show optimal balance at intermediate lengths (12h)
+
+2. **Optimal Construction Shifts**:
+   - The best hybrid may change with target job length
+   - Const 1 might be better at very short constraints (minimize overhead)
+   - Const 16 might be better at very long constraints (maximize parallelism)
+   - Hybrids may dominate in the middle range
+
+3. **Time-Dependent Efficiency**:
+   - Network efficiency patterns may change with batch size
+   - CPU utilization may vary with job granularity
+   - Memory occupancy patterns may shift
+
+## Usage
+
+### Command Line
+
+```bash
+python scripts/target_job_length_analysis.py \
+    <base_path> \
+    <workflow_type> \
+    <failure_rate> \
+    [--output-dir OUTPUT_DIR] \
+    [--overhead-type {overhead,nooverhead}]
+```
+
+### Arguments
+
+- `base_path`: Base path to results directory (e.g., `results/sim/others`)
+- `workflow_type`: Workflow type (e.g., `case1_real`)
+- `failure_rate`: Failure rate directory (e.g., `fr0`)
+- `--output-dir`: Optional output directory (default: `results/analysis/target_job_length/{overhead_type}/{workflow_type}/{failure_rate}`)
+- `--overhead-type`: Process `overhead` or `nooverhead` files (default: `overhead`)
+
+### Examples
+
+#### Single Analysis (Recommended: case1_real, fr0)
+
+```bash
+# Analyze case1_real at fr0 with overhead
+python scripts/target_job_length_analysis.py \
+    results/sim/others \
+    case1_real \
+    fr0 \
+    --overhead-type overhead
+
+# Analyze case1_real at fr0 without overhead
+python scripts/target_job_length_analysis.py \
+    results/sim/others \
+    case1_real \
+    fr0 \
+    --overhead-type nooverhead
+```
+
+#### Multiple Workflow Types
+
+```bash
+# Analyze different workflow types
+python scripts/target_job_length_analysis.py \
+    results/sim/others \
+    case2_homo \
+    fr0 \
+    --overhead-type overhead
+
+python scripts/target_job_length_analysis.py \
+    results/sim/others \
+    case3_hetero \
+    fr0 \
+    --overhead-type overhead
+```
+
+#### Different Failure Rates
+
+```bash
+# Analyze with 25% failure rate (fr25) to see impact of failures on target job length optimization
+python scripts/target_job_length_analysis.py \
+    results/sim/others \
+    case1_real \
+    fr25 \
+    --overhead-type overhead
+
+# Compare fr0 vs fr25 to understand how failures affect time-dependent patterns
+```
+
+#### Using Makefile
+
+```bash
+# Run analysis for all workflow types (case1_real, case2_homo, case3_hetero) 
+# at both fr0 and fr25 failure rates
+make analyze-target-job-length
+```
+
+## Output Location
+
+Results are saved to:
+```
+results/analysis/target_job_length/{overhead_type}/{workflow_type}/{failure_rate}/
+```
+
+This structure separates cross-dimensional analysis outputs from standard simulation results (`results/sim/`) and standard visualizations (`results/vis/`).
+
+## Output Files
+
+The script generates the following outputs in the specified output directory:
+
+### Visualizations
+
+1. **`throughput_vs_target_length_{overhead|nooverhead}.png`**
+   - Line chart showing event throughput vs. target job length for all 16 constructions
+   - Const 1 (all chained) highlighted in red
+   - Const 16 (all independent) highlighted in green
+   - Hybrid constructions (2-15) shown as lighter lines
+   - Best hybrid for each target length marked with triangle markers
+   - Helps identify which constructions perform best at different time constraints
+
+2. **`throughput_improvement_{overhead|nooverhead}.png`**
+   - Line chart showing throughput improvement percentage (relative to 1h) vs. target job length
+   - Helps identify which constructions benefit most from longer job lengths
+   - Negative values indicate degradation relative to 1h baseline
+   - Shows how constructions scale with time constraints
+
+3. **`network_activity_vs_target_length_{overhead|nooverhead}.png`**
+   - Two-panel visualization showing network activity patterns
+   - **Left panel**: Network transfer per event vs. target job length for all 16 constructions
+   - **Right panel**: Remote read vs. remote write breakdown for Const 1, Const 16, and best hybrid
+   - Helps identify which constructions maintain efficient network usage across time constraints
+   - Shows how target job length affects remote I/O patterns
+
+4. **`best_hybrid_comparison_{overhead|nooverhead}.png`**
+   - Bar chart comparing Const 1, Const 16, and the best hybrid construction for each target job length
+   - Best hybrid is identified based on event throughput
+   - Shows which hybrid construction performs best at each target job length
+   - Helps identify if there's a single "best" hybrid or if it varies by target length
+
+### Data Tables
+
+5. **`target_job_length_analysis_summary_{overhead|nooverhead}.csv`**
+   - Comprehensive table with all metrics for all constructions across all target job lengths
+   - Columns include:
+     - Composition number
+     - Target job length
+     - Event throughput
+     - Wall time per event
+     - CPU time per event
+     - Network transfer per event
+     - CPU utilization
+     - Memory occupancy
+     - Total groups
+
+## Interpretation Guide
+
+### Throughput vs. Target Job Length Plot
+
+- **Steeper positive slopes** indicate constructions that benefit more from longer job lengths
+- **Flatter lines** indicate constructions that are less sensitive to time constraints
+- **Higher lines** indicate better absolute performance
+- Look for hybrid constructions that maintain higher throughput across all target lengths
+- Triangle markers show which hybrid is best at each target length
+
+### Throughput Improvement Plot
+
+- **Positive values** indicate improvement over 1h baseline
+- **Negative values** indicate degradation relative to 1h baseline
+- **Steeper slopes** indicate constructions that scale better with longer job lengths
+- Compare Const 1 and Const 16 to see which extreme benefits more from longer jobs
+- Identify hybrid constructions with optimal scaling behavior
+
+### Network Activity Plot
+
+- **Left panel**: Shows total network transfer patterns across all constructions
+  - Lower network transfer generally indicates better efficiency
+  - Look for constructions that maintain low network usage across all target lengths
+- **Right panel**: Shows remote read/write breakdown for key constructions
+  - Helps understand I/O patterns: more reads indicate cross-group dependencies
+  - Const 1 typically has minimal remote read (all in one group)
+  - Const 16 typically has more remote read (groups are independent)
+  - Best hybrid should show a balanced pattern
+
+### Best Hybrid Comparison Plot
+
+- Shows which hybrid construction (2-15) performs best at each target job length
+- Direct comparison with Const 1 and Const 16
+- Helps identify if there's a single "best" hybrid or if it varies by target length
+- The legend shows which construction number(s) are the best hybrid
+
+## Key Insights to Look For
+
+1. **Time Constraint Sensitivity**: Do hybrid constructions show better performance across all target lengths?
+2. **Consistency**: Is there a single best hybrid construction, or does it vary by target job length?
+3. **Performance Gap**: How much better are hybrids compared to Const 1 and Const 16?
+4. **Scaling Behavior**: At what target length do differences become most pronounced?
+5. **Network Efficiency**: Do hybrid constructions maintain better network efficiency across time constraints?
+6. **I/O Patterns**: How do remote read/write patterns differ between extremes and hybrids across target lengths?
+7. **Optimal Range**: Is there a "sweet spot" target job length where hybrid constructions show maximum benefit?
+8. **Failure Impact**: How do failures (fr25) affect the relationship between target job length and optimal construction?
+   - Does the best hybrid change under failure conditions?
+   - Are some constructions more resilient to failures at certain target lengths?
+   - Does target job length have a more significant impact on throughput when failures are present?
+
+## Recommended Configuration
+
+For comprehensive analysis, use:
+- **Workflow Types**: All workflow types (`case1_real`, `case2_homo`, `case3_hetero`) - the Makefile target processes all automatically
+- **Failure Rates**: Both `fr0` (0% - clean baseline) and `fr25` (25% - high failure rate) - the Makefile target processes both automatically
+
+**Baseline Analysis (fr0)**:
+- Provides a clear view of how time constraints affect hybrid construction benefits across different workflow characteristics without the complexity of failures
+- Useful for understanding fundamental time-dependent patterns
+
+**Failure Impact Analysis (fr25)**:
+- Shows how failures interact with target job length constraints
+- May reveal different optimal constructions under failure conditions
+- Helps identify which constructions are more resilient to failures at different time scales
+
+**Note**: The Makefile target `analyze-target-job-length` automatically runs the analysis for all configured workflow types at both fr0 and fr25. To analyze a specific workflow type or failure rate, use the command line interface directly.
+
+## Requirements
+
+- Python 3.x
+- Required packages: `matplotlib`, `numpy`, `pandas`, `seaborn`
+- Simulation result JSON files organized in the hierarchical structure:
+  ```
+  results/sim/others/
+    {workflow_type}/
+      {target_job_length}/
+        {failure_rate}/
+          *_{overhead|nooverhead}.json
+  ```
+
+## Notes
+
+- The script automatically processes all available target job length directories (1h, 6h, 12h, 18h, 24h)
+- Missing directories are skipped with a warning
+- The best hybrid is identified using event throughput as the primary metric
+- Both overhead and nooverhead analyses should be run separately for complete comparison
+- The analysis focuses on comparing extremes (Const 1, Const 16) with the best hybrid, not all 16 constructions in every visualization
+- Target job lengths are sorted by hours (1h, 6h, 12h, 18h, 24h) for consistent visualization
