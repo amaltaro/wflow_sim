@@ -28,6 +28,9 @@ Thumbs.db
 htmlcov/
 .tox/
 
+# Real and potentially sensitive data
+data/
+
 # Project specific
 *.log
 
