@@ -20,7 +20,7 @@ class TestWorkflowSimulator:
 
     def test_initialization(self):
         """Test simulator initialization."""
-        simulator = WorkflowSimulator()
+        simulator = WorkflowSimulator(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
         assert simulator.resource_config is not None
         assert simulator.logger is not None
         # test default resource configs
@@ -37,7 +37,7 @@ class TestWorkflowSimulator:
             cpu_per_slot=2,
             memory_per_slot=2000
         )
-        simulator = WorkflowSimulator(config)
+        simulator = WorkflowSimulator(config, failure_rate=0, data_transfer_rate_mb_per_s=100.0)
         assert simulator.resource_config.target_wallclock_time == 21600.0
         assert simulator.resource_config.max_job_slots == 50
         assert simulator.resource_config.cpu_per_slot == 2
@@ -73,7 +73,7 @@ class TestWorkflowSimulator:
             temp_file = f.name
 
         try:
-            simulator = WorkflowSimulator(ResourceConfig())
+            simulator = WorkflowSimulator(ResourceConfig(), failure_rate=0, data_transfer_rate_mb_per_s=100.0)
             result = simulator.simulate_workflow(temp_file)
 
             assert result.success is True
@@ -93,7 +93,7 @@ class TestWorkflowSimulator:
 
     def test_simulate_workflow_file_not_found(self):
         """Test simulation with non-existent file."""
-        simulator = WorkflowSimulator()
+        simulator = WorkflowSimulator(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
         result = simulator.simulate_workflow('nonexistent_file.json')
 
         assert result.success is False
@@ -107,7 +107,7 @@ class TestWorkflowSimulator:
             temp_file = f.name
 
         try:
-            simulator = WorkflowSimulator()
+            simulator = WorkflowSimulator(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
             result = simulator.simulate_workflow(temp_file)
 
             assert result.success is False
@@ -118,7 +118,11 @@ class TestWorkflowSimulator:
 
     def test_calculate_batch_size(self):
         """Test batch size calculation."""
-        simulator = WorkflowSimulator(ResourceConfig(target_wallclock_time=3600.0))  # 1 hour
+        simulator = WorkflowSimulator(
+            ResourceConfig(target_wallclock_time=3600.0),
+            failure_rate=0,
+            data_transfer_rate_mb_per_s=100.0
+        )  # 1 hour
 
         # Create a group with tasksets
         taskset1 = TasksetInfo(
@@ -167,7 +171,7 @@ class TestWorkflowSimulator:
 
     def test_calculate_batch_size_empty_group(self):
         """Test batch size calculation with empty group."""
-        simulator = WorkflowSimulator()
+        simulator = WorkflowSimulator(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
         group = GroupInfo(
             group_id="group_1",
             tasksets=[],
@@ -183,7 +187,7 @@ class TestWorkflowSimulator:
 
     def test_calculate_job_wallclock_time(self):
         """Test job wallclock time calculation."""
-        simulator = WorkflowSimulator()
+        simulator = WorkflowSimulator(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
 
         taskset1 = TasksetInfo(
             taskset_id="Taskset1",
@@ -233,7 +237,7 @@ class TestWorkflowSimulator:
 
     def test_calculate_job_wallclock_time_empty_group(self):
         """Test job wallclock time calculation with empty group."""
-        simulator = WorkflowSimulator()
+        simulator = WorkflowSimulator(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
         group = GroupInfo(
             group_id="group_1",
             tasksets=[],
@@ -297,7 +301,7 @@ class TestWorkflowSimulator:
             success=True
         )
 
-        simulator = WorkflowSimulator()
+        simulator = WorkflowSimulator(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
         simulator.print_simulation_summary(result)
 
         captured = capsys.readouterr()
@@ -347,7 +351,7 @@ class TestWorkflowSimulator:
             success=True
         )
 
-        simulator = WorkflowSimulator()
+        simulator = WorkflowSimulator(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
         output_file = tmp_path / "test_simulation.json"
         simulator.write_simulation_result(result, output_file)
 
@@ -396,7 +400,7 @@ class TestWorkflowSimulator:
 
         try:
             # Use default ResourceConfig (target_wallclock_time=43200s) to minimize job count
-            simulator = WorkflowSimulator(ResourceConfig())
+            simulator = WorkflowSimulator(ResourceConfig(), failure_rate=0, data_transfer_rate_mb_per_s=100.0)
             result = simulator.simulate_workflow(temp_file)
 
             assert result.success is True
