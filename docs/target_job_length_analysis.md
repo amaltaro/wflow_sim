@@ -7,7 +7,7 @@ This document describes the target job length optimization analysis script, whic
 **Analysis Type**: Target Job Length Optimization (Comparison #3)
 
 - **Fixed Dimensions**: workflow_type + failure_rate
-- **Variable Dimension**: target_job_length (1h, 6h, 12h, 18h, 24h)
+- **Variable Dimension**: target_job_length (15m, 30m, 1h, 2h, 4h, 8h, 12h, 24h)
 - **Comparison**: All 16 constructions across target job lengths
 - **Primary Metric**: Event throughput
 - **Second Metric**: Network transfer per event (as tiebreaker)
@@ -26,9 +26,9 @@ This analysis helps demonstrate:
 This analysis reveals important patterns:
 
 1. **Overhead Sensitivity**: 
-   - At shorter target lengths (1h, 6h), constructions with many groups may be penalized by overhead
-   - At longer target lengths (18h, 24h), constructions with few groups may miss parallelism opportunities
-   - Hybrid constructions may show optimal balance at intermediate lengths (12h)
+   - At shorter target lengths (15m, 30m, 1h), constructions with many groups may be penalized by overhead
+   - At longer target lengths (8h, 12h, 24h), constructions with few groups may miss parallelism opportunities
+   - Hybrid constructions may show optimal balance at intermediate lengths (2h, 4h)
 
 2. **Optimal Construction Shifts**:
    - The best hybrid may change with target job length
@@ -65,7 +65,7 @@ python scripts/target_job_length_analysis.py \
 #### Single Analysis (Recommended: case1_real, fr0)
 
 ```bash
-# Analyze case1_real at fr0 (reads simulation *.json files)
+# Analyze case1_real at fr0
 python scripts/target_job_length_analysis.py \
     results/sim/others \
     case1_real \
@@ -112,7 +112,7 @@ make analyze-target-job-length
 
 Results are saved to:
 ```
-results/analysis/target_job_length/{workflow_type}/{failure_rate}/
+results/analysis/target_job_length/{overhead_type}/{workflow_type}/{failure_rate}/
 ```
 
 This structure separates cross-dimensional analysis outputs from standard simulation results (`results/sim/`) and standard visualizations (`results/vis/`).
@@ -123,7 +123,7 @@ The script generates the following outputs in the specified output directory:
 
 ### Visualizations
 
-1. **`throughput_vs_target_length.png`**
+1. **`throughput_vs_target_length_{overhead|nooverhead}.png`**
    - Line chart showing event throughput vs. target job length for all 16 constructions
    - Const 1 (all chained) highlighted in red
    - Const 16 (all independent) highlighted in green
@@ -137,20 +137,20 @@ The script generates the following outputs in the specified output directory:
    - Negative values indicate degradation relative to 1h baseline
    - Shows how constructions scale with time constraints
 
-3. **`network_activity_vs_target_length.png`**
+3. **`network_activity_vs_target_length_{overhead|nooverhead}.png`**
    - Two-panel visualization showing network activity patterns
    - **Left panel**: Network transfer per event vs. target job length for all 16 constructions
    - **Right panel**: Remote read vs. remote write breakdown for Const 1, Const 16, and best hybrid
    - Helps identify which constructions maintain efficient network usage across time constraints
    - Shows how target job length affects remote I/O patterns
 
-4. **`best_hybrid_comparison.png`**
+4. **`best_hybrid_comparison_{overhead|nooverhead}.png`**
    - Bar chart comparing Const 1, Const 16, and the best hybrid construction for each target job length
    - Best hybrid is identified based on event throughput
    - Shows which hybrid construction performs best at each target job length
    - Helps identify if there's a single "best" hybrid or if it varies by target length
 
-5. **`failure_cost_analysis.png`** (fr25 only)
+5. **`failure_cost_analysis_{overhead|nooverhead}.png`** (fr25 only)
    - Two-panel visualization showing failure cost metrics
    - **Left panel**: Average CPU cost per failure (CPU-hours) vs. target job length
      - Y-axis shows CPU-hours wasted per failure
@@ -174,7 +174,7 @@ The script generates the following outputs in the specified output directory:
 
 ### Data Tables
 
-7. **`target_job_length_analysis_summary.csv`**
+7. **`target_job_length_analysis_summary_{overhead|nooverhead}.csv`**
    - Comprehensive table with all metrics for all constructions across all target job lengths
    - Columns include:
      - Composition number
@@ -206,8 +206,8 @@ The script generates the following outputs in the specified output directory:
 
 ### Throughput Improvement Plot
 
-- **Positive values** indicate improvement over 1h baseline
-- **Negative values** indicate degradation relative to 1h baseline
+- **Positive values** indicate improvement over shortest target length baseline (15m)
+- **Negative values** indicate degradation relative to shortest target length baseline
 - **Steeper slopes** indicate constructions that scale better with longer job lengths
 - Compare Const 1 and Const 16 to see which extreme benefits more from longer jobs
 - Identify hybrid constructions with optimal scaling behavior
@@ -312,9 +312,8 @@ For comprehensive analysis, use:
 
 ## Notes
 
-- The script automatically processes all available target job length directories (1h, 6h, 12h, 18h, 24h)
+- The script automatically processes target job length directories (15m, 30m, 1h, 2h, 4h, 8h, 12h, 24h)
 - Missing directories are skipped with a warning
 - The best hybrid is identified using event throughput as the primary metric
-- Simulations always include overhead; the script reads simulation result *.json files
 - The analysis focuses on comparing extremes (Const 1, Const 16) with the best hybrid, not all 16 constructions in every visualization
-- Target job lengths are sorted by hours (1h, 6h, 12h, 18h, 24h) for consistent visualization
+- Target job lengths are sorted by duration (15m, 30m, 1h, 2h, 4h, 8h, 12h, 24h) for consistent visualization

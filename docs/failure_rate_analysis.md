@@ -28,7 +28,8 @@ python scripts/failure_rate_analysis.py \
     <base_path> \
     <workflow_type> \
     <target_job_length> \
-    [--output-dir OUTPUT_DIR]
+    [--output-dir OUTPUT_DIR] \
+    [--overhead-type {overhead,nooverhead}]
 ```
 
 ### Arguments
@@ -36,18 +37,27 @@ python scripts/failure_rate_analysis.py \
 - `base_path`: Base path to results directory (e.g., `results/sim/others`)
 - `workflow_type`: Workflow type (e.g., `case1_real`, `case2_homo`, `case3_hetero`)
 - `target_job_length`: Target job length (e.g., `12h`, `6h`, `24h`)
-- `--output-dir`: Optional output directory (default: `results/analysis/failure_rate/{workflow_type}/{target_job_length}`)
+- `--output-dir`: Optional output directory (default: `results/analysis/failure_rate/{overhead_type}/{workflow_type}/{target_job_length}`)
+- `--overhead-type`: Process `overhead` or `nooverhead` files (default: `overhead`)
 
 ### Examples
 
 #### Single Analysis
 
 ```bash
-# Analyze case1_real at 12h (reads simulation *.json files)
+# Analyze case1_real at 12h with overhead
 python scripts/failure_rate_analysis.py \
     results/sim/others \
     case1_real \
-    12h
+    12h \
+    --overhead-type overhead
+
+# Analyze case1_real at 12h without overhead
+python scripts/failure_rate_analysis.py \
+    results/sim/others \
+    case1_real \
+    12h \
+    --overhead-type nooverhead
 ```
 
 #### Using Makefile
@@ -72,18 +82,18 @@ The script generates the following outputs in the specified output directory:
 
 ### Visualizations
 
-1. **`throughput_vs_failure_rate.png`**
+1. **`throughput_vs_failure_rate_{overhead|nooverhead}.png`**
    - Line chart showing event throughput vs. failure rate for all 16 constructions
    - Const 1 (all chained) highlighted in red
    - Const 16 (all independent) highlighted in green
    - Hybrid constructions (2-15) shown as lighter lines
 
-2. **`throughput_degradation.png`**
+2. **`throughput_degradation_{overhead|nooverhead}.png`**
    - Line chart showing throughput degradation percentage (relative to fr0) vs. failure rate
    - Helps identify which constructions are most resilient to failures
    - Negative values indicate improvement (shouldn't happen), zero is baseline
 
-3. **`network_activity_vs_failure_rate.png`**
+3. **`network_activity_vs_failure_rate_{overhead|nooverhead}.png`**
    - Two-panel visualization showing network activity patterns
    - **Left panel**: Network transfer per event vs. failure rate for all 16 constructions
    - **Right panel**: Remote read vs. remote write breakdown for Const 1, Const 16, and best hybrid
@@ -97,7 +107,7 @@ The script generates the following outputs in the specified output directory:
 
 ### Data Tables
 
-5. **`failure_rate_analysis_summary.csv`**
+5. **`failure_rate_analysis_summary_{overhead|nooverhead}.csv`**
    - Comprehensive table with all metrics for all constructions across all failure rates
    - Columns include:
      - Composition number
@@ -163,15 +173,15 @@ The script generates the following outputs in the specified output directory:
     {workflow_type}/
       {target_job_length}/
         fr0/
-          *.json
+          *_{overhead|nooverhead}.json
         fr1/
-          *.json
+          *_{overhead|nooverhead}.json
         fr5/
-          *.json
+          *_{overhead|nooverhead}.json
         fr10/
-          *.json
+          *_{overhead|nooverhead}.json
         fr25/
-          *.json
+          *_{overhead|nooverhead}.json
   ```
 
 ## Notes
@@ -179,4 +189,4 @@ The script generates the following outputs in the specified output directory:
 - The script automatically processes all available failure rate directories (fr0, fr1, fr5, fr10, fr25)
 - Missing directories are skipped with a warning
 - The best hybrid is identified using event throughput as the primary metric
-- Simulations always include overhead; the script reads simulation result *.json files
+- Both overhead and nooverhead analyses should be run separately for complete comparison

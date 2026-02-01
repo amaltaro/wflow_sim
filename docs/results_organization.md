@@ -9,11 +9,12 @@ results/sim/others/
   case1_real/
     12h/
       fr0/          # failure_rate = 0%
-        case1_real_const_001.json
-        case1_real_const_002.json
+        case1_real_const_001_overhead.json
+        case1_real_const_001_nooverhead.json
+        case1_real_const_002_overhead.json
         ...
       fr1/          # failure_rate = 1%
-        case1_real_const_001.json
+        case1_real_const_001_overhead.json
         ...
       fr5/          # failure_rate = 5%
       fr10/         # failure_rate = 10%
@@ -104,14 +105,14 @@ python -m src.workflow_runner \
   --failure-rate 5
 
 # Results will be saved to:
-# results/sim/others/case1_real/12h/fr5/case1_real_const_001.json
+# results/sim/others/case1_real/12h/fr5/case1_real_const_001_overhead.json
 ```
 
 ## Migration from Old Structure
 
-**Old structure**: `results/sim/others/case1_real_12h/case1_real_const_001.json`
+**Old structure**: `results/sim/others/case1_real_12h/case1_real_const_001_overhead.json`
 
-**New structure**: `results/sim/others/case1_real/12h/fr0/case1_real_const_001.json`
+**New structure**: `results/sim/others/case1_real/12h/fr0/case1_real_const_001_overhead.json`
 
 ### Migration Options
 

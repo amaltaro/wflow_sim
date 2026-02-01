@@ -40,7 +40,8 @@ python scripts/workflow_type_sensitivity.py \
     <target_job_length> \
     <failure_rate> \
     [--workflow-types WORKFLOW_TYPES ...] \
-    [--output-dir OUTPUT_DIR]
+    [--output-dir OUTPUT_DIR] \
+    [--overhead-type {overhead,nooverhead}]
 ```
 
 ### Arguments
@@ -49,20 +50,29 @@ python scripts/workflow_type_sensitivity.py \
 - `target_job_length`: Target job length (e.g., `12h`, `6h`, `24h`)
 - `failure_rate`: Failure rate directory (e.g., `fr0`, `fr10`)
 - `--workflow-types`: Optional list of workflow types to analyze (default: `case1_real case2_homo case3_hetero`)
-- `--output-dir`: Optional output directory (default: `results/analysis/workflow_type_sensitivity/{target_job_length}/{failure_rate}`)
+- `--output-dir`: Optional output directory (default: `results/analysis/workflow_type_sensitivity/{overhead_type}/{target_job_length}/{failure_rate}`)
+- `--overhead-type`: Process `overhead` or `nooverhead` files (default: `overhead`)
 
 ### Examples
 
 #### Single Analysis (Recommended: 12h, fr0)
 
 ```bash
-# Analyze all workflow types at 12h with 0% failure rate (reads simulation *.json files)
+# Analyze all workflow types at 12h with 0% failure rate (baseline)
 python scripts/workflow_type_sensitivity.py \
     results/sim/others \
     12h \
     fr0
 ```
 
+#### Custom Workflow Types
+
+```bash
+# Analyze only specific workflow types
+python scripts/workflow_type_sensitivity.py \
+    results/sim/others \
+    12h \
+    fr0 \
 #### Custom Workflow Types
 
 ```bash
@@ -82,7 +92,8 @@ python scripts/workflow_type_sensitivity.py \
 python scripts/workflow_type_sensitivity.py \
     results/sim/others \
     12h \
-    fr10
+    fr10 \
+    --overhead-type overhead
 ```
 
 #### Using Makefile
@@ -107,20 +118,20 @@ The script generates the following outputs in the specified output directory:
 
 ### Visualizations
 
-1. **`throughput_comparison.png`**
+1. **`throughput_comparison_{overhead|nooverhead}.png`**
    - Bar chart comparing event throughput for Const 1, Const 16, and best hybrid across workflow types
    - Shows which workflow types achieve highest throughput
    - Best hybrid construction number is labeled above each bar
    - Helps identify which workflow types benefit most from hybrid compositions
 
-2. **`throughput_improvement.png`**
+2. **`throughput_improvement_{overhead|nooverhead}.png`**
    - Bar chart showing **event throughput** improvement percentage of best hybrid over Const 1 and Const 16
    - Calculated as: `((best_hybrid_throughput - extreme_throughput) / extreme_throughput) × 100`
    - Positive values indicate throughput improvement, negative values indicate degradation
    - Shows relative benefit of hybrid compositions for each workflow type
    - Helps quantify the throughput advantage of hybrid constructions
 
-3. **`network_efficiency_comparison.png`**
+3. **`network_efficiency_comparison_{overhead|nooverhead}.png`**
    - Bar chart comparing network transfer per event across workflow types
    - Shows absolute network transfer values (MB per event)
    - Lower values indicate better network efficiency
@@ -138,7 +149,7 @@ The script generates the following outputs in the specified output directory:
 
 ### Data Tables
 
-5. **`workflow_type_sensitivity_summary.csv`**
+5. **`workflow_type_sensitivity_summary_{overhead|nooverhead}.csv`**
    - Comprehensive table with metrics for Const 1, Const 16, and best hybrid for each workflow type
    - Columns include:
      - Workflow type
@@ -217,13 +228,5 @@ This provides a clear view of how workflow characteristics affect hybrid constru
     {workflow_type}/
       {target_job_length}/
         {failure_rate}/
-          *.json
-  ```
-
-## Notes
-
-- The script automatically processes all specified workflow types
-- Missing workflow types are skipped with a warning
-- The best hybrid is identified using event throughput as the primary metric, with network transfer as a tiebreaker
-- Simulations always include overhead; the script reads simulation result *.json files
+          *_{overhead|nooverhead}.json
 - The analysis focuses on comparing extremes (Const 1, Const 16) with the best hybrid, not all 16 constructions
