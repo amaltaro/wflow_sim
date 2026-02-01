@@ -131,17 +131,19 @@ class WorkflowSimulator:
     """
 
     def __init__(self, resource_config: Optional[ResourceConfig] = None,
-                 no_overhead: bool = False, failure_rate: int = 0):
+                 failure_rate: int = 0):
         """
         Initialize the workflow simulator.
 
+        Overhead (taskset bootstrap and remote I/O) is always applied. To simulate
+        without overhead, configure JobMetricsCalculator with zero overhead values
+        (e.g. via future config); for ad-hoc runs, overhead can be set to 0.0.
+
         Args:
             resource_config: Resource configuration for simulation
-            no_overhead: If True, disable job overhead calculations (set overhead to 0)
             failure_rate: Job failure rate as percentage (0-99)
         """
         self.resource_config = resource_config or ResourceConfig()
-        self.no_overhead = no_overhead
         self.failure_rate = float(failure_rate)
 
         # Validate failure rate (protect against 100% which prevents convergence)
@@ -152,13 +154,9 @@ class WorkflowSimulator:
         random.seed(RND_SEED)
         self.random = random
 
-        # Set overhead values to 0 if disabled, otherwise use defaults
-        taskset_overhead = 0.0 if no_overhead else TASKSET_OVERHEAD_SECONDS
-        data_transfer_rate = 0.0 if no_overhead else DATA_TRANSFER_RATE_MB_PER_S
-
         self.job_metrics_calculator = JobMetricsCalculator(
-            taskset_overhead_seconds=taskset_overhead,
-            data_transfer_rate_mb_per_s=data_transfer_rate
+            taskset_overhead_seconds=TASKSET_OVERHEAD_SECONDS,
+            data_transfer_rate_mb_per_s=DATA_TRANSFER_RATE_MB_PER_S
         )
         self.logger = logging.getLogger(__name__)
         self._setup_logging()
@@ -219,7 +217,7 @@ class WorkflowSimulator:
                 jobs=[],
                 success=False,
                 error_message=str(e),
-                overhead_enabled=not self.no_overhead,
+                overhead_enabled=True,
                 failure_rate=self.failure_rate,
                 total_job_retries=0
             )
@@ -243,7 +241,7 @@ class WorkflowSimulator:
                 groups=groups,
                 jobs=execution_result['jobs'],
                 success=True,
-                overhead_enabled=not self.no_overhead,
+                overhead_enabled=True,
                 failure_rate=self.failure_rate,
                 total_job_retries=total_retry_jobs
             )
@@ -267,7 +265,7 @@ class WorkflowSimulator:
                 jobs=[],
                 success=False,
                 error_message=str(e),
-                overhead_enabled=not self.no_overhead,
+                overhead_enabled=True,
                 failure_rate=self.failure_rate,
                 total_job_retries=0
             )
@@ -1014,7 +1012,7 @@ def load_workflow_from_file(filepath: Union[str, Path]) -> Dict[str, Any]:
         return json.load(f)
 
 
-def _get_output_path(input_path: str, no_overhead: bool = False,
+def _get_output_path(input_path: str,
                      target_wallclock_time: float = 43200.0,
                      failure_rate: float = 0.0) -> str:
     """
@@ -1024,13 +1022,11 @@ def _get_output_path(input_path: str, no_overhead: bool = False,
 
     Args:
         input_path: Path to input workflow file
-        no_overhead: If True, append '_nooverhead' suffix; otherwise append '_overhead' suffix
         target_wallclock_time: Target wallclock time in seconds (default: 43200.0 = 12 hours)
         failure_rate: Job failure rate as percentage (default: 0.0)
 
     Returns:
-        Output path in results/sim/ directory with nested structure:
-        results/sim/{case_name}/{time_hours}/fr{failure_rate}/{filename}_{overhead_suffix}.json
+        Output path: results/sim/{case_name}/{time_hours}/fr{failure_rate}/{filename}.json
     """
     input_path_obj = Path(input_path)
 
@@ -1072,15 +1068,10 @@ def _get_output_path(input_path: str, no_overhead: bool = False,
         output_dir = Path("results") / "sim" / case_name / time_dir / fr_dir
     output_path = output_dir / filename
 
-    # Add overhead suffix before file extension
-    suffix = "_nooverhead" if no_overhead else "_overhead"
-    stem = output_path.stem
-    suffix_path = output_path.parent / f"{stem}{suffix}{output_path.suffix}"
-
     # Ensure the output directory exists
-    suffix_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    return str(suffix_path)
+    return str(output_path)
 
 
 def parse_arguments():
@@ -1105,11 +1096,6 @@ def parse_arguments():
         type=str,
         default='templates/3tasks_composition_001.json',
         help='Path to input workflow JSON file (default: templates/3tasks_composition_001.json)'
-    )
-    parser.add_argument(
-        '--no-overhead',
-        action='store_true',
-        help='Disable job overhead calculations (taskset overhead and data transfer overhead)'
     )
     parser.add_argument(
         '--failure-rate',
@@ -1143,7 +1129,6 @@ def main():
     # Create simulator and run simulation
     simulator = WorkflowSimulator(
         resource_config,
-        no_overhead=args.no_overhead,
         failure_rate=args.failure_rate
     )
     result = simulator.simulate_workflow(args.input_workflow_path)
@@ -1154,7 +1139,6 @@ def main():
     # Write results to file with nested structure
     output_path = _get_output_path(
         args.input_workflow_path,
-        no_overhead=args.no_overhead,
         target_wallclock_time=args.target_wallclock_time,
         failure_rate=args.failure_rate
     )
