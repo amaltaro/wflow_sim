@@ -66,15 +66,15 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
 
 def collect_data_from_directories(base_path: str,
                                   workflow_type: str,
-                                  target_job_length: str,
-                                  overhead_type: str = "overhead") -> Dict[int, List[Dict[str, Any]]]:
+                                  target_job_length: str) -> Dict[int, List[Dict[str, Any]]]:
     """Collect simulation data from multiple failure rate directories.
+
+    Reads simulation result JSON files (*.json) in each failure-rate directory.
 
     Args:
         base_path: Base path to results directory (e.g., 'results/sim/others')
         workflow_type: Workflow type (e.g., 'case1_real')
         target_job_length: Target job length (e.g., '12h')
-        overhead_type: 'overhead' or 'nooverhead'
 
     Returns:
         Dictionary mapping composition_number to list of metrics across failure rates
@@ -84,15 +84,12 @@ def collect_data_from_directories(base_path: str,
     if not base_dir.exists():
         raise FileNotFoundError(f"Directory not found: {base_dir}")
 
-    # Expected failure rate directories
     failure_rates = ['fr0', 'fr1', 'fr5', 'fr10', 'fr25']
-    suffix = "_overhead" if overhead_type == "overhead" else "_nooverhead"
 
     # Dictionary: composition_number -> list of metrics (one per failure rate)
     data_by_composition: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
 
     print(f"Collecting data from: {base_dir}")
-    print(f"Overhead type: {overhead_type}")
 
     for fr_dir in failure_rates:
         fr_path = base_dir / fr_dir
@@ -100,8 +97,8 @@ def collect_data_from_directories(base_path: str,
             print(f"  Warning: Directory {fr_path} not found, skipping")
             continue
 
-        # Find all JSON files for this failure rate
-        json_files = list(fr_path.glob(f"*{suffix}.json"))
+        # Find simulation result JSON files
+        json_files = list(fr_path.glob("*.json"))
         print(f"  Processing {fr_dir}: {len(json_files)} files found")
 
         for json_file in sorted(json_files):
@@ -115,14 +112,12 @@ def collect_data_from_directories(base_path: str,
 
 
 def plot_throughput_vs_failure_rate(data_by_composition: Dict[int, List[Dict[str, Any]]],
-                                    output_dir: str,
-                                    overhead_type: str) -> None:
+                                    output_dir: str) -> None:
     """Plot event throughput vs. failure rate for all constructions.
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
         output_dir: Output directory for plots
-        overhead_type: 'overhead' or 'nooverhead'
     """
     print(f"\n==> Creating throughput vs. failure rate plot")
 
@@ -186,34 +181,27 @@ def plot_throughput_vs_failure_rate(data_by_composition: Dict[int, List[Dict[str
                 ax.plot(fr_values, throughput_values, '-', label=label, linewidth=1.5,
                        alpha=0.7, markersize=5)
 
-    # Format overhead label for title
-    overhead_label = "With overhead" if overhead_type == "overhead" else "No overhead"
-    
     ax.set_xlabel("Failure Rate (%)", fontsize=12)
     ax.set_ylabel("Event Throughput (events/second)", fontsize=12)
-    ax.set_title(f"Event Throughput vs. Failure Rate\n({overhead_label})", fontsize=14)
+    ax.set_title("Event Throughput vs. Failure Rate", fontsize=14)
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax.grid(True, alpha=0.3)
     ax.set_xlim(left=-1, right=26)  # Slight padding around failure rates
 
     plt.tight_layout()
-    suffix = "_nooverhead" if overhead_type == "nooverhead" else "_overhead"
-    filename = f"throughput_vs_failure_rate{suffix}.png"
-    output_path = os.path.join(output_dir, filename)
+    output_path = os.path.join(output_dir, "throughput_vs_failure_rate.png")
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  => Saved: {output_path}")
 
 
 def plot_throughput_degradation(data_by_composition: Dict[int, List[Dict[str, Any]]],
-                                output_dir: str,
-                                overhead_type: str) -> None:
+                                output_dir: str) -> None:
     """Plot throughput degradation (relative to fr0) vs. failure rate.
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
         output_dir: Output directory for plots
-        overhead_type: 'overhead' or 'nooverhead'
     """
     print(f"\n==> Creating throughput degradation plot")
 
@@ -252,22 +240,16 @@ def plot_throughput_degradation(data_by_composition: Dict[int, List[Dict[str, An
             ax.plot(fr_values, degradation_values, '-', label=label, linewidth=1.5,
                    alpha=0.7, markersize=5)
 
-    # Format overhead label for title
-    overhead_label = "With overhead" if overhead_type == "overhead" else "No overhead"
-    
     ax.set_xlabel("Failure Rate (%)", fontsize=12)
     ax.set_ylabel("Throughput Degradation (%)", fontsize=12)
-    ax.set_title(f"Throughput Degradation vs. Failure Rate\n(Relative to fr0, {overhead_label})",
-                fontsize=14)
+    ax.set_title("Throughput Degradation vs. Failure Rate\n(Relative to fr0)", fontsize=14)
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax.grid(True, alpha=0.3)
     ax.set_xlim(left=-1, right=26)
     ax.axhline(y=0, color='black', linestyle='--', linewidth=1, alpha=0.5)
 
     plt.tight_layout()
-    suffix = "_nooverhead" if overhead_type == "nooverhead" else "_overhead"
-    filename = f"throughput_degradation{suffix}.png"
-    output_path = os.path.join(output_dir, filename)
+    output_path = os.path.join(output_dir, "throughput_degradation.png")
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  => Saved: {output_path}")
@@ -337,8 +319,7 @@ def identify_best_hybrid(data_by_composition: Dict[int, List[Dict[str, Any]]],
 
 
 def plot_network_activity_vs_failure_rate(data_by_composition: Dict[int, List[Dict[str, Any]]],
-                                           output_dir: str,
-                                           overhead_type: str) -> None:
+                                           output_dir: str) -> None:
     """Plot network transfer vs. failure rate for all constructions.
 
     This visualization shows how network activity (remote I/O) changes with
@@ -348,14 +329,10 @@ def plot_network_activity_vs_failure_rate(data_by_composition: Dict[int, List[Di
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
         output_dir: Output directory for plots
-        overhead_type: 'overhead' or 'nooverhead'
     """
     print(f"\n==> Creating network activity vs. failure rate plot")
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
-
-    # Format overhead label for title
-    overhead_label = "With overhead" if overhead_type == "overhead" else "No overhead"
 
     # Plot 1: Network Transfer per Event vs. Failure Rate
     failure_rates = []
@@ -382,7 +359,7 @@ def plot_network_activity_vs_failure_rate(data_by_composition: Dict[int, List[Di
 
     ax1.set_xlabel("Failure Rate (%)", fontsize=12)
     ax1.set_ylabel("Network Transfer per Event (MB)", fontsize=12)
-    ax1.set_title(f"Network Transfer vs. Failure Rate\n({overhead_label})", fontsize=13)
+    ax1.set_title("Network Transfer vs. Failure Rate", fontsize=13)
     ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax1.grid(True, alpha=0.3)
     ax1.set_xlim(left=-1, right=26)
@@ -439,29 +416,25 @@ def plot_network_activity_vs_failure_rate(data_by_composition: Dict[int, List[Di
 
     ax2.set_xlabel("Failure Rate (%)", fontsize=12)
     ax2.set_ylabel("Data Volume per Event (MB)", fontsize=12)
-    ax2.set_title(f"Remote I/O Breakdown vs. Failure Rate\n({overhead_label})", fontsize=13)
+    ax2.set_title("Remote I/O Breakdown vs. Failure Rate", fontsize=13)
     ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=8)
     ax2.grid(True, alpha=0.3)
     ax2.set_xlim(left=-1, right=26)
 
     plt.tight_layout()
-    suffix = "_nooverhead" if overhead_type == "nooverhead" else "_overhead"
-    filename = f"network_activity_vs_failure_rate{suffix}.png"
-    output_path = os.path.join(output_dir, filename)
+    output_path = os.path.join(output_dir, "network_activity_vs_failure_rate.png")
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  => Saved: {output_path}")
 
 
 def plot_best_hybrid_comparison(data_by_composition: Dict[int, List[Dict[str, Any]]],
-                                output_dir: str,
-                                overhead_type: str) -> None:
+                                output_dir: str) -> None:
     """Plot comparison of Const 1, Const 16, and best hybrid for each failure rate.
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
         output_dir: Output directory for plots
-        overhead_type: 'overhead' or 'nooverhead'
     """
     print(f"\n==> Creating best hybrid comparison plot")
 
@@ -541,36 +514,28 @@ def plot_best_hybrid_comparison(data_by_composition: Dict[int, List[Dict[str, An
                 ax.text(bar.get_x() + bar.get_width()/2., height,
                        f'{height:.4f}', ha='center', va='bottom', fontsize=8)
 
-    # Format overhead label for title
-    overhead_label = "With overhead" if overhead_type == "overhead" else "No overhead"
-
     ax.set_xlabel("Failure Rate (%)", fontsize=12)
     ax.set_ylabel("Event Throughput (events/second)", fontsize=12)
-    ax.set_title(f"Best Hybrid vs. Extremes Comparison\n({overhead_label})", fontsize=14)
+    ax.set_title("Best Hybrid vs. Extremes Comparison", fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels([f"{int(fr)}%" for fr in failure_rates])
     ax.legend(fontsize=11)
     ax.grid(True, alpha=0.3, axis='y')
 
     plt.tight_layout()
-    suffix = "_nooverhead" if overhead_type == "nooverhead" else "_overhead"
-    filename = f"best_hybrid_comparison{suffix}.png"
-    output_path = os.path.join(output_dir, filename)
+    output_path = os.path.join(output_dir, "best_hybrid_comparison.png")
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  => Saved: {output_path}")
 
 
 def generate_summary_table(data_by_composition: Dict[int, List[Dict[str, Any]]],
-                          output_dir: str,
-                          overhead_type: str) -> pd.DataFrame:
+                          output_dir: str) -> pd.DataFrame:
     """Generate summary table with metrics across failure rates.
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
         output_dir: Output directory for table
-        overhead_type: 'overhead' or 'nooverhead'
-
     Returns:
         DataFrame with summary metrics
     """
@@ -598,9 +563,7 @@ def generate_summary_table(data_by_composition: Dict[int, List[Dict[str, Any]]],
     df = pd.DataFrame(table_data)
 
     # Save as CSV
-    suffix = "_nooverhead" if overhead_type == "nooverhead" else "_overhead"
-    csv_filename = f"failure_rate_analysis_summary{suffix}.csv"
-    csv_path = os.path.join(output_dir, csv_filename)
+    csv_path = os.path.join(output_dir, "failure_rate_analysis_summary.csv")
     df.to_csv(csv_path, index=False, float_format='%.6f')
     print(f"  => Saved: {csv_path}")
 
@@ -618,17 +581,13 @@ def main():
     parser.add_argument('target_job_length', type=str,
                        help='Target job length (e.g., 12h)')
     parser.add_argument('--output-dir', type=str, default=None,
-                       help='Output directory (default: results/analysis/failure_rate/{overhead_type}/{workflow_type}/{target_job_length})')
-    parser.add_argument('--overhead-type', type=str, choices=['overhead', 'nooverhead'],
-                       default='overhead', help='Process overhead or nooverhead files')
+                       help='Output directory (default: results/analysis/failure_rate/{workflow_type}/{target_job_length})')
 
     args = parser.parse_args()
 
-    # Set default output directory
     if args.output_dir is None:
-        args.output_dir = f"results/analysis/failure_rate/{args.overhead_type}/{args.workflow_type}/{args.target_job_length}"
+        args.output_dir = f"results/analysis/failure_rate/{args.workflow_type}/{args.target_job_length}"
 
-    # Create output directory
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
     print("="*70)
@@ -636,16 +595,13 @@ def main():
     print("="*70)
     print(f"Workflow Type: {args.workflow_type}")
     print(f"Target Job Length: {args.target_job_length}")
-    print(f"Overhead Type: {args.overhead_type}")
     print(f"Output Directory: {args.output_dir}")
     print("="*70)
 
-    # Collect data from all failure rate directories
     data_by_composition = collect_data_from_directories(
         args.base_path,
         args.workflow_type,
-        args.target_job_length,
-        args.overhead_type
+        args.target_job_length
     )
 
     if not data_by_composition:
@@ -654,14 +610,11 @@ def main():
 
     print(f"\nCollected data for {len(data_by_composition)} constructions")
 
-    # Generate visualizations
-    plot_throughput_vs_failure_rate(data_by_composition, args.output_dir, args.overhead_type)
-    plot_throughput_degradation(data_by_composition, args.output_dir, args.overhead_type)
-    plot_network_activity_vs_failure_rate(data_by_composition, args.output_dir, args.overhead_type)
-    plot_best_hybrid_comparison(data_by_composition, args.output_dir, args.overhead_type)
-
-    # Generate summary table
-    generate_summary_table(data_by_composition, args.output_dir, args.overhead_type)
+    plot_throughput_vs_failure_rate(data_by_composition, args.output_dir)
+    plot_throughput_degradation(data_by_composition, args.output_dir)
+    plot_network_activity_vs_failure_rate(data_by_composition, args.output_dir)
+    plot_best_hybrid_comparison(data_by_composition, args.output_dir)
+    generate_summary_table(data_by_composition, args.output_dir)
 
     print("\n" + "="*70)
     print("Analysis complete!")
