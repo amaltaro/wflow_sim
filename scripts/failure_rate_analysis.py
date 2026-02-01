@@ -66,15 +66,17 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
 
 def collect_data_from_directories(base_path: str,
                                   workflow_type: str,
-                                  target_job_length: str) -> Dict[int, List[Dict[str, Any]]]:
+                                  target_job_length: str,
+                                  data_rate: str = "100MBps") -> Dict[int, List[Dict[str, Any]]]:
     """Collect simulation data from multiple failure rate directories.
 
-    Reads simulation result JSON files (*.json) in each failure-rate directory.
+    Reads simulation result JSON files (*.json) in each failure-rate/data-rate directory.
 
     Args:
         base_path: Base path to results directory (e.g., 'results/sim/others')
         workflow_type: Workflow type (e.g., 'case1_real')
         target_job_length: Target job length (e.g., '12h')
+        data_rate: Data transfer rate directory (e.g., '100MBps')
 
     Returns:
         Dictionary mapping composition_number to list of metrics across failure rates
@@ -89,10 +91,10 @@ def collect_data_from_directories(base_path: str,
     # Dictionary: composition_number -> list of metrics (one per failure rate)
     data_by_composition: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
 
-    print(f"Collecting data from: {base_dir}")
+    print(f"Collecting data from: {base_dir} (data rate: {data_rate})")
 
     for fr_dir in failure_rates:
-        fr_path = base_dir / fr_dir
+        fr_path = base_dir / fr_dir / data_rate
         if not fr_path.exists():
             print(f"  Warning: Directory {fr_path} not found, skipping")
             continue
@@ -580,6 +582,8 @@ def main():
                        help='Workflow type (e.g., case1_real)')
     parser.add_argument('target_job_length', type=str,
                        help='Target job length (e.g., 12h)')
+    parser.add_argument('--data-rate', type=str, default='100MBps',
+                       help='Data transfer rate directory (default: 100MBps)')
     parser.add_argument('--output-dir', type=str, default=None,
                        help='Output directory (default: results/analysis/failure_rate/{workflow_type}/{target_job_length})')
 
@@ -595,13 +599,15 @@ def main():
     print("="*70)
     print(f"Workflow Type: {args.workflow_type}")
     print(f"Target Job Length: {args.target_job_length}")
+    print(f"Data Rate: {args.data_rate}")
     print(f"Output Directory: {args.output_dir}")
     print("="*70)
 
     data_by_composition = collect_data_from_directories(
         args.base_path,
         args.workflow_type,
-        args.target_job_length
+        args.target_job_length,
+        data_rate=args.data_rate
     )
 
     if not data_by_composition:

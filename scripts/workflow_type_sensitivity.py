@@ -66,7 +66,8 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
 def collect_data_from_workflow_types(base_path: str,
                                      workflow_types: List[str],
                                      target_job_length: str,
-                                     failure_rate: str) -> Dict[str, Dict[int, Dict[str, Any]]]:
+                                     failure_rate: str,
+                                     data_rate: str = "100MBps") -> Dict[str, Dict[int, Dict[str, Any]]]:
     """Collect simulation data from multiple workflow types.
 
     Reads simulation result JSON files (*.json) in each workflow type directory.
@@ -76,6 +77,7 @@ def collect_data_from_workflow_types(base_path: str,
         workflow_types: List of workflow types (e.g., ['case1_real', 'case2_homo', 'case3_hetero'])
         target_job_length: Target job length (e.g., '12h')
         failure_rate: Failure rate directory (e.g., 'fr0')
+        data_rate: Data transfer rate directory (e.g., '100MBps')
 
     Returns:
         Dictionary mapping workflow_type to composition_number to metrics
@@ -84,11 +86,11 @@ def collect_data_from_workflow_types(base_path: str,
     data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]] = {}
 
     print(f"Collecting data from workflow types: {', '.join(workflow_types)}")
-    print(f"Target job length: {target_job_length}, Failure rate: {failure_rate}")
+    print(f"Target job length: {target_job_length}, Failure rate: {failure_rate}, Data rate: {data_rate}")
 
     for workflow_type in workflow_types:
-        workflow_dir = Path(base_path) / workflow_type / target_job_length / failure_rate
-        
+        workflow_dir = Path(base_path) / workflow_type / target_job_length / failure_rate / data_rate
+
         if not workflow_dir.exists():
             print(f"  Warning: Directory {workflow_dir} not found, skipping {workflow_type}")
             continue
@@ -577,6 +579,8 @@ def main():
                        help='Target job length (e.g., 12h)')
     parser.add_argument('failure_rate', type=str,
                        help='Failure rate directory (e.g., fr0)')
+    parser.add_argument('--data-rate', type=str, default='100MBps',
+                       help='Data transfer rate directory (default: 100MBps)')
     parser.add_argument('--workflow-types', type=str, nargs='+',
                        default=['case1_real', 'case2_homo', 'case3_hetero'],
                        help='Workflow types to analyze (default: case1_real case2_homo case3_hetero)')
@@ -595,6 +599,7 @@ def main():
     print("="*70)
     print(f"Target Job Length: {args.target_job_length}")
     print(f"Failure Rate: {args.failure_rate}")
+    print(f"Data Rate: {args.data_rate}")
     print(f"Workflow Types: {', '.join(args.workflow_types)}")
     print(f"Output Directory: {args.output_dir}")
     print("="*70)
@@ -603,7 +608,8 @@ def main():
         args.base_path,
         args.workflow_types,
         args.target_job_length,
-        args.failure_rate
+        args.failure_rate,
+        data_rate=args.data_rate
     )
 
     if not data_by_workflow:
