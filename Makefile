@@ -6,9 +6,9 @@ PIP := /Users/amaltar2/pyenv-3.12/bin/pip
 PYTEST := /Users/amaltar2/pyenv-3.12/bin/pytest
 
 # Simulation configuration
-# Wallclock times in seconds: 1h, 6h, 12h, 18h, 24h
-WALLCLOCK_TIMES := 3600 21600 43200 64800 86400
-TARGET_WALLCLOCK_TIME := 43200  # Default for single run
+# Target job lengths: 15m, 30m, 1h, 2h, 4h, 8h, 12h, 24h (seconds)
+WALLCLOCK_TIMES := 900 1800 3600 7200 14400 28800 43200 86400
+TARGET_WALLCLOCK_TIME := 43200  # Default for single run (12h)
 MAX_JOB_SLOTS := -1
 # Failure rates as percentages: 0, 1, 5, 10, 25
 FAILURE_RATES := 0 1 5 10 25
@@ -46,7 +46,7 @@ help:
 	@echo "  clean-results  - Clean only simulation results"
 	@echo ""
 	@echo "Use cases configured: $(USE_CASES)"
-	@echo "Wallclock times configured: $(WALLCLOCK_TIMES) seconds (1h, 6h, 12h, 18h, 24h)"
+	@echo "Target job lengths: ${WALLCLOCK_TIMES} seconds"
 	@echo "Failure rates configured: $(FAILURE_RATES)%"
 	@echo "Customize by setting variables, e.g.:"
 	@echo "  make all USE_CASES='case1_real case2_homo'"
@@ -85,7 +85,7 @@ run:
 .PHONY: simulate-all
 simulate-all:
 	@echo "Starting batch simulation for use cases: $(USE_CASES)"
-	@echo "Wallclock times: $(WALLCLOCK_TIMES) seconds (1h, 6h, 12h, 18h, 24h)"
+	@echo "Target job lengths: ${WALLCLOCK_TIMES} seconds"
 	@echo "Failure rates: $(FAILURE_RATES)%"
 	@echo "Max job slots: $(MAX_JOB_SLOTS)"
 	@echo ""
@@ -93,12 +93,12 @@ simulate-all:
 	echo "Total simulation combinations: $$total_combinations"; \
 	echo ""
 	@for wallclock_time in $(WALLCLOCK_TIMES); do \
-		wallclock_hours=$$(( $$wallclock_time / 3600 )); \
+		time_dir=$$(awk -v t=$$wallclock_time 'BEGIN{if(t<3600) printf "%dm", t/60; else printf "%dh", t/3600}'); \
 		echo "=========================================="; \
-		echo "Simulating with wallclock time: $$wallclock_time seconds ($$wallclock_hours hours)"; \
+		echo "Simulating with target job length: $$wallclock_time seconds ($$time_dir)"; \
 		echo "=========================================="; \
 		for use_case in $(USE_CASES); do \
-			echo "=== Simulating use case: $$use_case ($$wallclock_hours hours) ==="; \
+			echo "=== Simulating use case: $$use_case ($$time_dir) ==="; \
 			for failure_rate in $(FAILURE_RATES); do \
 				echo "  --- Failure rate: $$failure_rate% ---"; \
 				for workflow_file in $(TEMPLATES_DIR)/$$use_case/*_const_*.json; do \
@@ -112,34 +112,34 @@ simulate-all:
 					fi; \
 				done; \
 			done; \
-			echo "=== Completed use case: $$use_case ($$wallclock_hours hours) ==="; \
-			echo ""; \
+			echo "=== Completed use case: $$use_case ($$time_dir) ==="; \
+		echo ""; \
 		done; \
 		echo ""; \
 	done
 	@echo "All simulations completed!"
 
-# Generate visualizations for all use cases, wallclock times, and failure rates
+# Generate visualizations for all use cases, target job lengths, and failure rates
 # Note: Run 'make setup-viz' first if visualization dependencies are not installed
 .PHONY: visualize-all
 visualize-all:
 	@echo "Starting batch visualization for use cases: $(USE_CASES)"
-	@echo "Wallclock times: $(WALLCLOCK_TIMES) seconds (1h, 6h, 12h, 18h, 24h)"
+	@echo "Target job lengths: ${WALLCLOCK_TIMES} seconds"
 	@echo "Failure rates: $(FAILURE_RATES)%"
 	@echo ""
 	@for wallclock_time in $(WALLCLOCK_TIMES); do \
-		wallclock_hours=$$(( $$wallclock_time / 3600 )); \
+		time_dir=$$(awk -v t=$$wallclock_time 'BEGIN{if(t<3600) printf "%dm", t/60; else printf "%dh", t/3600}'); \
 		echo "=========================================="; \
-		echo "Visualizing results for wallclock time: $$wallclock_time seconds ($$wallclock_hours hours)"; \
+		echo "Visualizing results for target job length: $$wallclock_time seconds ($$time_dir)"; \
 		echo "=========================================="; \
 		for use_case in $(USE_CASES); do \
-			echo "=== Generating visualizations for use case: $$use_case ($$wallclock_hours hours) ==="; \
-			use_case_base_dir="$(RESULTS_DIR)/$$use_case/$${wallclock_hours}h"; \
+			echo "=== Generating visualizations for use case: $$use_case ($$time_dir) ==="; \
+			use_case_base_dir="$(RESULTS_DIR)/$$use_case/$$time_dir"; \
 			if [ -d "$$use_case_base_dir" ]; then \
 				for failure_rate in $(FAILURE_RATES); do \
 					fr_dir="$$use_case_base_dir/fr$$failure_rate"; \
 					if [ -d "$$fr_dir" ]; then \
-						output_dir="$(VIZ_OUTPUT_DIR)/$$use_case/$${wallclock_hours}h/fr$$failure_rate"; \
+						output_dir="$(VIZ_OUTPUT_DIR)/$$use_case/$$time_dir/fr$$failure_rate"; \
 						echo "  Processing results directory: $$fr_dir"; \
 						$(PYTHON) scripts/workflow_visualization.py \
 							$$fr_dir \
@@ -151,7 +151,7 @@ visualize-all:
 			else \
 				echo "  Warning: Results base directory $$use_case_base_dir not found. Skipping."; \
 			fi; \
-			echo "=== Completed visualizations for use case: $$use_case ($$wallclock_hours hours) ==="; \
+			echo "=== Completed visualizations for use case: $$use_case ($$time_dir) ==="; \
 			echo ""; \
 		done; \
 		echo ""; \
@@ -164,26 +164,26 @@ visualize-all:
 analyze-failure-rate:
 	@echo "Starting failure rate impact analysis"
 	@echo "Use cases: $(USE_CASES)"
-	@echo "Wallclock times: $(WALLCLOCK_TIMES) seconds (1h, 6h, 12h, 18h, 24h)"
+	@echo "Target job lengths: ${WALLCLOCK_TIMES} seconds"
 	@echo ""
 	@for wallclock_time in $(WALLCLOCK_TIMES); do \
-		wallclock_hours=$$(( $$wallclock_time / 3600 )); \
+		time_dir=$$(awk -v t=$$wallclock_time 'BEGIN{if(t<3600) printf "%dm", t/60; else printf "%dh", t/3600}'); \
 		echo "=========================================="; \
-		echo "Analyzing failure rate impact for wallclock time: $$wallclock_time seconds ($$wallclock_hours hours)"; \
+		echo "Analyzing failure rate impact for target job length: $$time_dir"; \
 		echo "=========================================="; \
 		for use_case in $(USE_CASES); do \
-			echo "=== Analyzing use case: $$use_case ($$wallclock_hours hours) ==="; \
-			use_case_base_dir="$(RESULTS_DIR)/$$use_case/$${wallclock_hours}h"; \
+			echo "=== Analyzing use case: $$use_case ($$time_dir) ==="; \
+			use_case_base_dir="$(RESULTS_DIR)/$$use_case/$$time_dir"; \
 			if [ -d "$$use_case_base_dir" ]; then \
 				$(PYTHON) scripts/failure_rate_analysis.py \
 					$(RESULTS_DIR) \
 					$$use_case \
-					$${wallclock_hours}h || exit 1; \
-				echo "  Results saved to: results/analysis/failure_rate/$$use_case/$${wallclock_hours}h/"; \
+					$$time_dir || exit 1; \
+				echo "  Results saved to: results/analysis/failure_rate/$$use_case/$$time_dir/"; \
 			else \
 				echo "  Warning: Results base directory $$use_case_base_dir not found. Skipping."; \
 			fi; \
-			echo "=== Completed analysis for use case: $$use_case ($$wallclock_hours hours) ==="; \
+			echo "=== Completed analysis for use case: $$use_case ($$time_dir) ==="; \
 			echo ""; \
 		done; \
 		echo ""; \
@@ -238,7 +238,7 @@ analyze-target-job-length:
 all:
 	@echo "=========================================="
 	@echo "Running complete workflow analysis"
-	@echo "Wallclock times: $(WALLCLOCK_TIMES) seconds (1h, 6h, 12h, 18h, 24h)"
+	@echo "Target job lengths: ${WALLCLOCK_TIMES} seconds"
 	@echo "Use cases: $(USE_CASES)"
 	@echo "=========================================="
 	@echo ""
@@ -255,7 +255,7 @@ all:
 	@echo "Complete workflow finished successfully!"
 	@echo "Results: $(RESULTS_DIR)/"
 	@echo "Visualizations: $(VIZ_OUTPUT_DIR)/"
-	@echo "Results are organized in nested structure: {case_name}/{time_hours}/fr{failure_rate}/"
+	@echo "Results are organized in nested structure: {case_name}/{time_dir}/fr{failure_rate}/"
 	@echo "=========================================="
 
 # Clean up generated files

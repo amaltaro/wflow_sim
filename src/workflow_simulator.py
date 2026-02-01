@@ -1018,7 +1018,8 @@ def _get_output_path(input_path: str,
     """
     Generate output path based on input path structure with nested organization.
 
-    Creates nested structure: results/sim/{case_name}/{time_hours}/fr{failure_rate}/
+    Creates nested structure: results/sim/{case_name}/{time_dir}/fr{failure_rate}/
+    (time_dir is e.g. 15m, 30m, 1h, 2h, 4h, 8h, 12h, 24h)
 
     Args:
         input_path: Path to input workflow file
@@ -1036,9 +1037,11 @@ def _get_output_path(input_path: str,
     else:
         relative_path = input_path_obj
 
-    # Convert wallclock time to hours and format as "Xh"
-    wallclock_hours = int(target_wallclock_time / 3600)
-    time_dir = f"{wallclock_hours}h"
+    # Format time directory: "15m", "30m" for <1h; "1h", "2h", ... for hours
+    if target_wallclock_time < 3600:
+        time_dir = f"{int(target_wallclock_time // 60)}m"
+    else:
+        time_dir = f"{int(target_wallclock_time // 3600)}h"
 
     # Format failure rate directory (e.g., fr0, fr1, fr5, fr10, fr25)
     failure_rate_int = int(round(failure_rate))
