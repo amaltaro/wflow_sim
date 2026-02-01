@@ -19,6 +19,24 @@ except ImportError:
     from workflow_simulator import WorkflowSimulator, ResourceConfig, SimulationResult
     from workflow_metrics import WorkflowMetricsCalculator, WorkflowMetrics
 
+# Limit job dumps per group in JSON output to reduce disk usage
+MAX_JOBS_PER_GROUP_IN_OUTPUT = 10
+
+
+def _jobs_for_output(all_jobs: List[Any], max_per_group: int = MAX_JOBS_PER_GROUP_IN_OUTPUT) -> List[Any]:
+    """Return at most max_per_group jobs per group_id, preserving original order."""
+    counts: Dict[str, int] = {}
+    out: List[Any] = []
+    for job in all_jobs:
+        gid = getattr(job, 'group_id', None)
+        if gid is not None:
+            n = counts.get(gid, 0)
+            if n >= max_per_group:
+                continue
+            counts[gid] = n + 1
+        out.append(job)
+    return out
+
 
 class WorkflowRunner:
     """
@@ -183,6 +201,7 @@ class WorkflowRunner:
                     'overhead_enabled': simulation.overhead_enabled,
                     'failure_rate': simulation.failure_rate,
                     'total_job_retries': simulation.total_job_retries,
+                    'jobs_per_group_limit': MAX_JOBS_PER_GROUP_IN_OUTPUT,
                     'groups': [],
                     'jobs': []
                 }
@@ -232,6 +251,7 @@ class WorkflowRunner:
                 'overhead_enabled': simulation.overhead_enabled,
                 'failure_rate': simulation.failure_rate,
                 'total_job_retries': simulation.total_job_retries,
+                'jobs_per_group_limit': MAX_JOBS_PER_GROUP_IN_OUTPUT,
                 'groups': [
                     {
                         'group_id': group.group_id,
@@ -281,7 +301,7 @@ class WorkflowRunner:
                         'retry_count': job.retry_count,
                         'original_job_id': job.original_job_id
                     }
-                    for job in simulation.jobs
+                    for job in _jobs_for_output(simulation.jobs)
                 ],
             }
         }
@@ -292,24 +312,49 @@ class WorkflowRunner:
         self.logger.info(f"Complete results written to {filepath}")
 
 
+def _data_rate_dir_from_mbps(data_transfer_rate_mb_per_s: float) -> str:
+    """
+    Map network data transfer rate (MB/s) to directory name (MBps/GBps = bytes per second).
+
+    Args:
+        data_transfer_rate_mb_per_s: Rate in MB/s (e.g. 10, 100, 1000, 10000).
+
+    Returns:
+        Directory name: 10MBps, 100MBps, 1GBps, 10GBps, or {int}MBps for other values.
+    """
+    rate = int(data_transfer_rate_mb_per_s)
+    canonical = {10: "10MBps", 100: "100MBps", 1000: "1GBps", 10000: "10GBps"}
+    if rate in canonical:
+        return canonical[rate]
+    if rate <= 0:
+        return "100MBps"
+    return f"{int(round(rate))}MBps"
+
+
 def _get_output_path(input_path: str,
                      target_wallclock_time: float = 43200.0,
-                     failure_rate: float = 0.0) -> str:
+                     failure_rate: float = 0.0,
+                     data_transfer_rate_mb_per_s: float = 100.0,
+                     output_base: str = "results/sim") -> str:
     """
     Generate output path based on input path structure with nested organization.
 
-    Creates nested structure: results/sim/{case_name}/{time_dir}/fr{failure_rate}/
-    (time_dir is e.g. 15m, 30m, 1h, 2h, 4h, 8h, 12h, 24h)
+    Creates nested structure:
+    {output_base}/{intermediate}/{case_name}/{time_dir}/fr{failure_rate}/{data_rate}/
+    (time_dir is e.g. 15m, 30m, 1h, 2h, 4h, 8h, 12h, 24h; data_rate is e.g. 10MBps, 100MBps)
 
     Args:
         input_path: Path to input workflow file
         target_wallclock_time: Target wallclock time in seconds (default: 43200.0 = 12 hours)
         failure_rate: Job failure rate as percentage (default: 0.0)
+        data_transfer_rate_mb_per_s: Network data transfer rate in MB/s (default: 100.0)
+        output_base: Base directory for output (default: results/sim)
 
     Returns:
-        Output path: results/sim/{case_name}/{time_hours}/fr{failure_rate}/{filename}.json
+        Output path: {output_base}/.../fr{failure_rate}/{data_rate}/{filename}.json
     """
     input_path_obj = Path(input_path)
+    base = Path(output_base)
 
     # Remove 'templates/' prefix if present
     if input_path_obj.parts[0] == 'templates':
@@ -327,28 +372,24 @@ def _get_output_path(input_path: str,
     failure_rate_int = int(round(failure_rate))
     fr_dir = f"fr{failure_rate_int}"
 
-    # Extract case name and preserve intermediate directories (e.g., "others")
-    # Path examples:
-    #   - "others/case1_real/case1_real_const_001.json" -> case_name="case1_real", intermediate="others"
-    #   - "case1_real/case1_real_const_001.json" -> case_name="case1_real", intermediate=None
-    if len(relative_path.parts) >= 2:
-        # Path has at least one parent directory
-        case_name = relative_path.parts[-2]  # Get parent directory name (the case name)
-        filename = relative_path.name
+    # Data rate directory (e.g., 10MBps, 100MBps, 1GBps, 10GBps)
+    data_rate_dir = _data_rate_dir_from_mbps(data_transfer_rate_mb_per_s)
 
-        # Preserve intermediate directories (e.g., "others") if they exist
+    # Extract case name and preserve intermediate directories (e.g., "others")
+    if len(relative_path.parts) >= 2:
+        case_name = relative_path.parts[-2]
+        filename = relative_path.name
         if len(relative_path.parts) >= 3:
-            # Has intermediate directories like "others"
-            intermediate_dirs = relative_path.parts[:-2]  # All parts except last two
-            output_dir = Path("results") / "sim" / Path(*intermediate_dirs) / case_name / time_dir / fr_dir
+            intermediate_dirs = relative_path.parts[:-2]
+            output_dir = (
+                base / Path(*intermediate_dirs) / case_name / time_dir / fr_dir / data_rate_dir
+            )
         else:
-            # Direct case directory
-            output_dir = Path("results") / "sim" / case_name / time_dir / fr_dir
+            output_dir = base / case_name / time_dir / fr_dir / data_rate_dir
     else:
-        # Fallback: use stem of filename if no parent directory
         case_name = relative_path.stem.split('_')[0] if '_' in relative_path.stem else relative_path.stem
         filename = relative_path.name
-        output_dir = Path("results") / "sim" / case_name / time_dir / fr_dir
+        output_dir = base / case_name / time_dir / fr_dir / data_rate_dir
     output_path = output_dir / filename
 
     # Ensure the output directory exists
@@ -392,6 +433,12 @@ def parse_arguments():
         default=100.0,
         help='Network data transfer rate in MB/s for overhead calculation (default: 100.0)'
     )
+    parser.add_argument(
+        '--output-base',
+        type=str,
+        default='results/sim',
+        help='Base directory for simulation output (default: results/sim).'
+    )
     return parser.parse_args()
 
 
@@ -430,7 +477,9 @@ def main():
     output_path = _get_output_path(
         args.input_workflow_path,
         target_wallclock_time=args.target_wallclock_time,
-        failure_rate=args.failure_rate
+        failure_rate=args.failure_rate,
+        data_transfer_rate_mb_per_s=args.data_transfer_rate,
+        output_base=args.output_base
     )
     runner.write_complete_results(results, output_path)
 
