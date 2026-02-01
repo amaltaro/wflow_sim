@@ -8,40 +8,50 @@ Results are organized in a nested structure that supports multi-dimensional anal
 results/sim/others/
   case1_real/
     12h/
-      fr0/          # failure_rate = 0%
-        case1_real_const_001.json
-        case1_real_const_002.json
+      fr0/                    # failure_rate = 0%
+        10MBps/               # data transfer rate = 10 MB/s (bytes per second)
+          case1_real_const_001.json
+          case1_real_const_002.json
+          ...
+        100MBps/              # 100 MB/s
+        1GBps/                 # 1 GB/s
+        10GBps/                # 10 GB/s
+      fr1/                    # failure_rate = 1%
+        10MBps/
+        100MBps/
         ...
-      fr1/          # failure_rate = 1%
-        case1_real_const_001.json
-        ...
-      fr5/          # failure_rate = 5%
-      fr10/         # failure_rate = 10%
-      fr25/         # failure_rate = 25%
+      fr5/
+      fr10/
+      fr25/
     6h/
       fr0/
-      fr1/
-      ...
+        10MBps/
+        ...
     24h/
       fr0/
       ...
   case2_homo/
     12h/
       fr0/
-      ...
+        ...
   case3_hetero/
     ...
 ```
 
+The same structure is used for visualizations under `results/vis/others/`:
+`results/vis/others/<workflow_type>/<target_job_length>/<failure_rate>/<data_rate>/`.
+
 ## Structure Benefits
 
 1. **Easy Single-Dimension Iteration**
-   - All failure rates for a given case/time: `case1_real/12h/fr*/`
-   - All times for a given case/failure rate: `case1_real/*/fr0/`
-   - All cases for a given time/failure rate: `*/12h/fr0/`
+   - All failure rates for a given case/time/data rate: `case1_real/12h/fr*/100MBps/`
+   - All data rates for a given case/time/failure rate: `case1_real/12h/fr0/*/`
+   - All times for a given case/failure rate/data rate: `case1_real/*/fr0/100MBps/`
+   - All cases for a given time/failure rate/data rate: `*/12h/fr0/100MBps/`
 
 2. **Clear Hierarchy**
-   - Case → Time → Failure Rate → Files
+   - Case → Time → Failure Rate → Data Rate → Files
+   - Data rate dirs (10MBps, 100MBps, 1GBps, 10GBps) use uppercase B for bytes per second
    - Easy to understand and navigate
 
 3. **Compatible with Existing Code**
@@ -49,7 +59,8 @@ results/sim/others/
    - Visualization scripts can process entire directories
 
 4. **Scalable**
-   - Easy to add more dimensions (e.g., `case1_real/12h/fr0/slots100/`)
+   - Data transfer rate is already a dimension (`case1_real/12h/fr0/100MBps/`)
+   - Further dimensions can be added if needed
 
 5. **Preserves Intermediate Directories**
    - Maintains structure like `others/` if present in template path
@@ -94,24 +105,25 @@ python scripts/workflow_visualization.py results/sim/others
 python scripts/workflow_visualization.py results/sim/others/case1_real/12h/fr5
 ```
 
-## Running Simulations with Failure Rate
+## Running Simulations with Failure Rate and Data Transfer Rate
 
 ```bash
-# Run simulation with specific failure rate
+# Run simulation with specific failure rate and data transfer rate (default 100 MB/s)
 python -m src.workflow_runner \
   --input-workflow-path templates/others/case1_real/case1_real_const_001.json \
   --target-wallclock-time 43200 \
-  --failure-rate 5
+  --failure-rate 5 \
+  --data-transfer-rate 100
 
 # Results will be saved to:
-# results/sim/others/case1_real/12h/fr5/case1_real_const_001.json
+# results/sim/others/case1_real/12h/fr5/100MBps/case1_real_const_001.json
 ```
 
 ## Migration from Old Structure
 
 **Old structure**: `results/sim/others/case1_real_12h/case1_real_const_001.json`
 
-**New structure**: `results/sim/others/case1_real/12h/fr0/case1_real_const_001.json`
+**New structure**: `results/sim/others/case1_real/12h/fr0/100MBps/case1_real_const_001.json`
 
 ### Migration Options
 
