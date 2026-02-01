@@ -66,28 +66,25 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
 def collect_data_from_workflow_types(base_path: str,
                                      workflow_types: List[str],
                                      target_job_length: str,
-                                     failure_rate: str,
-                                     overhead_type: str = "overhead") -> Dict[str, Dict[int, Dict[str, Any]]]:
+                                     failure_rate: str) -> Dict[str, Dict[int, Dict[str, Any]]]:
     """Collect simulation data from multiple workflow types.
+
+    Reads simulation result JSON files (*.json) in each workflow type directory.
 
     Args:
         base_path: Base path to results directory (e.g., 'results/sim/others')
         workflow_types: List of workflow types (e.g., ['case1_real', 'case2_homo', 'case3_hetero'])
         target_job_length: Target job length (e.g., '12h')
         failure_rate: Failure rate directory (e.g., 'fr0')
-        overhead_type: 'overhead' or 'nooverhead'
 
     Returns:
         Dictionary mapping workflow_type to composition_number to metrics
     """
-    suffix = "_overhead" if overhead_type == "overhead" else "_nooverhead"
-    
     # Dictionary: workflow_type -> composition_number -> metrics
     data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]] = {}
 
     print(f"Collecting data from workflow types: {', '.join(workflow_types)}")
     print(f"Target job length: {target_job_length}, Failure rate: {failure_rate}")
-    print(f"Overhead type: {overhead_type}")
 
     for workflow_type in workflow_types:
         workflow_dir = Path(base_path) / workflow_type / target_job_length / failure_rate
@@ -96,8 +93,8 @@ def collect_data_from_workflow_types(base_path: str,
             print(f"  Warning: Directory {workflow_dir} not found, skipping {workflow_type}")
             continue
 
-        # Find all JSON files for this workflow type
-        json_files = list(workflow_dir.glob(f"*{suffix}.json"))
+        # Find simulation result JSON files
+        json_files = list(workflow_dir.glob("*.json"))
         print(f"  Processing {workflow_type}: {len(json_files)} files found")
 
         data_by_composition: Dict[int, Dict[str, Any]] = {}
@@ -173,19 +170,14 @@ def identify_best_hybrid(data_by_composition: Dict[int, Dict[str, Any]],
 
 
 def plot_throughput_comparison(data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]],
-                               output_dir: str,
-                               overhead_type: str) -> None:
+                               output_dir: str) -> None:
     """Plot throughput comparison across workflow types.
 
     Args:
         data_by_workflow: Dictionary mapping workflow_type to composition metrics
         output_dir: Output directory for plots
-        overhead_type: 'overhead' or 'nooverhead'
     """
     print(f"\n==> Creating throughput comparison plot")
-
-    # Format overhead label for title
-    overhead_label = "With overhead" if overhead_type == "overhead" else "No overhead"
 
     fig, ax = plt.subplots(figsize=(12, 7))
 
@@ -246,24 +238,21 @@ def plot_throughput_comparison(data_by_workflow: Dict[str, Dict[int, Dict[str, A
 
     ax.set_xlabel("Workflow Type", fontsize=12)
     ax.set_ylabel("Event Throughput (events/second)", fontsize=12)
-    ax.set_title(f"Throughput Comparison Across Workflow Types\n({overhead_label})", fontsize=14)
+    ax.set_title("Throughput Comparison Across Workflow Types", fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels(workflow_types, fontsize=10)
     ax.legend(fontsize=11)
     ax.grid(True, alpha=0.3, axis='y')
 
     plt.tight_layout()
-    suffix = "_nooverhead" if overhead_type == "nooverhead" else "_overhead"
-    filename = f"throughput_comparison{suffix}.png"
-    output_path = os.path.join(output_dir, filename)
+    output_path = os.path.join(output_dir, "throughput_comparison.png")
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  => Saved: {output_path}")
 
 
 def plot_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]],
-                                output_dir: str,
-                                overhead_type: str) -> None:
+                                output_dir: str) -> None:
     """Plot event throughput improvement percentage of best hybrid over extremes.
 
     Calculates percentage improvement as: ((best_hybrid_throughput - extreme_throughput) / extreme_throughput) × 100
@@ -271,12 +260,8 @@ def plot_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Dict[str, 
     Args:
         data_by_workflow: Dictionary mapping workflow_type to composition metrics
         output_dir: Output directory for plots
-        overhead_type: 'overhead' or 'nooverhead'
     """
     print(f"\n==> Creating improvement percentage plot")
-
-    # Format overhead label for title
-    overhead_label = "With overhead" if overhead_type == "overhead" else "No overhead"
 
     fig, ax = plt.subplots(figsize=(12, 7))
 
@@ -339,7 +324,7 @@ def plot_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Dict[str, 
 
     ax.set_xlabel("Workflow Type", fontsize=12)
     ax.set_ylabel("Throughput Improvement (%)", fontsize=12)
-    ax.set_title(f"Best Hybrid Throughput Improvement Over Extremes\n({overhead_label})", fontsize=14)
+    ax.set_title("Best Hybrid Throughput Improvement Over Extremes", fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels(workflow_types, fontsize=10)
     ax.legend(fontsize=11)
@@ -347,28 +332,21 @@ def plot_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Dict[str, 
     ax.axhline(y=0, color='black', linestyle='--', linewidth=1, alpha=0.5)
 
     plt.tight_layout()
-    suffix = "_nooverhead" if overhead_type == "nooverhead" else "_overhead"
-    filename = f"throughput_improvement{suffix}.png"
-    output_path = os.path.join(output_dir, filename)
+    output_path = os.path.join(output_dir, "throughput_improvement.png")
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  => Saved: {output_path}")
 
 
 def plot_network_efficiency_comparison(data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]],
-                                      output_dir: str,
-                                      overhead_type: str) -> None:
+                                      output_dir: str) -> None:
     """Plot network efficiency comparison across workflow types.
 
     Args:
         data_by_workflow: Dictionary mapping workflow_type to composition metrics
         output_dir: Output directory for plots
-        overhead_type: 'overhead' or 'nooverhead'
     """
     print(f"\n==> Creating network efficiency comparison plot")
-
-    # Format overhead label for title
-    overhead_label = "With overhead" if overhead_type == "overhead" else "No overhead"
 
     fig, ax = plt.subplots(figsize=(12, 7))
 
@@ -435,24 +413,21 @@ def plot_network_efficiency_comparison(data_by_workflow: Dict[str, Dict[int, Dic
 
     ax.set_xlabel("Workflow Type", fontsize=12)
     ax.set_ylabel("Network Transfer per Event (MB)", fontsize=12)
-    ax.set_title(f"Network Efficiency Comparison Across Workflow Types\n({overhead_label})", fontsize=14)
+    ax.set_title("Network Efficiency Comparison Across Workflow Types", fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels(workflow_types, fontsize=10)
     ax.legend(fontsize=11)
     ax.grid(True, alpha=0.3, axis='y')
 
     plt.tight_layout()
-    suffix = "_nooverhead" if overhead_type == "nooverhead" else "_overhead"
-    filename = f"network_efficiency_comparison{suffix}.png"
-    output_path = os.path.join(output_dir, filename)
+    output_path = os.path.join(output_dir, "network_efficiency_comparison.png")
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  => Saved: {output_path}")
 
 
 def plot_network_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]],
-                                       output_dir: str,
-                                       overhead_type: str) -> None:
+                                       output_dir: str) -> None:
     """Plot network transfer reduction percentage of best hybrid over extremes.
 
     Since lower network transfer is better, this shows reduction percentage:
@@ -462,12 +437,8 @@ def plot_network_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Di
     Args:
         data_by_workflow: Dictionary mapping workflow_type to composition metrics
         output_dir: Output directory for plots
-        overhead_type: 'overhead' or 'nooverhead'
     """
     print(f"\n==> Creating network improvement percentage plot")
-
-    # Format overhead label for title
-    overhead_label = "With overhead" if overhead_type == "overhead" else "No overhead"
 
     fig, ax = plt.subplots(figsize=(12, 7))
 
@@ -530,7 +501,7 @@ def plot_network_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Di
 
     ax.set_xlabel("Workflow Type", fontsize=12)
     ax.set_ylabel("Network Transfer Reduction (%)", fontsize=12)
-    ax.set_title(f"Best Hybrid Network Transfer Reduction Over Extremes\n({overhead_label})", fontsize=14)
+    ax.set_title("Best Hybrid Network Transfer Reduction Over Extremes", fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels(workflow_types, fontsize=10)
     ax.legend(fontsize=11)
@@ -538,23 +509,19 @@ def plot_network_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Di
     ax.axhline(y=0, color='black', linestyle='--', linewidth=1, alpha=0.5)
 
     plt.tight_layout()
-    suffix = "_nooverhead" if overhead_type == "nooverhead" else "_overhead"
-    filename = f"network_improvement_percentage{suffix}.png"
-    output_path = os.path.join(output_dir, filename)
+    output_path = os.path.join(output_dir, "network_improvement_percentage.png")
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  => Saved: {output_path}")
 
 
 def generate_summary_table(data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]],
-                          output_dir: str,
-                          overhead_type: str) -> pd.DataFrame:
+                          output_dir: str) -> pd.DataFrame:
     """Generate summary table with metrics across workflow types.
 
     Args:
         data_by_workflow: Dictionary mapping workflow_type to composition metrics
         output_dir: Output directory for table
-        overhead_type: 'overhead' or 'nooverhead'
 
     Returns:
         DataFrame with summary metrics
@@ -593,9 +560,7 @@ def generate_summary_table(data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]
     df = pd.DataFrame(table_data)
 
     # Save as CSV
-    suffix = "_nooverhead" if overhead_type == "nooverhead" else "_overhead"
-    csv_filename = f"workflow_type_sensitivity_summary{suffix}.csv"
-    csv_path = os.path.join(output_dir, csv_filename)
+    csv_path = os.path.join(output_dir, "workflow_type_sensitivity_summary.csv")
     df.to_csv(csv_path, index=False, float_format='%.6f')
     print(f"  => Saved: {csv_path}")
 
@@ -616,17 +581,13 @@ def main():
                        default=['case1_real', 'case2_homo', 'case3_hetero'],
                        help='Workflow types to analyze (default: case1_real case2_homo case3_hetero)')
     parser.add_argument('--output-dir', type=str, default=None,
-                       help='Output directory (default: results/analysis/workflow_type_sensitivity/{overhead_type}/{target_job_length}/{failure_rate})')
-    parser.add_argument('--overhead-type', type=str, choices=['overhead', 'nooverhead'],
-                       default='overhead', help='Process overhead or nooverhead files')
+                       help='Output directory (default: results/analysis/workflow_type_sensitivity/{target_job_length}/{failure_rate})')
 
     args = parser.parse_args()
 
-    # Set default output directory
     if args.output_dir is None:
-        args.output_dir = f"results/analysis/workflow_type_sensitivity/{args.overhead_type}/{args.target_job_length}/{args.failure_rate}"
+        args.output_dir = f"results/analysis/workflow_type_sensitivity/{args.target_job_length}/{args.failure_rate}"
 
-    # Create output directory
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
     print("="*70)
@@ -635,17 +596,14 @@ def main():
     print(f"Target Job Length: {args.target_job_length}")
     print(f"Failure Rate: {args.failure_rate}")
     print(f"Workflow Types: {', '.join(args.workflow_types)}")
-    print(f"Overhead Type: {args.overhead_type}")
     print(f"Output Directory: {args.output_dir}")
     print("="*70)
 
-    # Collect data from all workflow types
     data_by_workflow = collect_data_from_workflow_types(
         args.base_path,
         args.workflow_types,
         args.target_job_length,
-        args.failure_rate,
-        args.overhead_type
+        args.failure_rate
     )
 
     if not data_by_workflow:
@@ -654,21 +612,17 @@ def main():
 
     print(f"\nCollected data for {len(data_by_workflow)} workflow types")
 
-    # Identify best hybrid for each workflow type
     print(f"\nIdentifying best hybrid for each workflow type:")
     for workflow_type in sorted(data_by_workflow.keys()):
         best_hybrid = identify_best_hybrid(data_by_workflow[workflow_type], verbose=True)
         if best_hybrid:
             print(f"  {workflow_type}: Const {best_hybrid}")
 
-    # Generate visualizations
-    plot_throughput_comparison(data_by_workflow, args.output_dir, args.overhead_type)
-    plot_improvement_percentage(data_by_workflow, args.output_dir, args.overhead_type)
-    plot_network_efficiency_comparison(data_by_workflow, args.output_dir, args.overhead_type)
-    plot_network_improvement_percentage(data_by_workflow, args.output_dir, args.overhead_type)
-
-    # Generate summary table
-    generate_summary_table(data_by_workflow, args.output_dir, args.overhead_type)
+    plot_throughput_comparison(data_by_workflow, args.output_dir)
+    plot_improvement_percentage(data_by_workflow, args.output_dir)
+    plot_network_efficiency_comparison(data_by_workflow, args.output_dir)
+    plot_network_improvement_percentage(data_by_workflow, args.output_dir)
+    generate_summary_table(data_by_workflow, args.output_dir)
 
     print("\n" + "="*70)
     print("Analysis complete!")
