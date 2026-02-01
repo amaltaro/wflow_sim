@@ -94,8 +94,7 @@ python scripts/target_job_length_analysis.py \
 python scripts/target_job_length_analysis.py \
     results/sim/others \
     case1_real \
-    fr25 \
-    --overhead-type overhead
+    fr25
 
 # Compare fr0 vs fr25 to understand how failures affect time-dependent patterns
 ```
@@ -112,7 +111,7 @@ make analyze-target-job-length
 
 Results are saved to:
 ```
-results/analysis/target_job_length/{overhead_type}/{workflow_type}/{failure_rate}/
+results/analysis/target_job_length/{workflow_type}/{failure_rate}/
 ```
 
 This structure separates cross-dimensional analysis outputs from standard simulation results (`results/sim/`) and standard visualizations (`results/vis/`).
@@ -123,7 +122,7 @@ The script generates the following outputs in the specified output directory:
 
 ### Visualizations
 
-1. **`throughput_vs_target_length_{overhead|nooverhead}.png`**
+1. **`throughput_vs_target_length.png`**
    - Line chart showing event throughput vs. target job length for all 16 constructions
    - Const 1 (all chained) highlighted in red
    - Const 16 (all independent) highlighted in green
@@ -131,26 +130,26 @@ The script generates the following outputs in the specified output directory:
    - Best hybrid for each target length marked with triangle markers
    - Helps identify which constructions perform best at different time constraints
 
-2. **`throughput_improvement_{overhead|nooverhead}.png`**
+2. **`throughput_improvement.png`**
    - Line chart showing throughput improvement percentage (relative to 1h) vs. target job length
    - Helps identify which constructions benefit most from longer job lengths
    - Negative values indicate degradation relative to 1h baseline
    - Shows how constructions scale with time constraints
 
-3. **`network_activity_vs_target_length_{overhead|nooverhead}.png`**
+3. **`network_activity_vs_target_length.png`**
    - Two-panel visualization showing network activity patterns
    - **Left panel**: Network transfer per event vs. target job length for all 16 constructions
    - **Right panel**: Remote read vs. remote write breakdown for Const 1, Const 16, and best hybrid
    - Helps identify which constructions maintain efficient network usage across time constraints
    - Shows how target job length affects remote I/O patterns
 
-4. **`best_hybrid_comparison_{overhead|nooverhead}.png`**
+4. **`best_hybrid_comparison.png`**
    - Bar chart comparing Const 1, Const 16, and the best hybrid construction for each target job length
    - Best hybrid is identified based on event throughput
    - Shows which hybrid construction performs best at each target job length
    - Helps identify if there's a single "best" hybrid or if it varies by target length
 
-5. **`failure_cost_analysis_{overhead|nooverhead}.png`** (fr25 only)
+5. **`failure_cost_analysis.png`** (fr25 only)
    - Two-panel visualization showing failure cost metrics
    - **Left panel**: Average CPU cost per failure (CPU-hours) vs. target job length
      - Y-axis shows CPU-hours wasted per failure
@@ -164,7 +163,7 @@ The script generates the following outputs in the specified output directory:
    - Critical insight: A single 24h failure wastes 24x more CPU resources than a single 1h failure
    - Only generated when failure data is present (skipped for fr0)
 
-6. **`failure_count_analysis_{overhead|nooverhead}.png`** (fr25 only)
+6. **`failure_count_analysis.png`** (fr25 only)
    - Two-panel visualization showing failure count distribution
    - **Left panel**: Number of failed jobs vs. target job length
    - **Right panel**: Actual failure rate (%) vs. target job length (with expected rate line)
@@ -174,7 +173,7 @@ The script generates the following outputs in the specified output directory:
 
 ### Data Tables
 
-7. **`target_job_length_analysis_summary_{overhead|nooverhead}.csv`**
+7. **`target_job_length_analysis_summary.csv`**
    - Comprehensive table with all metrics for all constructions across all target job lengths
    - Columns include:
      - Composition number
