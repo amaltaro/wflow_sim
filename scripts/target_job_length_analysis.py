@@ -8,7 +8,7 @@ cross-dimensional comparisons.
 
 Analysis: Target Job Length Optimization (Comparison #3)
 - Fixed: workflow_type + failure_rate
-- Variable: target_job_length (1h, 6h, 12h, 18h, 24h)
+- Variable: target_job_length (15m, 30m, 1h, 2h, 4h, 8h, 12h, 24h)
 - Compare: all 16 constructions across target job lengths
 - Primary Metric: event_throughput
 - Second Metric: network_transfer_mb_per_event
@@ -121,7 +121,7 @@ def collect_data_from_directories(base_path: str,
     if not base_dir.exists():
         raise FileNotFoundError(f"Directory not found: {base_dir}")
 
-    target_job_lengths = ['1h', '6h', '12h', '18h', '24h']
+    target_job_lengths = ['15m', '30m', '1h', '2h', '4h', '8h', '12h', '24h']
 
     # Dictionary: composition_number -> list of metrics (one per target job length)
     data_by_composition: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
@@ -155,11 +155,13 @@ def target_length_to_hours(target_length: str) -> float:
     """Convert target job length string to hours.
 
     Args:
-        target_length: Target job length string (e.g., '1h', '12h')
+        target_length: Target job length string (e.g., '15m', '30m', '1h', '12h')
 
     Returns:
         Hours as float
     """
+    if target_length.endswith('m'):
+        return int(target_length.replace('m', '')) / 60.0
     return float(target_length.replace('h', ''))
 
 
@@ -284,14 +286,13 @@ def plot_throughput_vs_target_length(data_by_composition: Dict[int, List[Dict[st
                 ax.plot(target_hours_values, throughput_values, '-', label=label, linewidth=1.5,
                        alpha=0.7, markersize=5)
 
-    # Format overhead label for title
-    ax.set_xlabel("Target Job Length (hours)", fontsize=12)
+    ax.set_xlabel("Target Job Length", fontsize=12)
     ax.set_ylabel("Event Throughput (events/second)", fontsize=12)
     ax.set_title("Event Throughput vs. Target Job Length", fontsize=14)
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax.grid(True, alpha=0.3)
     ax.set_xticks(target_hours)
-    ax.set_xticklabels([f"{int(h)}h" for h in target_hours])
+    ax.set_xticklabels(target_lengths)
 
     plt.tight_layout()
     output_path = os.path.join(output_dir, "throughput_vs_target_length.png")
@@ -355,14 +356,14 @@ def plot_throughput_improvement(data_by_composition: Dict[int, List[Dict[str, An
             ax.plot(target_hours_values, improvement_values, '-', label=label, linewidth=1.5,
                    alpha=0.7, markersize=5)
 
-    # Format overhead label for title
-    ax.set_xlabel("Target Job Length (hours)", fontsize=12)
+    baseline_label = target_lengths[0] if target_lengths else "shortest"
+    ax.set_xlabel("Target Job Length", fontsize=12)
     ax.set_ylabel("Throughput Improvement (%)", fontsize=12)
-    ax.set_title("Throughput Improvement vs. Target Job Length\n(Relative to 1h)", fontsize=14)
+    ax.set_title(f"Throughput Improvement vs. Target Job Length\n(Relative to {baseline_label})", fontsize=14)
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax.grid(True, alpha=0.3)
     ax.set_xticks(target_hours)
-    ax.set_xticklabels([f"{int(h)}h" for h in target_hours])
+    ax.set_xticklabels(target_lengths)
     ax.axhline(y=0, color='black', linestyle='--', linewidth=1, alpha=0.5)
 
     plt.tight_layout()
@@ -485,7 +486,7 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
     ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax1.grid(True, alpha=0.3)
     ax1.set_xticks(target_hours)
-    ax1.set_xticklabels([f"{int(h)}h" for h in target_hours])
+    ax1.set_xticklabels(target_lengths)
 
     # Plot 2: Remote Read vs. Remote Write breakdown (focus on extremes and best hybrid)
     # Find best hybrid for each target length
@@ -545,7 +546,7 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
     ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=8)
     ax2.grid(True, alpha=0.3)
     ax2.set_xticks(target_hours)
-    ax2.set_xticklabels([f"{int(h)}h" for h in target_hours])
+    ax2.set_xticklabels(target_lengths)
 
     plt.tight_layout()
     output_path = os.path.join(output_dir, "network_activity_vs_target_length.png")
@@ -737,7 +738,7 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
     ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax1.grid(True, alpha=0.3)
     ax1.set_xticks(target_hours)
-    ax1.set_xticklabels([f"{int(h)}h" for h in target_hours])
+    ax1.set_xticklabels(target_lengths)
 
     # Plot 2: Risk profile (max single failure cost - CPU time only)
     for comp_num in sorted(data_by_composition.keys()):
@@ -768,7 +769,7 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
     ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax2.grid(True, alpha=0.3)
     ax2.set_xticks(target_hours)
-    ax2.set_xticklabels([f"{int(h)}h" for h in target_hours])
+    ax2.set_xticklabels(target_lengths)
 
     plt.tight_layout()
     output_path = os.path.join(output_dir, "failure_cost_analysis.png")
@@ -851,7 +852,7 @@ def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, An
     ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax1.grid(True, alpha=0.3)
     ax1.set_xticks(target_hours)
-    ax1.set_xticklabels([f"{int(h)}h" for h in target_hours])
+    ax1.set_xticklabels(target_lengths)
 
     # Plot 2: Failure rate (actual) vs target job length
     for comp_num in sorted(data_by_composition.keys()):
@@ -882,7 +883,7 @@ def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, An
     ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax2.grid(True, alpha=0.3)
     ax2.set_xticks(target_hours)
-    ax2.set_xticklabels([f"{int(h)}h" for h in target_hours])
+    ax2.set_xticklabels(target_lengths)
     # Add horizontal line at expected failure rate if available
     if data_by_composition:
         first_data = next(iter(data_by_composition.values()))[0]
