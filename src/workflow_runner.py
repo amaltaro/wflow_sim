@@ -29,19 +29,25 @@ class WorkflowRunner:
     """
 
     def __init__(self, resource_config: Optional[ResourceConfig] = None,
-                 failure_rate: int = 0):
+                 *,
+                 failure_rate: int,
+                 data_transfer_rate_mb_per_s: float):
         """
         Initialize the workflow runner.
 
         Args:
             resource_config: Resource configuration for simulation
-            failure_rate: Job failure rate as percentage (0-99)
+            failure_rate: Job failure rate as percentage (0-99); required, no default
+                (supply from CLI parser or caller).
+            data_transfer_rate_mb_per_s: Network data transfer rate in MB/s for
+                overhead; required, no default (supply from CLI parser or caller).
         """
         self.resource_config = resource_config or ResourceConfig()
         self.failure_rate = failure_rate
         self.simulator = WorkflowSimulator(
             self.resource_config,
-            failure_rate=failure_rate
+            failure_rate=failure_rate,
+            data_transfer_rate_mb_per_s=data_transfer_rate_mb_per_s
         )
         self.logger = logging.getLogger(__name__)
 
@@ -378,7 +384,13 @@ def parse_arguments():
         '--failure-rate',
         type=int,
         default=0,
-        help='Job failure rate as percentage (0-99, default: 0). Note: 100% is not allowed as it prevents workflow convergence.'
+        help='Job failure rate as percentage (0-99, default: 0). Note: 100%% is not allowed as it prevents workflow convergence.'
+    )
+    parser.add_argument(
+        '--data-transfer-rate',
+        type=float,
+        default=100.0,
+        help='Network data transfer rate in MB/s for overhead calculation (default: 100.0)'
     )
     return parser.parse_args()
 
@@ -406,7 +418,8 @@ def main():
     # Create runner and execute workflow
     runner = WorkflowRunner(
         resource_config,
-        failure_rate=args.failure_rate
+        failure_rate=args.failure_rate,
+        data_transfer_rate_mb_per_s=args.data_transfer_rate
     )
     results = runner.run_workflow(args.input_workflow_path)
 

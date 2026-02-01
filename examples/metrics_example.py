@@ -37,7 +37,7 @@ def main():
 
     # Run simulation to get accurate results
     print("\nRunning workflow simulation...")
-    runner = WorkflowRunner()
+    runner = WorkflowRunner(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
     results = runner.run_workflow(template_path)
 
     if not results['success']:

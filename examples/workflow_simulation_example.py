@@ -54,8 +54,12 @@ def main():
     print(f"  Max Job Slots: {'Infinite' if resource_config.max_job_slots == -1 else resource_config.max_job_slots}")
     print()
     
-    # Create workflow runner
-    runner = WorkflowRunner(resource_config)
+    # Create workflow runner (failure_rate and data_transfer_rate passed explicitly)
+    runner = WorkflowRunner(
+        resource_config,
+        failure_rate=0,
+        data_transfer_rate_mb_per_s=100.0
+    )
     
     # Run simulation
     print("🚀 Starting workflow simulation...")

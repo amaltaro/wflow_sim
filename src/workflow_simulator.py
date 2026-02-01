@@ -24,7 +24,6 @@ except ImportError:
 
 # Job overhead constants
 TASKSET_OVERHEAD_SECONDS = 60.0  # Overhead per taskset in seconds
-DATA_TRANSFER_RATE_MB_PER_S = 100.0  # Data transfer rate in MB/s for overhead calculation
 RND_SEED = 42  # Random seed for reproducibility
 MAX_RETRIES = 3  # Maximum number of retries per job
 FAILURE_COST = 0.5  # Cost of failure (halved resources)
@@ -131,7 +130,9 @@ class WorkflowSimulator:
     """
 
     def __init__(self, resource_config: Optional[ResourceConfig] = None,
-                 failure_rate: int = 0):
+                 *,
+                 failure_rate: int,
+                 data_transfer_rate_mb_per_s: float):
         """
         Initialize the workflow simulator.
 
@@ -141,7 +142,10 @@ class WorkflowSimulator:
 
         Args:
             resource_config: Resource configuration for simulation
-            failure_rate: Job failure rate as percentage (0-99)
+            failure_rate: Job failure rate as percentage (0-99); required, no default
+                (supply from CLI parser or caller).
+            data_transfer_rate_mb_per_s: Network data transfer rate in MB/s for
+                overhead; required, no default (supply from CLI parser or caller).
         """
         self.resource_config = resource_config or ResourceConfig()
         self.failure_rate = float(failure_rate)
@@ -156,7 +160,7 @@ class WorkflowSimulator:
 
         self.job_metrics_calculator = JobMetricsCalculator(
             taskset_overhead_seconds=TASKSET_OVERHEAD_SECONDS,
-            data_transfer_rate_mb_per_s=DATA_TRANSFER_RATE_MB_PER_S
+            data_transfer_rate_mb_per_s=data_transfer_rate_mb_per_s
         )
         self.logger = logging.getLogger(__name__)
         self._setup_logging()
@@ -1104,7 +1108,13 @@ def parse_arguments():
         '--failure-rate',
         type=int,
         default=0,
-        help='Job failure rate as percentage (0-99, default: 0). Note: 100% is not allowed as it prevents workflow convergence.'
+        help='Job failure rate as percentage (0-99, default: 0). Note: 100%% is not allowed as it prevents workflow convergence.'
+    )
+    parser.add_argument(
+        '--data-transfer-rate',
+        type=float,
+        default=100.0,
+        help='Network data transfer rate in MB/s for overhead calculation (default: 100.0)'
     )
     return parser.parse_args()
 
@@ -1132,7 +1142,8 @@ def main():
     # Create simulator and run simulation
     simulator = WorkflowSimulator(
         resource_config,
-        failure_rate=args.failure_rate
+        failure_rate=args.failure_rate,
+        data_transfer_rate_mb_per_s=args.data_transfer_rate
     )
     result = simulator.simulate_workflow(args.input_workflow_path)
 
