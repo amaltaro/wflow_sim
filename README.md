@@ -119,8 +119,8 @@ python src/workflow_runner.py --help
 from src.workflow_runner import WorkflowRunner
 from src.workflow_metrics import WorkflowMetricsCalculator
 
-# Run simulation and get results
-runner = WorkflowRunner()
+# Run simulation and get results (failure_rate and data_transfer_rate from parser or pass explicitly)
+runner = WorkflowRunner(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
 results = runner.run_workflow('templates/3tasks_composition_001.json')
 
 # Calculate metrics from simulation results

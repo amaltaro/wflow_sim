@@ -125,8 +125,8 @@ print(f"Total Remote Write: {job_stats['total_write_remote_mb']:.2f} MB")
 from src.workflow_simulator import WorkflowSimulator
 from src.job_metrics import JobMetricsCalculator
 
-# Run simulation
-simulator = WorkflowSimulator()
+# Run simulation (failure_rate and data_transfer_rate from parser or pass explicitly)
+simulator = WorkflowSimulator(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
 result = simulator.simulate_workflow('workflow.json')
 
 # Calculate job statistics
@@ -256,7 +256,7 @@ pytest tests/test_job_metrics.py -v
 The overhead calculation uses configurable constants defined in `workflow_simulator.py`:
 
 - **`TASKSET_OVERHEAD_SECONDS`**: Default 60.0 seconds per taskset
-- **`DATA_TRANSFER_RATE_MB_PER_S`**: Default 100.0 MB/s for data transfer overhead calculation
+- **Data transfer rate**: Default 100.0 MB/s for data transfer overhead (configurable via `--data-transfer-rate` in simulator/runner)
 
 These can be customized when initializing `JobMetricsCalculator`:
 

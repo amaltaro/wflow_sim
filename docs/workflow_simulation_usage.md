@@ -75,8 +75,12 @@ resource_config = ResourceConfig(
     max_job_slots=-1  # Infinite slots
 )
 
-# Create runner and execute
-runner = WorkflowRunner(resource_config)
+# Create runner and execute (failure_rate and data_transfer_rate passed explicitly)
+runner = WorkflowRunner(
+    resource_config,
+    failure_rate=0,
+    data_transfer_rate_mb_per_s=100.0
+)
 results = runner.run_workflow('templates/3tasks_composition_001.json')
 
 # Print results
@@ -163,8 +167,12 @@ config = ResourceConfig(
 ```python
 from src.workflow_simulator import WorkflowSimulator, ResourceConfig
 
-# Create simulator
-simulator = WorkflowSimulator(ResourceConfig())
+# Create simulator (failure_rate and data_transfer_rate passed explicitly)
+simulator = WorkflowSimulator(
+    ResourceConfig(),
+    failure_rate=0,
+    data_transfer_rate_mb_per_s=100.0
+)
 
 # Run simulation
 result = simulator.simulate_workflow('templates/3tasks_composition_001.json')
@@ -181,8 +189,12 @@ simulator.write_simulation_result(result, 'simulation_results.json')
 ```python
 from src.workflow_runner import WorkflowRunner
 
-# Create runner
-runner = WorkflowRunner(resource_config)
+# Create runner (failure_rate and data_transfer_rate passed explicitly)
+runner = WorkflowRunner(
+    resource_config,
+    failure_rate=0,
+    data_transfer_rate_mb_per_s=100.0
+)
 
 # Run complete analysis (simulation + metrics)
 results = runner.run_workflow('templates/3tasks_composition_001.json')
@@ -355,7 +367,7 @@ The simulation includes realistic job overhead to provide more accurate resource
 
 - **Taskset Overhead**: 60 seconds per taskset (default: `TASKSET_OVERHEAD_SECONDS = 60.0`)
 - **Data Transfer Overhead**:
-  - Remote read: 1 second per 100MB/s of data (default: `DATA_TRANSFER_RATE_MB_PER_S = 100.0`)
+  - Remote read: 1 second per 100MB/s of data (default: 100.0 MB/s, configurable via `--data-transfer-rate`)
   - Remote write: 1 second per 100MB/s of data
 - **Total Overhead**: Sum of all overhead components, added to CPU metrics
 
