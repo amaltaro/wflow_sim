@@ -13,6 +13,11 @@ MAX_JOB_SLOTS := -1
 # Failure rates as percentages: 0, 1, 5, 10, 25
 FAILURE_RATES := 0 1 5 10 25
 
+# Data transfer rate dimension (MB/s and directory names; MBps/GBps = bytes per second)
+DATA_TRANSFER_RATE_MBPS := 10 100 1000 10000
+DATA_TRANSFER_RATE_DIRS := 10MBps 100MBps 1GBps 10GBps
+DATA_TRANSFER_RATE_FR := 0
+
 # Workflow use cases to simulate (modify this list as needed)
 USE_CASES := case1_real case2_homo case3_hetero
 
@@ -31,14 +36,15 @@ help:
 	@echo "  setup          - Set up the project environment"
 	@echo "  test           - Run tests"
 	@echo "  run            - Run single workflow simulation"
-	@echo "  simulate-all   - Run simulations for all wallclock times and failure rates"
-	@echo "  visualize-all  - Generate visualizations for all wallclock times and failure rates"
+	@echo "  simulate-all   - Run simulations (all times, failure rates, data rates)"
+	@echo "  visualize-all  - Generate visualizations (all times, failure rates, data rates)"
 	@echo "  all            - Run simulations and visualizations for all combinations"
 	@echo ""
 	@echo "Analysis targets:"
 	@echo "  analyze-failure-rate           - Analyze failure rate impact across all workflow types"
 	@echo "  analyze-workflow-type-sensitivity - Analyze workflow type sensitivity (12h, fr0)"
 	@echo "  analyze-target-job-length      - Analyze target job length optimization (all workflow types, fr0 & fr25)"
+	@echo "  analyze-data-transfer-rate    - Analyze data transfer rate sensitivity (run after simulate-data-transfer-rate)"
 	@echo ""
 	@echo "Cleanup targets:"
 	@echo "  clean          - Clean up all generated files"
@@ -81,15 +87,17 @@ run:
 	$(PYTHON) -m src.workflow_runner --target-wallclock-time $(TARGET_WALLCLOCK_TIME) --input-workflow-path templates/others/case1_real/case1_real_const_001.json
 
 # Run simulations for all configured use cases
-# All simulations include overhead (taskset bootstrap and remote I/O)
+# All simulations include overhead (taskset bootstrap and remote I/O).
+# Output: results/sim/others/<case>/<time>/fr<fr>/<data_rate>/
 .PHONY: simulate-all
 simulate-all:
 	@echo "Starting batch simulation for use cases: $(USE_CASES)"
 	@echo "Target job lengths: ${WALLCLOCK_TIMES} seconds"
 	@echo "Failure rates: $(FAILURE_RATES)%"
+	@echo "Data transfer rates: $(DATA_TRANSFER_RATE_DIRS)"
 	@echo "Max job slots: $(MAX_JOB_SLOTS)"
 	@echo ""
-	@total_combinations=$$(($$(echo $(USE_CASES) | wc -w) * $$(echo $(WALLCLOCK_TIMES) | wc -w) * $$(echo $(FAILURE_RATES) | wc -w))); \
+	@total_combinations=$$(($$(echo $(USE_CASES) | wc -w) * $$(echo $(WALLCLOCK_TIMES) | wc -w) * $$(echo $(FAILURE_RATES) | wc -w) * 4)); \
 	echo "Total simulation combinations: $$total_combinations"; \
 	echo ""
 	@for wallclock_time in $(WALLCLOCK_TIMES); do \
@@ -100,16 +108,26 @@ simulate-all:
 		for use_case in $(USE_CASES); do \
 			echo "=== Simulating use case: $$use_case ($$time_dir) ==="; \
 			for failure_rate in $(FAILURE_RATES); do \
-				echo "  --- Failure rate: $$failure_rate% ---"; \
-				for workflow_file in $(TEMPLATES_DIR)/$$use_case/*_const_*.json; do \
-					if [ -f "$$workflow_file" ]; then \
-						echo "    Running simulation: $$(basename $$workflow_file) (fr$$failure_rate)"; \
-						$(PYTHON) -m src.workflow_runner \
-							--target-wallclock-time $$wallclock_time \
-							--max-job-slots $(MAX_JOB_SLOTS) \
-							--failure-rate $$failure_rate \
-							--input-workflow-path $$workflow_file || exit 1; \
-					fi; \
+				for rate_dir in $(DATA_TRANSFER_RATE_DIRS); do \
+					case $$rate_dir in \
+						10MBps) rate=10;; \
+						100MBps) rate=100;; \
+						1GBps) rate=1000;; \
+						10GBps) rate=10000;; \
+						*) rate=100;; \
+					esac; \
+					echo "  --- Failure rate: $$failure_rate%, data rate: $$rate_dir ---"; \
+					for workflow_file in $(TEMPLATES_DIR)/$$use_case/*_const_*.json; do \
+						if [ -f "$$workflow_file" ]; then \
+							echo "    Running: $$(basename $$workflow_file) (fr$$failure_rate, $$rate_dir)"; \
+							$(PYTHON) -m src.workflow_runner \
+								--target-wallclock-time $$wallclock_time \
+								--max-job-slots $(MAX_JOB_SLOTS) \
+								--failure-rate $$failure_rate \
+								--data-transfer-rate $$rate \
+								--input-workflow-path $$workflow_file || exit 1; \
+						fi; \
+					done; \
 				done; \
 			done; \
 			echo "=== Completed use case: $$use_case ($$time_dir) ==="; \
@@ -119,13 +137,14 @@ simulate-all:
 	done
 	@echo "All simulations completed!"
 
-# Generate visualizations for all use cases, target job lengths, and failure rates
-# Note: Run 'make setup-viz' first if visualization dependencies are not installed
+# Generate visualizations for all use cases, target job lengths, failure rates, and data rates.
+# Output: results/vis/others/<case>/<time>/fr<fr>/<data_rate>/
 .PHONY: visualize-all
 visualize-all:
 	@echo "Starting batch visualization for use cases: $(USE_CASES)"
 	@echo "Target job lengths: ${WALLCLOCK_TIMES} seconds"
 	@echo "Failure rates: $(FAILURE_RATES)%"
+	@echo "Data transfer rates: $(DATA_TRANSFER_RATE_DIRS)"
 	@echo ""
 	@for wallclock_time in $(WALLCLOCK_TIMES); do \
 		time_dir=$$(awk -v t=$$wallclock_time 'BEGIN{if(t<3600) printf "%dm", t/60; else printf "%dh", t/3600}'); \
@@ -137,16 +156,18 @@ visualize-all:
 			use_case_base_dir="$(RESULTS_DIR)/$$use_case/$$time_dir"; \
 			if [ -d "$$use_case_base_dir" ]; then \
 				for failure_rate in $(FAILURE_RATES); do \
-					fr_dir="$$use_case_base_dir/fr$$failure_rate"; \
-					if [ -d "$$fr_dir" ]; then \
-						output_dir="$(VIZ_OUTPUT_DIR)/$$use_case/$$time_dir/fr$$failure_rate"; \
-						echo "  Processing results directory: $$fr_dir"; \
-						$(PYTHON) scripts/workflow_visualization.py \
-							$$fr_dir \
-							--output-dir $$output_dir || exit 1; \
-					else \
-						echo "  Warning: Results directory $$fr_dir not found. Skipping."; \
-					fi; \
+					for rate_dir in $(DATA_TRANSFER_RATE_DIRS); do \
+						fr_dir="$$use_case_base_dir/fr$$failure_rate/$$rate_dir"; \
+						if [ -d "$$fr_dir" ]; then \
+							output_dir="$(VIZ_OUTPUT_DIR)/$$use_case/$$time_dir/fr$$failure_rate/$$rate_dir"; \
+							echo "  Processing: $$fr_dir"; \
+							$(PYTHON) scripts/workflow_visualization.py \
+								$$fr_dir \
+								--output-dir $$output_dir || exit 1; \
+						else \
+							echo "  Warning: Results directory $$fr_dir not found. Skipping."; \
+						fi; \
+					done; \
 				done; \
 			else \
 				echo "  Warning: Results base directory $$use_case_base_dir not found. Skipping."; \
@@ -233,6 +254,20 @@ analyze-target-job-length:
 	done
 	@echo "All target job length optimization analyses completed!"
 
+# Analyze data transfer rate sensitivity (run after simulate-all or simulate-data-transfer-rate).
+# Reads from unified tree $(RESULTS_DIR)/.../12h/fr0/<data_rate>/, writes to results/analysis/data_transfer_rate/
+.PHONY: analyze-data-transfer-rate
+analyze-data-transfer-rate:
+	@echo "Starting data transfer rate sensitivity analysis"
+	@echo "Input: $(RESULTS_DIR) (12h, fr0, all data rates)"
+	@echo "Output: results/analysis/data_transfer_rate/"
+	@echo ""
+	$(PYTHON) scripts/data_transfer_rate_analysis.py \
+		$(RESULTS_DIR) \
+		--output-dir results/analysis/data_transfer_rate || exit 1
+	@echo "Results saved to: results/analysis/data_transfer_rate/"
+	@echo "Data transfer rate analysis completed!"
+
 # Combined target: run simulations and generate visualizations
 .PHONY: all
 all:
@@ -270,6 +305,7 @@ clean:
 	find results/sim -name "*.json" -type f -delete 2>/dev/null || true
 	find results -name "*_overhead.json" -type f -delete 2>/dev/null || true
 	rm -rf $(VIZ_OUTPUT_DIR)/
+	rm -rf results/analysis/data_transfer_rate/
 	@echo "Cleanup complete!"
 
 # Clean only visualization outputs
