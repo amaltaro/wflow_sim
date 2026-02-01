@@ -19,8 +19,7 @@ def plot_io_patterns(all_simulation_data: List[Dict],
                      sim_groups: List[Dict],
                      jobs: List[Dict],
                      output_dir: str = "plots",
-                     custom_labels: List[str] = None,
-                     overhead_enabled: bool = True):
+                     custom_labels: List[str] = None):
     """Create I/O pattern analysis plots for workflow comparison.
 
     Plots:
@@ -197,9 +196,7 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     ax4.grid(True)
 
     plt.tight_layout()
-    # Add suffix to match simulation results naming convention
-    suffix = "_nooverhead" if not overhead_enabled else "_overhead"
-    filename = f"io_patterns_comparison{suffix}.png"
+    filename = "io_patterns_comparison.png"
     plt.savefig(os.path.join(output_dir, filename))
     plt.close()
     print(f"  => I/O patterns comparison saved to {output_dir}/{filename}")
@@ -209,8 +206,7 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
                               sim_groups: List[Dict],
                               jobs: List[Dict],
                               output_dir: str = "plots",
-                              custom_labels: List[str] = None,
-                              overhead_enabled: bool = True):
+                              custom_labels: List[str] = None):
     """Create resource utilization analysis plots for workflow comparison.
 
     Plots:
@@ -358,9 +354,7 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     ax4.legend(lines1 + lines2, labels1 + labels2)
 
     plt.tight_layout()
-    # Add suffix to match simulation results naming convention
-    suffix = "_nooverhead" if not overhead_enabled else "_overhead"
-    filename = f"resource_utilization_comparison{suffix}.png"
+    filename = "resource_utilization_comparison.png"
     plt.savefig(os.path.join(output_dir, filename))
     plt.close()
     print(f"  => Resource utilization comparison saved to {output_dir}/{filename}")
@@ -370,8 +364,7 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
                              sim_groups: List[Dict],
                              jobs: List[Dict],
                              output_dir: str = "plots",
-                             custom_labels: List[str] = None,
-                             overhead_enabled: bool = True):
+                             custom_labels: List[str] = None):
     """Create performance metrics analysis plots for workflow comparison.
 
     Plots:
@@ -471,9 +464,7 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
     ax2.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
 
     plt.tight_layout()
-    # Add suffix to match simulation results naming convention
-    suffix = "_nooverhead" if not overhead_enabled else "_overhead"
-    filename = f"performance_metrics_comparison{suffix}.png"
+    filename = "performance_metrics_comparison.png"
     plt.savefig(os.path.join(output_dir, filename))
     plt.close()
     print(f"  => Performance metrics comparison saved to {output_dir}/{filename}")
@@ -977,36 +968,22 @@ def extract_job_metrics(simulation_data: Dict[str, Any], file_name: str) -> List
 def process_simulation_directory(directory_path: str, overhead_filter: str = None) -> tuple:
     """Process simulation files in a directory incrementally to minimize memory usage.
 
-    This function processes each file as it loads it, extracting metrics immediately
-    and keeping full simulation data for comparison plots.
+    Processes all simulation result JSON files (*.json) in the directory.
 
     Args:
         directory_path: Path to directory containing simulation files
-        overhead_filter: Optional filter for overhead type. Options:
-            - "overhead": Process only files ending with "_overhead.json"
-            - "nooverhead": Process only files ending with "_nooverhead.json"
-            - None: Process all files (default)
+        overhead_filter: Unused; kept for API compatibility.
 
     Returns:
         tuple: (all_groups, all_jobs, all_simulation_data) - aggregated metrics and
                all simulation data for comparison plots
     """
     simulation_files = find_simulation_files(directory_path)
-
-    # Filter files by overhead type if specified
-    if overhead_filter == "overhead":
-        files_to_process = [f for f in simulation_files if Path(f).name.endswith("_overhead.json")]
-        print(f"Found {len(files_to_process)} overhead files (filtering for overhead type)")
-    elif overhead_filter == "nooverhead":
-        files_to_process = [f for f in simulation_files if Path(f).name.endswith("_nooverhead.json")]
-        print(f"Found {len(files_to_process)} nooverhead files (filtering for nooverhead type)")
-    else:
-        # Process all files (no filter)
-        files_to_process = simulation_files
-        print(f"Found {len(files_to_process)} JSON files (processing all files)")
+    files_to_process = simulation_files
+    print(f"Found {len(files_to_process)} simulation files")
 
     if not files_to_process:
-        print(f"Warning: No files found matching filter '{overhead_filter}'")
+        print("Warning: No simulation JSON files found")
         return [], [], []
 
     all_groups = []
@@ -1052,19 +1029,13 @@ def process_simulation_directory(directory_path: str, overhead_filter: str = Non
 
     print(f"Successfully processed {files_processed} simulation files")
     print(f"Extracted {len(all_groups)} groups and {len(all_jobs)} jobs")
-    if all_simulation_data:
-        continue
-        # print(f"Sample workflow metrics: {pformat(all_simulation_data[0])}")
-        # print(f"Sample group metrics: {pformat(all_groups[0])}")
-        # print(f"Sample job metrics: {pformat(all_jobs[0])}")
 
     return all_groups, all_jobs, all_simulation_data
 
 
 def generate_summary_table(all_simulation_data: List[Dict],
                           sim_groups: List[Dict],
-                          output_dir: str,
-                          overhead_enabled: bool) -> pd.DataFrame:
+                          output_dir: str) -> pd.DataFrame:
     """Generate a summary table with key metrics for each workflow construction.
 
     Creates CSV and formatted text versions of the summary table.
@@ -1073,7 +1044,6 @@ def generate_summary_table(all_simulation_data: List[Dict],
         all_simulation_data: List of simulation data dictionaries
         sim_groups: List of group metrics dictionaries
         output_dir: Output directory for the table file
-        overhead_enabled: Whether overhead is enabled (True for overhead, False for nooverhead)
 
     Returns:
         pandas DataFrame containing the summary table
@@ -1130,10 +1100,8 @@ def generate_summary_table(all_simulation_data: List[Dict],
     if 'Comp' in df.columns:
         df = df.sort_values('Comp').reset_index(drop=True)
 
-    suffix = "_nooverhead" if not overhead_enabled else "_overhead"
-
     # Save as CSV (with original column names for compatibility)
-    csv_filename = f"workflow_summary_table{suffix}.csv"
+    csv_filename = "workflow_summary_table.csv"
     csv_path = os.path.join(output_dir, csv_filename)
     # Create a version with original column names for CSV
     df_csv = df.copy()
@@ -1148,7 +1116,7 @@ def generate_summary_table(all_simulation_data: List[Dict],
     print(f"  => Summary table saved to {csv_path}")
 
     # Save as formatted text file with better formatting
-    txt_filename = f"workflow_summary_table{suffix}.txt"
+    txt_filename = "workflow_summary_table.txt"
     txt_path = os.path.join(output_dir, txt_filename)
     with open(txt_path, 'w') as f:
         f.write("Workflow Construction Summary Table\n")
@@ -1209,63 +1177,53 @@ def generate_summary_table(all_simulation_data: List[Dict],
 def generate_workflow_visualizations(all_simulation_data: List[Dict],
                                     sim_groups: List[Dict],
                                     jobs: List[Dict],
-                                    output_dir: str,
-                                    overhead_enabled: bool) -> None:
-    """Generate all workflow comparison visualizations for a given overhead type.
+                                    output_dir: str) -> None:
+    """Generate all workflow comparison visualizations.
 
     Args:
         all_simulation_data: List of simulation data dictionaries
         sim_groups: List of group metrics dictionaries
         jobs: List of job metrics dictionaries
         output_dir: Output directory for visualization files
-        overhead_enabled: Whether overhead is enabled (True for overhead, False for nooverhead)
     """
-    overhead_type = "overhead" if overhead_enabled else "nooverhead"
-
     if len(all_simulation_data) > 0:
-        print(f"\nGenerating workflow comparison for {len(all_simulation_data)} {overhead_type} workflow(s)...")
+        print(f"\nGenerating workflow comparison for {len(all_simulation_data)} workflow(s)...")
         try:
-            # Generate summary table (works for any number of workflows)
             generate_summary_table(
                 all_simulation_data=all_simulation_data,
                 sim_groups=sim_groups,
-                output_dir=output_dir,
-                overhead_enabled=overhead_enabled
+                output_dir=output_dir
             )
 
-            # Generate plots (only if more than one workflow)
             if len(all_simulation_data) > 1:
                 plot_io_patterns(
                     all_simulation_data=all_simulation_data,
                     sim_groups=sim_groups,
                     jobs=jobs,
-                    output_dir=output_dir,
-                    overhead_enabled=overhead_enabled
+                    output_dir=output_dir
                 )
 
                 plot_resource_utilization(
                     all_simulation_data=all_simulation_data,
                     sim_groups=sim_groups,
                     jobs=jobs,
-                    output_dir=output_dir,
-                    overhead_enabled=overhead_enabled
+                    output_dir=output_dir
                 )
 
                 plot_performance_metrics(
                     all_simulation_data=all_simulation_data,
                     sim_groups=sim_groups,
                     jobs=jobs,
-                    output_dir=output_dir,
-                    overhead_enabled=overhead_enabled
+                    output_dir=output_dir
                 )
             else:
                 print(f"  => Skipping comparison plots (only {len(all_simulation_data)} workflow found)")
         except Exception as e:
-            print(f"Warning: Could not generate {overhead_type} workflow comparison: {e}")
+            print(f"Warning: Could not generate workflow comparison: {e}")
             import traceback
             traceback.print_exc()
     else:
-        print(f"\nNo {overhead_type} files found, skipping {overhead_type} visualizations")
+        print("\nNo simulation files found, skipping visualizations")
 
 
 if __name__ == "__main__":
@@ -1284,38 +1242,15 @@ if __name__ == "__main__":
 
     print(f"Processing simulation data from directory: {args.simulation_directory}")
     try:
-        # Process overhead files
-        print("\n" + "="*60)
-        print("Processing OVERHEAD files")
-        print("="*60)
         groups, jobs, all_simulation_data = process_simulation_directory(
-            args.simulation_directory, overhead_filter="overhead"
+            args.simulation_directory
         )
 
-        # Generate visualizations for overhead files
         generate_workflow_visualizations(
             all_simulation_data=all_simulation_data,
             sim_groups=groups,
             jobs=jobs,
-            output_dir=args.output_dir,
-            overhead_enabled=True
-        )
-
-        # Process nooverhead files
-        print("\n" + "="*60)
-        print("Processing NOOVERHEAD files")
-        print("="*60)
-        groups, jobs, all_simulation_data = process_simulation_directory(
-            args.simulation_directory, overhead_filter="nooverhead"
-        )
-
-        # Generate visualizations for nooverhead files
-        generate_workflow_visualizations(
-            all_simulation_data=all_simulation_data,
-            sim_groups=groups,
-            jobs=jobs,
-            output_dir=args.output_dir,
-            overhead_enabled=False
+            output_dir=args.output_dir
         )
 
     except Exception as e:
