@@ -42,7 +42,7 @@ help:
 	@echo ""
 	@echo "Analysis targets:"
 	@echo "  analyze-failure-rate           - Analyze failure rate impact across all workflow types"
-	@echo "  analyze-workflow-type-sensitivity - Analyze workflow type sensitivity (12h, fr0)"
+	@echo "  analyze-workflow-type-sensitivity - Analyze workflow type sensitivity (12h, fr0/fr5/fr25)"
 	@echo "  analyze-target-job-length      - Analyze target job length optimization (all workflow types, fr0 & fr25)"
 	@echo "  analyze-data-transfer-rate    - Analyze data transfer rate sensitivity (run after simulate-data-transfer-rate)"
 	@echo ""
@@ -213,17 +213,22 @@ analyze-failure-rate:
 
 # Generate workflow type sensitivity analysis (cross-dimensional comparison)
 # Analyzes how different workflow types respond to hybrid constructions
+# Runs for failure rates: 0%, 5%, 25% (fr0, fr5, fr25)
 .PHONY: analyze-workflow-type-sensitivity
 analyze-workflow-type-sensitivity:
 	@echo "Starting workflow type sensitivity analysis"
 	@echo "Use cases: $(USE_CASES)"
-	@echo "Default configuration: 12h target, fr0 failure rate"
+	@echo "Configuration: 12h target, failure rates fr0 (0%), fr5 (5%), fr25 (25%)"
 	@echo ""
-	$(PYTHON) scripts/workflow_type_sensitivity.py \
-		$(RESULTS_DIR) \
-		12h \
-		fr0 || exit 1
-	@echo "Results saved to: results/analysis/workflow_type_sensitivity/12h/fr0/"
+	@for failure_rate in fr0 fr5 fr25; do \
+		echo "=== Failure rate: $$failure_rate ==="; \
+		$(PYTHON) scripts/workflow_type_sensitivity.py \
+			$(RESULTS_DIR) \
+			12h \
+			$$failure_rate || exit 1; \
+		echo "  Results saved to: results/analysis/workflow_type_sensitivity/12h/$$failure_rate/"; \
+		echo ""; \
+	done
 	@echo "Workflow type sensitivity analysis completed!"
 
 # Generate target job length optimization analysis (cross-dimensional comparison)
