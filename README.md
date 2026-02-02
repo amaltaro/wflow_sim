@@ -22,9 +22,12 @@ DAGFlowSim provides a powerful workflow simulation engine that:
 ├── tests/         # Unit tests (pytest)
 ├── docs/          # Detailed documentation
 ├── templates/     # JSON workflow templates
-├── results/       # Simulation and visualization outputs
-│   ├── sim/      # Simulation results (JSON)
-│   └── vis/      # Visualization diagrams (PNG)
+├── results/       # Simulation, visualization, and analysis outputs
+│   ├── sim/       # Simulation results (JSON); batch: sim/others/<case>/<time>/fr<fr>/<rate>/
+│   ├── vis/       # Visualization diagrams (PNG); same nesting as sim
+│   ├── analysis/  # Cross-dimensional analyses (failure_rate, workflow_type_sensitivity, etc.)
+│   ├── real/      # Real workflow execution data (summaries, visualizations)
+│   └── real_norm/ # Normalized real data (per requested events) for fair comparison
 ├── examples/      # Usage examples
 └── README.md      # Project overview
 ```
@@ -111,7 +114,7 @@ python src/workflow_runner.py --input-workflow-path templates/3tasks/seq/3tasks_
 python src/workflow_runner.py --help
 ```
 
-**Output Structure**: Results are automatically saved to the `results/sim/` directory with the same structure as the input file (excluding the `templates/` prefix).
+**Output**: Single-run results go to `results/sim/` mirroring the input path. Batch runs (Makefile) use a unified tree under `results/sim/others/` (see Batch Processing).
 
 ### 2. Python API Usage
 
@@ -166,10 +169,7 @@ python src/workflow_runner.py --help
 
 ### Output Structure
 
-Results are automatically saved to the `results/sim/` directory with the same structure as the input file:
-
-- Input: `templates/3tasks/seq/workflow.json` → Output: `results/sim/3tasks/seq/workflow.json`
-- Input: `templates/workflow.json` → Output: `results/sim/workflow.json`
+Single-run: results follow the input path under `results/sim/` (e.g. `templates/others/case1_real/...` → `results/sim/others/case1_real/...`). Batch runs use the unified structure described under Batch Processing.
 
 ## Batch Processing with Makefile
 
@@ -190,29 +190,24 @@ This will:
 ### Available Makefile Targets
 
 ```bash
-# Show all available targets
-make help
+make help                    # Show all targets
 
-# Run simulations for all configured use cases
-make simulate-all
+# Simulations and visualizations
+make simulate-all            # All use cases × times × failure rates × data rates
+make visualize-all           # Visualizations for existing sim results
+make all                     # simulate-all + visualize-all
+make run                     # Single workflow (case1_real const_001, 12h)
 
-# Generate visualizations for all use cases (requires existing results)
-make visualize-all
+# Analysis (run after simulate-all; writes to results/analysis/)
+make analyze-failure-rate
+make analyze-workflow-type-sensitivity
+make analyze-target-job-length
+make analyze-data-transfer-rate
 
-# Run both simulations and visualizations (recommended)
-make all
-
-# Run a single workflow simulation (original behavior)
-make run
-
-# Clean up all generated files
-make clean
-
-# Clean only visualization outputs
-make clean-viz
-
-# Clean only simulation results
-make clean-results
+# Cleanup
+make clean                   # All generated files
+make clean-viz               # Only visualizations
+make clean-results           # Only simulation results
 ```
 
 ### Customizing Use Cases
@@ -240,8 +235,13 @@ The Makefile uses the following default configuration (editable in `Makefile`):
 
 ### Output Locations
 
-- **Simulation results**: Saved to `results/sim/others/<use_case>/` directory
-- **Visualization diagrams**: Saved to `results/vis/others/<use_case>/` directory
+Batch outputs use a unified tree (dimensions: use case, target job length, failure rate, data transfer rate):
+
+- **Simulations**: `results/sim/others/<use_case>/<time_dir>/fr<failure_rate>/<data_rate>/` (e.g. `12h`, `fr0`, `100MBps`)
+- **Visualizations**: `results/vis/others/<use_case>/<time_dir>/fr<failure_rate>/<data_rate>/`
+- **Analysis**: `results/analysis/<analysis_name>/...` (e.g. `failure_rate/<use_case>/<time_dir>/`, `workflow_type_sensitivity/12h/fr0/`, `target_job_length/<use_case>/fr0/`, `data_transfer_rate/fr0/`)
+- **Real execution**: `results/real/` — real workflow run summaries and visualizations
+- **Real (normalized)**: `results/real_norm/` — same data normalized so each workflow is scaled to the requested number of events for fair comparison
 
 The visualization script generates comparison plots including:
 - I/O patterns analysis (per event and total volumes)
