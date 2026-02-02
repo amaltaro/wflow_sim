@@ -87,7 +87,7 @@ python scripts/workflow_type_sensitivity.py \
 #### Using Makefile
 
 ```bash
-# Run analysis for default configuration (12h, fr0)
+# Run analysis for 12h with failure rates 0%, 5%, 25% (fr0, fr5, fr25)
 make analyze-workflow-type-sensitivity
 ```
 
