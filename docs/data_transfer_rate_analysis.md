@@ -10,7 +10,7 @@ This document describes the data transfer rate sensitivity analysis, which evalu
 - **Variable Dimension**: network data transfer rate (10, 100, 1000, 10000 MB/s)
 - **Compare**: Const 1, Const 16, and best hybrid across data rates
 - **Primary Metric**: Event throughput
-- **Second Metric**: Network transfer per event
+- **Job Overhead**: Mean and std of job wallclock overhead from simulation_result.jobs (sample up to 10 per group); lower data rate increases overhead
 
 ## Purpose
 
@@ -18,7 +18,7 @@ This analysis helps demonstrate:
 
 1. How workflow constructions (1-16) perform under different network overhead assumptions
 2. Whether hybrid constructions remain beneficial at low vs. high data transfer rates
-3. Sensitivity of throughput and network efficiency to the data transfer rate parameter
+3. Sensitivity of throughput and job overhead to the data transfer rate parameter (overhead increases at lower rates)
 4. Identification of the best hybrid construction at each rate (per workflow type)
 
 ## Simulation Setup
@@ -68,6 +68,7 @@ The script looks for `base_path/<workflow_type>/12h/fr0/<rate_dir>/*.json` for e
 - `--rate-dirs`: Rate directory names (default: `10MBps 100MBps 1GBps 10GBps`)
 - `--workflow-types`: Workflow types to analyze (default: `case1_real case2_homo case3_hetero`)
 - `--output-dir`: Output directory (default: `results/analysis/data_transfer_rate`)
+- `--failure-rate`: Failure rate directory, e.g. fr0, fr5 (default: fr0)
 
 ### Example
 
@@ -111,16 +112,17 @@ The script generates:
    - Const 1, Const 16, and best hybrid; best hybrid construction number annotated
    - Shows how throughput changes with network overhead assumption
 
-2. **`network_efficiency_vs_data_transfer_rate.png`**
-   - Three panels: network transfer per event (MB/event) vs. data transfer rate (log scale)
-   - Const 1, Const 16, and best hybrid
-   - Shows whether network efficiency is sensitive to the rate parameter
+2. **`job_overhead_secs_vs_data_transfer_rate.png`**
+   - Grouped bar chart: mean job overhead in **wallclock seconds** vs. data transfer rate; one group per rate, three bars per group (Const 1, Const 16, Best Hybrid) with std dev error bars
+3. **`job_overhead_cpu_time_vs_data_transfer_rate.png`**
+   - Grouped bar chart: mean job overhead in **CPU seconds** vs. data transfer rate; same layout as above
+   - Stats from simulation_result.jobs (sample of up to 10 jobs per group); lower data rate increases overhead
 
 ### Data Tables
 
-3. **`data_transfer_rate_analysis_summary.csv`**
+4. **`data_transfer_rate_analysis_summary.csv`**
    - Rows: one per (rate, workflow_type, composition_number)
-   - Columns: data_transfer_rate_mbps, rate_dir, workflow_type, composition_number, event_throughput, wall_time_per_event, cpu_time_per_event, network_transfer_mb_per_event, cpu_utilization, memory_occupancy, total_groups
+   - Columns: data_transfer_rate_mbps, rate_dir, workflow_type, composition_number, event_throughput, wall_time_per_event, cpu_time_per_event, network_transfer_mb_per_event, cpu_utilization, memory_occupancy, total_groups, job_overhead_secs_mean, job_overhead_secs_std, job_overhead_cpu_time_mean, job_overhead_cpu_time_std, job_overhead_sample_count
 
 ## Requirements
 
@@ -140,7 +142,7 @@ The script generates:
 
 ## Notes
 
-- The script expects fixed 12h and fr0; it reads `base_path/<workflow_type>/12h/fr0/<rate_dir>/*.json`.
+- The script uses fixed 12h and a chosen failure rate (default fr0); it reads `base_path/<workflow_type>/12h/<failure_rate>/<rate_dir>/*.json`.
 - Missing rate or workflow directories are skipped with a warning.
 - Best hybrid is identified per (rate, workflow_type) using event throughput with network transfer as tiebreaker.
 - Data transfer rate is used in the simulator to compute network transfer overhead (time = data_mb / rate_mb_per_s).
