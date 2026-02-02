@@ -43,8 +43,8 @@ help:
 	@echo "Analysis targets:"
 	@echo "  analyze-failure-rate           - Analyze failure rate impact across all workflow types"
 	@echo "  analyze-workflow-type-sensitivity - Analyze workflow type sensitivity (12h, fr0/fr5/fr25)"
-	@echo "  analyze-target-job-length      - Analyze target job length optimization (all workflow types, fr0 & fr25)"
-	@echo "  analyze-data-transfer-rate    - Analyze data transfer rate sensitivity (run after simulate-data-transfer-rate)"
+	@echo "  analyze-target-job-length      - Analyze target job length optimization (all workflow types, fr0/fr5/fr25)"
+	@echo "  analyze-data-transfer-rate    - Analyze data transfer rate sensitivity (12h, fr0 & fr5)"
 	@echo ""
 	@echo "Cleanup targets:"
 	@echo "  clean          - Clean up all generated files"
@@ -237,13 +237,13 @@ analyze-workflow-type-sensitivity:
 analyze-target-job-length:
 	@echo "Starting target job length optimization analysis"
 	@echo "Use cases: $(USE_CASES)"
-	@echo "Failure rates: fr0, fr25"
+	@echo "Failure rates: fr0 (0%), fr5 (5%), fr25 (25%)"
 	@echo ""
 	@for use_case in $(USE_CASES); do \
 		echo "=== Analyzing use case: $$use_case ==="; \
 		use_case_base_dir="$(RESULTS_DIR)/$$use_case"; \
 		if [ -d "$$use_case_base_dir" ]; then \
-			for failure_rate in fr0 fr25; do \
+			for failure_rate in fr0 fr5 fr25; do \
 				echo "  --- Failure rate: $$failure_rate ---"; \
 				$(PYTHON) scripts/target_job_length_analysis.py \
 					$(RESULTS_DIR) \
@@ -260,17 +260,23 @@ analyze-target-job-length:
 	@echo "All target job length optimization analyses completed!"
 
 # Analyze data transfer rate sensitivity (run after simulate-all or simulate-data-transfer-rate).
-# Reads from unified tree $(RESULTS_DIR)/.../12h/fr0/<data_rate>/, writes to results/analysis/data_transfer_rate/
+# Reads from unified tree $(RESULTS_DIR)/.../12h/<fr>/<data_rate>/, writes to results/analysis/data_transfer_rate/<fr>/
+# Runs for failure rates: fr0 (0%), fr5 (5%)
 .PHONY: analyze-data-transfer-rate
 analyze-data-transfer-rate:
 	@echo "Starting data transfer rate sensitivity analysis"
-	@echo "Input: $(RESULTS_DIR) (12h, fr0, all data rates)"
-	@echo "Output: results/analysis/data_transfer_rate/"
+	@echo "Input: $(RESULTS_DIR) (12h, fr0 & fr5, all data rates)"
+	@echo "Output: results/analysis/data_transfer_rate/<failure_rate>/"
 	@echo ""
-	$(PYTHON) scripts/data_transfer_rate_analysis.py \
-		$(RESULTS_DIR) \
-		--output-dir results/analysis/data_transfer_rate || exit 1
-	@echo "Results saved to: results/analysis/data_transfer_rate/"
+	@for failure_rate in fr0 fr5; do \
+		echo "=== Failure rate: $$failure_rate ==="; \
+		$(PYTHON) scripts/data_transfer_rate_analysis.py \
+			$(RESULTS_DIR) \
+			--failure-rate $$failure_rate \
+			--output-dir results/analysis/data_transfer_rate/$$failure_rate || exit 1; \
+		echo "  Results saved to: results/analysis/data_transfer_rate/$$failure_rate/"; \
+		echo ""; \
+	done
 	@echo "Data transfer rate analysis completed!"
 
 # Combined target: run simulations and generate visualizations

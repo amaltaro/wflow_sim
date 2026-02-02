@@ -68,11 +68,12 @@ def rate_dir_to_mbps(rate_dir: str) -> int:
 
 def collect_data_by_rate(base_path: str,
                          rate_dirs: List[str],
-                         workflow_types: List[str]) -> Dict[str, Dict[str, Dict[int, Dict[str, Any]]]]:
+                         workflow_types: List[str],
+                         failure_rate: str = FAILURE_RATE) -> Dict[str, Dict[str, Dict[int, Dict[str, Any]]]]:
     """Collect simulation data from each rate directory.
 
     Expects unified structure:
-    {base_path}/{workflow_type}/12h/fr0/{rate_dir}/*.json
+    {base_path}/{workflow_type}/12h/{failure_rate}/{rate_dir}/*.json
     (base_path is e.g. results/sim/others)
 
     Returns:
@@ -84,9 +85,9 @@ def collect_data_by_rate(base_path: str,
     for rate_dir in rate_dirs:
         data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]] = {}
         for workflow_type in workflow_types:
-            workflow_dir = base / workflow_type / TARGET_JOB_LENGTH / FAILURE_RATE / rate_dir
+            workflow_dir = base / workflow_type / TARGET_JOB_LENGTH / failure_rate / rate_dir
             if not workflow_dir.exists():
-                print(f"  Warning: {workflow_type}/12h/fr0/{rate_dir} not found, skipping")
+                print(f"  Warning: {workflow_type}/12h/{failure_rate}/{rate_dir} not found, skipping")
                 continue
 
             json_files = list(workflow_dir.glob("*.json"))
@@ -289,6 +290,8 @@ def main():
                         help='Workflow types to analyze')
     parser.add_argument('--output-dir', type=str, default=None,
                         help='Output directory (default: results/analysis/data_transfer_rate)')
+    parser.add_argument('--failure-rate', type=str, default=FAILURE_RATE,
+                        help=f'Failure rate directory, e.g. fr0, fr5 (default: {FAILURE_RATE})')
 
     args = parser.parse_args()
 
@@ -303,19 +306,20 @@ def main():
     print(f"Base path: {args.base_path}")
     print(f"Rate directories: {', '.join(args.rate_dirs)}")
     print(f"Workflow types: {', '.join(args.workflow_types)}")
-    print(f"Target job length: {TARGET_JOB_LENGTH}, Failure rate: {FAILURE_RATE}")
+    print(f"Target job length: {TARGET_JOB_LENGTH}, Failure rate: {args.failure_rate}")
     print(f"Output directory: {args.output_dir}")
     print("=" * 70)
 
     data_by_rate = collect_data_by_rate(
         args.base_path,
         args.rate_dirs,
-        args.workflow_types
+        args.workflow_types,
+        args.failure_rate
     )
 
     if not data_by_rate:
         print("Error: No data collected. Run simulate-all or simulate-data-transfer-rate "
-              "so that base_path/<workflow_type>/12h/fr0/<rate_dir>/*.json exist.")
+              f"so that base_path/<workflow_type>/12h/{args.failure_rate}/<rate_dir>/*.json exist.")
         return 1
 
     plot_throughput_vs_data_rate(data_by_rate, args.output_dir)
