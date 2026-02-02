@@ -7,11 +7,12 @@ This script analyzes how different network data transfer rates (10 MB/s, 100 MB/
 separately for each rate with output organized by rate directory.
 
 Analysis: Data Transfer Rate Sensitivity
-- Fixed: 12h target job length, fr0, all 3 workflow types
+- Fixed: 12h target job length, chosen failure rate, all 3 workflow types
 - Variable: network data transfer rate (10, 100, 1000, 10000 MB/s)
 - Compare: Const 1, Const 16, and best hybrid across data rates
 - Primary Metric: event_throughput
-- Second Metric: network_transfer_mb_per_event
+- Job overhead: mean and std of job_overhead_secs from simulation_result.jobs
+  (sample of up to 10 jobs per group); lower data rate increases overhead.
 """
 
 import argparse
@@ -33,14 +34,36 @@ FAILURE_RATE = 'fr0'
 WORKFLOW_TYPES = ['case1_real', 'case2_homo', 'case3_hetero']
 
 
+def _job_overhead_stats(jobs: List[Dict[str, Any]], key: str = 'job_overhead_secs') -> Tuple[float, float, int]:
+    """Compute mean, std and count for a job overhead field from simulation_result.jobs."""
+    overheads = [
+        j.get(key, 0.0)
+        for j in jobs
+        if isinstance(j.get(key), (int, float))
+    ]
+    n = len(overheads)
+    if n == 0:
+        return 0.0, 0.0, 0
+    mean = float(np.mean(overheads))
+    std = float(np.std(overheads)) if n > 1 else 0.0
+    return mean, std, n
+
+
 def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
-    """Load and extract key metrics from a simulation JSON file."""
+    """Load and extract key metrics from a simulation JSON file.
+
+    Includes job-level overhead stats from simulation_result.jobs (sample of up to 10
+    jobs per group): mean and std of job_overhead_secs and job_overhead_cpu_time.
+    """
     try:
         with open(file_path, 'r') as f:
             data = json.load(f)
 
         metrics = data.get('metrics', {})
         sim_result = data.get('simulation_result', {})
+        jobs = sim_result.get('jobs', [])
+        secs_mean, secs_std, overhead_n = _job_overhead_stats(jobs, 'job_overhead_secs')
+        cpu_mean, cpu_std, _ = _job_overhead_stats(jobs, 'job_overhead_cpu_time')
 
         return {
             'composition_number': metrics.get('composition_number', 0),
@@ -54,6 +77,11 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
             'memory_occupancy': metrics.get('memory_occupancy', 0.0),
             'total_groups': metrics.get('total_groups', 0),
             'failure_rate': sim_result.get('failure_rate', 0.0),
+            'job_overhead_secs_mean': secs_mean,
+            'job_overhead_secs_std': secs_std,
+            'job_overhead_cpu_time_mean': cpu_mean,
+            'job_overhead_cpu_time_std': cpu_std,
+            'job_overhead_sample_count': overhead_n,
             'file_path': file_path
         }
     except Exception as e:
@@ -133,7 +161,8 @@ def identify_best_hybrid(data_by_composition: Dict[int, Dict[str, Any]]) -> Opti
 
 
 def plot_throughput_vs_data_rate(data_by_rate: Dict[str, Dict[str, Dict[int, Dict[str, Any]]]],
-                                output_dir: str) -> None:
+                                output_dir: str,
+                                failure_rate: str = FAILURE_RATE) -> None:
     """Plot event throughput vs. data transfer rate for Const 1, Const 16, best hybrid."""
     print("\n==> Creating throughput vs. data transfer rate plot")
 
@@ -185,7 +214,8 @@ def plot_throughput_vs_data_rate(data_by_rate: Dict[str, Dict[str, Dict[int, Dic
         ax.legend(loc='best', fontsize=9)
         ax.grid(True, alpha=0.3)
 
-    fig.suptitle("Event Throughput vs. Network Data Transfer Rate (12h, fr0)", fontsize=14)
+    fig.suptitle(f"Event Throughput vs. Network Data Transfer Rate (12h, {failure_rate})",
+                 fontsize=14)
     plt.tight_layout()
     out_path = os.path.join(output_dir, "throughput_vs_data_transfer_rate.png")
     plt.savefig(out_path, dpi=150, bbox_inches='tight')
@@ -193,11 +223,17 @@ def plot_throughput_vs_data_rate(data_by_rate: Dict[str, Dict[str, Dict[int, Dic
     print(f"  => Saved: {out_path}")
 
 
-def plot_network_efficiency_vs_data_rate(data_by_rate: Dict[str, Dict[str, Dict[int, Dict[str, Any]]]],
-                                         output_dir: str) -> None:
-    """Plot network transfer per event vs. data transfer rate."""
-    print("\n==> Creating network efficiency vs. data transfer rate plot")
-
+def _plot_one_job_overhead_bar_chart(
+    data_by_rate: Dict[str, Dict[str, Dict[int, Dict[str, Any]]]],
+    output_dir: str,
+    failure_rate: str,
+    mean_key: str,
+    std_key: str,
+    y_label: str,
+    title_metric: str,
+    filename: str,
+) -> None:
+    """Draw one grouped bar chart of job overhead (mean ± std) vs. data transfer rate."""
     rate_dirs_sorted = sorted(
         [r for r in RATE_DIRS if r in data_by_rate],
         key=rate_dir_to_mbps
@@ -205,44 +241,90 @@ def plot_network_efficiency_vs_data_rate(data_by_rate: Dict[str, Dict[str, Dict[
     if not rate_dirs_sorted:
         return
 
-    x_mbps = [rate_dir_to_mbps(r) for r in rate_dirs_sorted]
+    n_rates = len(rate_dirs_sorted)
     x_labels = [f"{rate_dir_to_mbps(r)} MB/s" for r in rate_dirs_sorted]
+    bar_width = 0.25
+    group_width = bar_width * 3 + 0.15
+    x_base = np.arange(n_rates) * group_width
 
     fig, axes = plt.subplots(1, 3, figsize=(16, 6), sharey=True)
 
     for ax, workflow_type in zip(axes, sorted(WORKFLOW_TYPES)):
-        const1_net = []
-        const16_net = []
-        best_hybrid_net = []
+        const1_mean, const1_std = [], []
+        const16_mean, const16_std = [], []
+        best_mean, best_std = [], []
 
         for rate_dir in rate_dirs_sorted:
             wf_data = data_by_rate.get(rate_dir, {}).get(workflow_type, {})
-            const1_net.append(wf_data.get(1, {}).get('network_transfer_mb_per_event', 0.0))
-            const16_net.append(wf_data.get(16, {}).get('network_transfer_mb_per_event', 0.0))
+            c1 = wf_data.get(1, {})
+            c16 = wf_data.get(16, {})
+            const1_mean.append(c1.get(mean_key, 0.0))
+            const1_std.append(c1.get(std_key, 0.0))
+            const16_mean.append(c16.get(mean_key, 0.0))
+            const16_std.append(c16.get(std_key, 0.0))
             best_hybrid = identify_best_hybrid(wf_data) if wf_data else None
             if best_hybrid and best_hybrid in wf_data:
-                best_hybrid_net.append(wf_data[best_hybrid]['network_transfer_mb_per_event'])
+                b = wf_data[best_hybrid]
+                best_mean.append(b.get(mean_key, 0.0))
+                best_std.append(b.get(std_key, 0.0))
             else:
-                best_hybrid_net.append(0.0)
+                best_mean.append(0.0)
+                best_std.append(0.0)
 
-        ax.plot(x_mbps, const1_net, 'o-', label='Const 1', color='#d62728', linewidth=2)
-        ax.plot(x_mbps, const16_net, 's-', label='Const 16', color='#2ca02c', linewidth=2)
-        ax.plot(x_mbps, best_hybrid_net, '^-', label='Best Hybrid', color='#1f77b4', linewidth=2)
-        ax.set_xscale('log')
-        ax.set_xticks(x_mbps)
+        x1 = x_base - bar_width
+        x2 = x_base
+        x3 = x_base + bar_width
+        ax.bar(x1, const1_mean, bar_width, yerr=const1_std, label='Const 1',
+               color='#d62728', capsize=3, error_kw={'linewidth': 1.5})
+        ax.bar(x2, const16_mean, bar_width, yerr=const16_std, label='Const 16',
+               color='#2ca02c', capsize=3, error_kw={'linewidth': 1.5})
+        ax.bar(x3, best_mean, bar_width, yerr=best_std, label='Best Hybrid',
+               color='#1f77b4', capsize=3, error_kw={'linewidth': 1.5})
+        ax.set_xticks(x_base)
         ax.set_xticklabels(x_labels)
         ax.set_xlabel("Data Transfer Rate (MB/s)")
-        ax.set_ylabel("Network MB/event" if ax == axes[0] else "")
+        ax.set_ylabel(y_label if ax == axes[0] else "")
         ax.set_title(workflow_type)
+        ax.set_yscale('log')
         ax.legend(loc='best', fontsize=9)
-        ax.grid(True, alpha=0.3)
+        ax.grid(True, alpha=0.3, axis='y')
 
-    fig.suptitle("Network Transfer per Event vs. Data Transfer Rate (12h, fr0)", fontsize=14)
+    fig.suptitle(
+        f"Mean Job Overhead ({title_metric}) vs. Data Transfer Rate (12h, {failure_rate}); ",
+        fontsize=12
+    )
     plt.tight_layout()
-    out_path = os.path.join(output_dir, "network_efficiency_vs_data_transfer_rate.png")
+    out_path = os.path.join(output_dir, filename)
     plt.savefig(out_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  => Saved: {out_path}")
+
+
+def plot_job_overhead_vs_data_rate(data_by_rate: Dict[str, Dict[str, Dict[int, Dict[str, Any]]]],
+                                   output_dir: str,
+                                   failure_rate: str = FAILURE_RATE) -> None:
+    """Plot mean job overhead vs. data transfer rate: wallclock (secs) and CPU time.
+
+    Creates two grouped bar charts: job_overhead_secs and job_overhead_cpu_time.
+    One group per data rate; three bars per group (Const 1, Const 16, Best Hybrid).
+    """
+    print("\n==> Creating job overhead vs. data transfer rate plots")
+    _plot_one_job_overhead_bar_chart(
+        data_by_rate, output_dir, failure_rate,
+        mean_key='job_overhead_secs_mean',
+        std_key='job_overhead_secs_std',
+        y_label="Mean job overhead (seconds, log scale)",
+        title_metric="wallclock",
+        filename="job_overhead_secs_vs_data_transfer_rate.png",
+    )
+    _plot_one_job_overhead_bar_chart(
+        data_by_rate, output_dir, failure_rate,
+        mean_key='job_overhead_cpu_time_mean',
+        std_key='job_overhead_cpu_time_std',
+        y_label="Mean job overhead (CPU-seconds, log scale)",
+        title_metric="CPU time",
+        filename="job_overhead_cpu_time_vs_data_transfer_rate.png",
+    )
 
 
 def generate_summary_table(data_by_rate: Dict[str, Dict[str, Dict[int, Dict[str, Any]]]],
@@ -268,6 +350,11 @@ def generate_summary_table(data_by_rate: Dict[str, Dict[str, Dict[int, Dict[str,
                     'cpu_utilization': m['cpu_utilization'],
                     'memory_occupancy': m['memory_occupancy'],
                     'total_groups': m['total_groups'],
+                    'job_overhead_secs_mean': m.get('job_overhead_secs_mean', 0.0),
+                    'job_overhead_secs_std': m.get('job_overhead_secs_std', 0.0),
+                    'job_overhead_cpu_time_mean': m.get('job_overhead_cpu_time_mean', 0.0),
+                    'job_overhead_cpu_time_std': m.get('job_overhead_cpu_time_std', 0.0),
+                    'job_overhead_sample_count': m.get('job_overhead_sample_count', 0),
                 })
 
     df = pd.DataFrame(rows)
@@ -322,8 +409,8 @@ def main():
               f"so that base_path/<workflow_type>/12h/{args.failure_rate}/<rate_dir>/*.json exist.")
         return 1
 
-    plot_throughput_vs_data_rate(data_by_rate, args.output_dir)
-    plot_network_efficiency_vs_data_rate(data_by_rate, args.output_dir)
+    plot_throughput_vs_data_rate(data_by_rate, args.output_dir, args.failure_rate)
+    plot_job_overhead_vs_data_rate(data_by_rate, args.output_dir, args.failure_rate)
     generate_summary_table(data_by_rate, args.output_dir)
 
     print("\n" + "=" * 70)
