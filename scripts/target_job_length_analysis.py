@@ -45,28 +45,28 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
         sim_result = data.get('simulation_result', {})
         jobs = sim_result.get('jobs', [])
 
-        # Extract failure-related metrics
+        # Authoritative job counts and actual failure rate from JSON
+        total_jobs = metrics.get('total_jobs', 0)
+        total_job_retries = sim_result.get('total_job_retries', 0)
+        total_logical_jobs = total_jobs - total_job_retries
+        total_failed_jobs = total_job_retries  # each retry corresponds to one failed first attempt
+        failure_rate_actual = sim_result.get('actual_failure_rate')
+
+        # Failure cost metrics from job sample (wasted resources; sample may be limited)
         first_attempt_jobs = [j for j in jobs if j.get('retry_count', 0) == 0]
         failed_jobs = [j for j in first_attempt_jobs if j.get('status') == 'failed']
-
-        # Calculate failure cost metrics
-        total_failed_jobs = len(failed_jobs)
         total_wasted_cpu = sum(j.get('total_cpu_used_time', 0.0) for j in failed_jobs)
         total_wasted_wall = sum(j.get('wallclock_time', 0.0) for j in failed_jobs)
         total_wasted_network = sum(j.get('total_network_transfer_mb', 0.0) for j in failed_jobs)
-
-        avg_cpu_per_failure = total_wasted_cpu / total_failed_jobs if total_failed_jobs > 0 else 0.0
-        avg_wall_per_failure = total_wasted_wall / total_failed_jobs if total_failed_jobs > 0 else 0.0
-        avg_network_per_failure = total_wasted_network / total_failed_jobs if total_failed_jobs > 0 else 0.0
-
-        # Risk profile: max single failure cost
+        sample_failed = len(failed_jobs)
+        avg_cpu_per_failure = total_wasted_cpu / sample_failed if sample_failed > 0 else 0.0
+        avg_wall_per_failure = total_wasted_wall / sample_failed if sample_failed > 0 else 0.0
+        avg_network_per_failure = total_wasted_network / sample_failed if sample_failed > 0 else 0.0
         max_cpu_failure = max((j.get('total_cpu_used_time', 0.0) for j in failed_jobs), default=0.0)
         max_wall_failure = max((j.get('wallclock_time', 0.0) for j in failed_jobs), default=0.0)
-        max_network_failure = max((j.get('total_network_transfer_mb', 0.0) for j in failed_jobs), default=0.0)
-
-        # Total logical jobs (excluding retries)
-        total_logical_jobs = len(first_attempt_jobs)
-        failure_rate_actual = (total_failed_jobs / total_logical_jobs * 100.0) if total_logical_jobs > 0 else 0.0
+        max_network_failure = max(
+            (j.get('total_network_transfer_mb', 0.0) for j in failed_jobs), default=0.0
+        )
 
         return {
             'composition_number': metrics.get('composition_number', 0),
@@ -81,7 +81,9 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
             'total_groups': metrics.get('total_groups', 0),
             'failure_rate': sim_result.get('failure_rate', 0.0),
             'overhead_enabled': sim_result.get('overhead_enabled', True),
-            # Failure metrics
+            # Failure metrics (counts from metrics/simulation_result; waste from job sample)
+            'total_jobs': total_jobs,
+            'total_job_retries': total_job_retries,
             'total_logical_jobs': total_logical_jobs,
             'total_failed_jobs': total_failed_jobs,
             'failure_rate_actual': failure_rate_actual,
@@ -932,7 +934,9 @@ def generate_summary_table(data_by_composition: Dict[int, List[Dict[str, Any]]],
                 'CPU_Utilization': metrics['cpu_utilization'],
                 'Memory_Occupancy': metrics['memory_occupancy'],
                 'Total_Groups': metrics['total_groups'],
-                # Failure metrics
+                # Failure metrics (counts from metrics/simulation_result)
+                'Total_Jobs': metrics.get('total_jobs', 0),
+                'Total_Job_Retries': metrics.get('total_job_retries', 0),
                 'Total_Logical_Jobs': metrics.get('total_logical_jobs', 0),
                 'Total_Failed_Jobs': metrics.get('total_failed_jobs', 0),
                 'Failure_Rate_Actual_%': metrics.get('failure_rate_actual', 0.0),

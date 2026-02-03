@@ -43,6 +43,10 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
 
         metrics = data.get('metrics', {})
         sim_result = data.get('simulation_result', {})
+        total_jobs = metrics.get('total_jobs', 0)
+        total_job_retries = sim_result.get('total_job_retries', 0)
+        total_logical_jobs = total_jobs - total_job_retries
+        failure_rate_actual = sim_result.get('actual_failure_rate')
 
         return {
             'composition_number': metrics.get('composition_number', 0),
@@ -56,6 +60,10 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
             'memory_occupancy': metrics.get('memory_occupancy', 0.0),
             'total_groups': metrics.get('total_groups', 0),
             'failure_rate': sim_result.get('failure_rate', 0.0),
+            'total_jobs': total_jobs,
+            'total_job_retries': total_job_retries,
+            'total_logical_jobs': total_logical_jobs,
+            'failure_rate_actual': failure_rate_actual,
             'overhead_enabled': sim_result.get('overhead_enabled', True),
             'file_path': file_path
         }
@@ -552,6 +560,10 @@ def generate_summary_table(data_by_composition: Dict[int, List[Dict[str, Any]]],
             row = {
                 'Composition': comp_num,
                 'Failure_Rate_%': metrics['failure_rate'],
+                'Total_Jobs': metrics.get('total_jobs', 0),
+                'Total_Job_Retries': metrics.get('total_job_retries', 0),
+                'Total_Logical_Jobs': metrics.get('total_logical_jobs', 0),
+                'Failure_Rate_Actual_%': metrics.get('failure_rate_actual', 0.0),
                 'Event_Throughput': metrics['event_throughput'],
                 'Wall_Time_Per_Event': metrics['wall_time_per_event'],
                 'CPU_Time_Per_Event': metrics['cpu_time_per_event'],
