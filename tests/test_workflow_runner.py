@@ -337,6 +337,9 @@ class TestWorkflowRunner:
         sim_result = data['simulation_result']
         assert sim_result['success'] is True
         assert sim_result['error_message'] is None
+        assert 'failure_rate' in sim_result
+        assert 'actual_failure_rate' in sim_result
+        assert 'total_job_retries' in sim_result
         assert sim_result['groups'][0]['group_id'] == "group_1"
         assert len(sim_result['groups']) == 1
         assert len(sim_result['jobs']) == 1
