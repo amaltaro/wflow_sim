@@ -46,11 +46,12 @@ def compute_simulation_stats(jobs: List[Any]) -> Dict[str, Dict[str, float]]:
     job list. Used to populate the top-level simulation_stats in the JSON output.
 
     Args:
-        jobs: List of job-like objects with job_overhead_secs and job_overhead_cpu_time.
+        jobs: List of job-like objects with job_overhead_secs, job_overhead_cpu_time,
+              and batch_size (events per job).
 
     Returns:
-        Dict with keys job_overhead_secs, job_overhead_cpu_time; each value is
-        {"mean", "std", "median", "min", "max", "n"}.
+        Dict with keys job_overhead_secs, job_overhead_cpu_time, batch_size; each
+        value is {"mean", "std", "median", "min", "max", "n"}.
     """
     overhead_secs = [
         getattr(j, 'job_overhead_secs', 0.0)
@@ -62,9 +63,15 @@ def compute_simulation_stats(jobs: List[Any]) -> Dict[str, Dict[str, float]]:
         for j in jobs
         if isinstance(getattr(j, 'job_overhead_cpu_time', None), (int, float))
     ]
+    batch_sizes = [
+        getattr(j, 'batch_size', 0)
+        for j in jobs
+        if isinstance(getattr(j, 'batch_size', None), (int, float))
+    ]
     return {
         'job_overhead_secs': _distribution_stats(overhead_secs),
         'job_overhead_cpu_time': _distribution_stats(overhead_cpu),
+        'batch_size': _distribution_stats(batch_sizes),
     }
 
 
