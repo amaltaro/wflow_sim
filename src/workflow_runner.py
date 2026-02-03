@@ -23,6 +23,14 @@ except ImportError:
 MAX_JOBS_PER_GROUP_IN_OUTPUT = 10
 
 
+def _actual_failure_rate(total_jobs: int, total_job_retries: int) -> float:
+    """Compute actual failure rate (percent): retries / logical jobs * 100."""
+    total_logical = total_jobs - total_job_retries
+    if total_logical <= 0:
+        return 0.0
+    return (total_job_retries / total_logical) * 100.0
+
+
 def _jobs_for_output(all_jobs: List[Any], max_per_group: int = MAX_JOBS_PER_GROUP_IN_OUTPUT) -> List[Any]:
     """Return at most max_per_group jobs per group_id, preserving original order."""
     counts: Dict[str, int] = {}
@@ -200,6 +208,7 @@ class WorkflowRunner:
                     'error_message': simulation.error_message,
                     'overhead_enabled': simulation.overhead_enabled,
                     'failure_rate': simulation.failure_rate,
+                    'actual_failure_rate': 0.0,
                     'total_job_retries': simulation.total_job_retries,
                     'jobs_per_group_limit': MAX_JOBS_PER_GROUP_IN_OUTPUT,
                     'groups': [],
@@ -252,6 +261,9 @@ class WorkflowRunner:
                 'error_message': simulation.error_message,
                 'overhead_enabled': simulation.overhead_enabled,
                 'failure_rate': simulation.failure_rate,
+                'actual_failure_rate': _actual_failure_rate(
+                    metrics.total_jobs, simulation.total_job_retries
+                ),
                 'total_job_retries': simulation.total_job_retries,
                 'jobs_per_group_limit': MAX_JOBS_PER_GROUP_IN_OUTPUT,
                 'groups': [
