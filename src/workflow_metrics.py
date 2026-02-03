@@ -91,6 +91,8 @@ class WorkflowMetrics:
     total_read_remote_mb: float = 0.0
     total_read_local_mb: float = 0.0
     total_network_transfer_mb: float = 0.0
+    total_job_overhead_secs: float = 0.0  # Sum of job_overhead_secs over all jobs
+    total_job_overhead_cpu_time: float = 0.0  # Sum of job_overhead_cpu_time over all jobs
     # Per-event metrics
     total_write_local_mb_per_event: float = 0.0
     total_write_remote_mb_per_event: float = 0.0
@@ -194,6 +196,8 @@ class WorkflowMetricsCalculator:
             total_read_remote_mb=job_metrics_stats['total_read_remote_mb'],
             total_read_local_mb=job_metrics_stats['total_read_local_mb'],
             total_network_transfer_mb=job_metrics_stats['total_network_transfer_mb'],
+            total_job_overhead_secs=job_metrics_stats['total_job_overhead_secs'],
+            total_job_overhead_cpu_time=job_metrics_stats['total_job_overhead_cpu_time'],
             total_write_local_mb_per_event=total_write_local_mb_per_event,
             total_write_remote_mb_per_event=total_write_remote_mb_per_event,
             total_read_remote_mb_per_event=total_read_remote_mb_per_event,
@@ -248,6 +252,8 @@ class WorkflowMetricsCalculator:
                 'total_read_remote_mb': 0.0,
                 'total_read_local_mb': 0.0,
                 'total_network_transfer_mb': 0.0,
+                'total_job_overhead_secs': 0.0,
+                'total_job_overhead_cpu_time': 0.0,
                 'total_jobs': 0
             }
 
@@ -259,6 +265,8 @@ class WorkflowMetricsCalculator:
             'total_read_remote_mb': sum(job.total_read_remote_mb for job in jobs),
             'total_read_local_mb': sum(job.total_read_local_mb for job in jobs),
             'total_network_transfer_mb': sum(job.total_network_transfer_mb for job in jobs),
+            'total_job_overhead_secs': sum(job.job_overhead_secs for job in jobs),
+            'total_job_overhead_cpu_time': sum(job.job_overhead_cpu_time for job in jobs),
             'total_jobs': len(jobs),
             '_wall_times': [job.wallclock_time for job in jobs],
             '_batch_sizes': [job.batch_size for job in jobs]
@@ -632,6 +640,8 @@ class WorkflowMetricsCalculator:
             'total_read_remote_mb': self.metrics.total_read_remote_mb,
             'total_read_local_mb': self.metrics.total_read_local_mb,
             'total_network_transfer_mb': self.metrics.total_network_transfer_mb,
+            'total_job_overhead_secs': self.metrics.total_job_overhead_secs,
+            'total_job_overhead_cpu_time': self.metrics.total_job_overhead_cpu_time,
             'total_write_local_mb_per_event': self.metrics.total_write_local_mb_per_event,
             'total_write_remote_mb_per_event': self.metrics.total_write_remote_mb_per_event,
             'total_read_remote_mb_per_event': self.metrics.total_read_remote_mb_per_event,

@@ -233,6 +233,8 @@ class WorkflowRunner:
                 'total_read_remote_mb': metrics.total_read_remote_mb,
                 'total_read_local_mb': metrics.total_read_local_mb,
                 'total_network_transfer_mb': metrics.total_network_transfer_mb,
+                'total_job_overhead_secs': metrics.total_job_overhead_secs,
+                'total_job_overhead_cpu_time': metrics.total_job_overhead_cpu_time,
                 'total_write_local_mb_per_event': metrics.total_write_local_mb_per_event,
                 'total_write_remote_mb_per_event': metrics.total_write_remote_mb_per_event,
                 'total_read_remote_mb_per_event': metrics.total_read_remote_mb_per_event,
