@@ -355,6 +355,7 @@ class TestWorkflowMetricsCalculator:
             'network_transfer_mb_per_event', 'event_throughput', 'success_rate', 'total_cpu_used_time',
             'total_cpu_allocated_time',
             'total_write_local_mb', 'total_write_remote_mb', 'total_read_remote_mb', 'total_network_transfer_mb',
+            'total_job_overhead_secs', 'total_job_overhead_cpu_time',
             'cpu_utilization', 'memory_occupancy', 'total_cpu_cores_used', 'total_memory_used_mb',
             'cpu_cores_per_event', 'memory_mb_per_event'
         ]
