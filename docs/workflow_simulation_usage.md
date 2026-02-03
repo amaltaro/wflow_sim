@@ -377,7 +377,7 @@ The overhead is automatically calculated and included in:
 - `total_cpu_allocated_time`: Allocated CPU time includes overhead
 - `total_execution_time`: Execution time excludes overhead (pure computational time)
 
-When results are written via `WorkflowRunner.write_complete_results()`, workflow-level totals (`total_job_overhead_secs`, `total_job_overhead_cpu_time`) appear in `metrics`, and a top-level **`simulation_stats`** object provides distribution statistics (mean, std, median, min, max, n) over all jobs for use in visualizations.
+When results are written via `WorkflowRunner.write_complete_results()`, workflow-level totals (`total_job_overhead_secs`, `total_job_overhead_cpu_time`) appear in `metrics`, and a top-level **`simulation_stats`** object provides distribution statistics (mean, std, median, min, max, n) over all jobs for job overhead and for events per job (`batch_size`), for use in visualizations.
 
 ## Troubleshooting
 
