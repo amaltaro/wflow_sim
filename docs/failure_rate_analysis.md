@@ -101,14 +101,10 @@ The script generates the following outputs in the specified output directory:
    - Comprehensive table with all metrics for all constructions across all failure rates
    - Columns include:
      - Composition number
-     - Failure rate
-     - Event throughput
-     - Wall time per event
-     - CPU time per event
-     - Network transfer per event
-     - CPU utilization
-     - Memory occupancy
-     - Total groups
+     - Failure rate (intended, from simulation config)
+     - Total jobs, total job retries, total logical jobs, failure rate actual %
+     - Event throughput, wall time per event, CPU time per event
+     - Network transfer per event, CPU utilization, memory occupancy, total groups
 
 ## Interpretation Guide
 

@@ -41,7 +41,7 @@ results/sim/others/
 The same structure is used for visualizations under `results/vis/others/`:
 `results/vis/others/<workflow_type>/<target_job_length>/<failure_rate>/<data_rate>/`.
 
-Each simulation JSON file (e.g. `case1_real_const_001.json`) contains three top-level keys: **`metrics`** (workflow-level metrics, including aggregated job totals such as `total_job_overhead_secs`), **`simulation_result`** (groups, job sample, etc.), and **`simulation_stats`** (distribution statistics over all jobs: mean, std, median, min, max, n for job overhead, events per job `batch_size`, and I/O metrics total_write_local_mb, total_write_remote_mb, total_read_local_mb, total_read_remote_mb, for use in visualizations and error bars).
+Each simulation JSON file (e.g. `case1_real_const_001.json`) contains three top-level keys: **`metrics`** (workflow-level metrics, including aggregated job totals such as `total_job_overhead_secs`), **`simulation_result`** (groups, job sample, `failure_rate` intended, `actual_failure_rate` observed, `total_job_retries`, etc.), and **`simulation_stats`** (distribution statistics over all jobs: mean, std, median, min, max, n for job overhead, events per job `batch_size`, and I/O metrics total_write_local_mb, total_write_remote_mb, total_read_local_mb, total_read_remote_mb, for use in visualizations and error bars).
 
 ## Structure Benefits
 
