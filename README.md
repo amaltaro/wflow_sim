@@ -279,6 +279,7 @@ Workflows are defined in JSON format with the following structure:
 - **Resource Efficiency**: Overall resource utilization
 - **Throughput**: Events processed per second
 - **Success Rate**: Percentage of successful executions
+- **Total Job Overhead**: Sum of job overhead over all jobs (wallclock: `total_job_overhead_secs`; CPU: `total_job_overhead_cpu_time`)
 
 ### Job-Level Metrics
 - **CPU Time**: Total CPU time per job including overhead (time_per_event × events × multicore + job_overhead)
@@ -298,6 +299,8 @@ Workflows are defined in JSON format with the following structure:
 - **Resource Usage**: CPU, memory, storage per group
 - **Job Count**: Jobs per group based on event scaling
 - **Taskset Performance**: Individual taskset metrics
+
+Simulation JSON output also includes a top-level **`simulation_stats`** object with distribution statistics (mean, std, median, min, max, n) over all jobs for job overhead, for use in visualizations and error bars.
 
 ## Development
 

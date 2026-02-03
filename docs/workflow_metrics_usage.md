@@ -32,6 +32,8 @@ The `WorkflowMetricsCalculator` class provides comprehensive workflow-level metr
 - **Total Read Remote**: Sum of remote storage reads across all jobs
 - **Total Read Local**: Sum of local disk reads across all jobs (within same group)
 - **Total Network Transfer**: Sum of complete network transfers across all jobs (remote writes + remote reads)
+- **Total Job Overhead (wallclock)**: Sum of `job_overhead_secs` across all jobs (`total_job_overhead_secs`)
+- **Total Job Overhead (CPU time)**: Sum of `job_overhead_cpu_time` across all jobs (`total_job_overhead_cpu_time`)
 
 ### Per-Event Metrics
 - **Total Write Local per Event**: Average local disk writes per event processed
@@ -160,6 +162,8 @@ The calculator integrates job-level metrics through `JobMetricsCalculator`:
 - **Network Transfer**: Sum of complete network transfers across all jobs (remote writes + remote reads)
 - **Remote Read**: Sum of cross-group data reads across all jobs
 - **Local Read**: Sum of within-group data reads across all jobs
+- **Job Overhead (wallclock)**: Sum of `job_overhead_secs` across all jobs
+- **Job Overhead (CPU time)**: Sum of `job_overhead_cpu_time` across all jobs
 
 ### Calculation Flow
 1. **Job Creation**: `WorkflowSimulator` creates jobs with basic metrics
@@ -197,6 +201,15 @@ Success Rate: 1.00
 ```
 
 ### JSON Output
+
+When results are written by `WorkflowRunner.write_complete_results()`, the file contains three top-level keys:
+
+- **`metrics`**: Workflow metrics (including the aggregated job metrics above). Summary keys include `total_job_overhead_secs`, `total_job_overhead_cpu_time`, and other workflow-level fields.
+- **`simulation_result`**: Raw simulation data (groups, jobs sample, etc.).
+- **`simulation_stats`**: Distribution statistics over all jobs for use in visualizations. Each key (e.g. `job_overhead_secs`, `job_overhead_cpu_time`) has `mean`, `std`, `median`, `min`, `max`, and `n`, computed from the full job list.
+
+Example `metrics` summary keys:
+
 ```json
 {
   "workflow_id": "workflow_001",
@@ -204,12 +217,11 @@ Success Rate: 1.00
   "total_tasksets": 3,
   "total_groups": 1,
   "total_jobs": 1000,
-  "total_execution_time": 50000.0,
   "total_wall_time": 50000.0,
-  "resource_efficiency": 0.85,
+  "total_job_overhead_secs": 1200.0,
+  "total_job_overhead_cpu_time": 9600.0,
   "throughput": 20.0,
-  "success_rate": 1.0,
-  "group_metrics": [...]
+  "success_rate": 1.0
 }
 ```
 

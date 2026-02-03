@@ -372,10 +372,12 @@ The simulation includes realistic job overhead to provide more accurate resource
 - **Total Overhead**: Sum of all overhead components, added to CPU metrics
 
 The overhead is automatically calculated and included in:
-- `job_overhead`: Total overhead time for the job
+- `job_overhead_secs` / `job_overhead_cpu_time`: Per-job overhead (wallclock and CPU time)
 - `total_cpu_used_time`: CPU time includes overhead
 - `total_cpu_allocated_time`: Allocated CPU time includes overhead
 - `total_execution_time`: Execution time excludes overhead (pure computational time)
+
+When results are written via `WorkflowRunner.write_complete_results()`, workflow-level totals (`total_job_overhead_secs`, `total_job_overhead_cpu_time`) appear in `metrics`, and a top-level **`simulation_stats`** object provides distribution statistics (mean, std, median, min, max, n) over all jobs for use in visualizations.
 
 ## Troubleshooting
 
