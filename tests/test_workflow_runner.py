@@ -323,7 +323,7 @@ class TestWorkflowRunner:
 
         # Check simulation_stats structure (distribution stats over jobs)
         stats = data['simulation_stats']
-        for key in ('job_overhead_secs', 'job_overhead_cpu_time'):
+        for key in ('job_overhead_secs', 'job_overhead_cpu_time', 'batch_size'):
             assert key in stats
             for field in ('mean', 'std', 'median', 'min', 'max', 'n'):
                 assert field in stats[key]
