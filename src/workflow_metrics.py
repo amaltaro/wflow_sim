@@ -38,6 +38,15 @@ def _distribution_stats(values: List[float]) -> Dict[str, float]:
     }
 
 
+def _extract_job_values(jobs: List[Any], attr: str, default: float = 0.0) -> List[float]:
+    """Extract numeric attribute from job-like objects into a list."""
+    return [
+        float(getattr(j, attr, default))
+        for j in jobs
+        if isinstance(getattr(j, attr, None), (int, float))
+    ]
+
+
 def compute_simulation_stats(jobs: List[Any]) -> Dict[str, Dict[str, float]]:
     """
     Compute distribution statistics over job-level fields for visualization.
@@ -47,32 +56,26 @@ def compute_simulation_stats(jobs: List[Any]) -> Dict[str, Dict[str, float]]:
 
     Args:
         jobs: List of job-like objects with job_overhead_secs, job_overhead_cpu_time,
-              and batch_size (events per job).
+              batch_size, and I/O fields (total_write_local_mb, etc.).
 
     Returns:
-        Dict with keys job_overhead_secs, job_overhead_cpu_time, batch_size; each
-        value is {"mean", "std", "median", "min", "max", "n"}.
+        Dict with keys for overhead, batch_size, and I/O metrics; each value is
+        {"mean", "std", "median", "min", "max", "n"}.
     """
-    overhead_secs = [
-        getattr(j, 'job_overhead_secs', 0.0)
-        for j in jobs
-        if isinstance(getattr(j, 'job_overhead_secs', None), (int, float))
-    ]
-    overhead_cpu = [
-        getattr(j, 'job_overhead_cpu_time', 0.0)
-        for j in jobs
-        if isinstance(getattr(j, 'job_overhead_cpu_time', None), (int, float))
-    ]
-    batch_sizes = [
-        getattr(j, 'batch_size', 0)
-        for j in jobs
-        if isinstance(getattr(j, 'batch_size', None), (int, float))
-    ]
-    return {
-        'job_overhead_secs': _distribution_stats(overhead_secs),
-        'job_overhead_cpu_time': _distribution_stats(overhead_cpu),
-        'batch_size': _distribution_stats(batch_sizes),
+    io_attrs = (
+        'total_write_local_mb',
+        'total_write_remote_mb',
+        'total_read_local_mb',
+        'total_read_remote_mb',
+    )
+    result = {
+        'job_overhead_secs': _distribution_stats(_extract_job_values(jobs, 'job_overhead_secs')),
+        'job_overhead_cpu_time': _distribution_stats(_extract_job_values(jobs, 'job_overhead_cpu_time')),
+        'batch_size': _distribution_stats(_extract_job_values(jobs, 'batch_size')),
     }
+    for attr in io_attrs:
+        result[attr] = _distribution_stats(_extract_job_values(jobs, attr))
+    return result
 
 
 @dataclass
