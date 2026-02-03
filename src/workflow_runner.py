@@ -14,10 +14,10 @@ import time
 
 try:
     from .workflow_simulator import WorkflowSimulator, ResourceConfig, SimulationResult
-    from .workflow_metrics import WorkflowMetricsCalculator, WorkflowMetrics
+    from .workflow_metrics import WorkflowMetricsCalculator, WorkflowMetrics, compute_simulation_stats
 except ImportError:
     from workflow_simulator import WorkflowSimulator, ResourceConfig, SimulationResult
-    from workflow_metrics import WorkflowMetricsCalculator, WorkflowMetrics
+    from workflow_metrics import WorkflowMetricsCalculator, WorkflowMetrics, compute_simulation_stats
 
 # Limit job dumps per group in JSON output to reduce disk usage
 MAX_JOBS_PER_GROUP_IN_OUTPUT = 10
@@ -307,6 +307,9 @@ class WorkflowRunner:
                 ],
             }
         }
+
+        simulation_stats = compute_simulation_stats(simulation.jobs)
+        output_data['simulation_stats'] = simulation_stats
 
         with open(filepath, 'w') as f:
             json.dump(output_data, f, indent=2)

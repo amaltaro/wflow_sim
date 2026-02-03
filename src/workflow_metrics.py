@@ -20,6 +20,54 @@ except ImportError:
     from job_metrics import JobMetricsCalculator
 
 
+def _distribution_stats(values: List[float]) -> Dict[str, float]:
+    """Compute mean, std, median, min, max, n for a list of values."""
+    n = len(values)
+    if n == 0:
+        return {'mean': 0.0, 'std': 0.0, 'median': 0.0, 'min': 0.0, 'max': 0.0, 'n': 0}
+    mean = statistics.mean(values)
+    std = statistics.stdev(values) if n >= 2 else 0.0
+    median = statistics.median(values)
+    return {
+        'mean': mean,
+        'std': std,
+        'median': median,
+        'min': min(values),
+        'max': max(values),
+        'n': n
+    }
+
+
+def compute_simulation_stats(jobs: List[Any]) -> Dict[str, Dict[str, float]]:
+    """
+    Compute distribution statistics over job-level fields for visualization.
+
+    Stats (mean, std, median, min, max, n) are computed from the full simulation
+    job list. Used to populate the top-level simulation_stats in the JSON output.
+
+    Args:
+        jobs: List of job-like objects with job_overhead_secs and job_overhead_cpu_time.
+
+    Returns:
+        Dict with keys job_overhead_secs, job_overhead_cpu_time; each value is
+        {"mean", "std", "median", "min", "max", "n"}.
+    """
+    overhead_secs = [
+        getattr(j, 'job_overhead_secs', 0.0)
+        for j in jobs
+        if isinstance(getattr(j, 'job_overhead_secs', None), (int, float))
+    ]
+    overhead_cpu = [
+        getattr(j, 'job_overhead_cpu_time', 0.0)
+        for j in jobs
+        if isinstance(getattr(j, 'job_overhead_cpu_time', None), (int, float))
+    ]
+    return {
+        'job_overhead_secs': _distribution_stats(overhead_secs),
+        'job_overhead_cpu_time': _distribution_stats(overhead_cpu),
+    }
+
+
 @dataclass
 class ResourceUsage:
     """Resource usage metrics for a single execution unit."""
