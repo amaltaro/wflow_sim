@@ -300,7 +300,11 @@ Workflows are defined in JSON format with the following structure:
 - **Job Count**: Jobs per group based on event scaling
 - **Taskset Performance**: Individual taskset metrics
 
-Simulation JSON output also includes a top-level **`simulation_stats`** object with distribution statistics (mean, std, median, min, max, n) over all jobs for job overhead and for events per job (`batch_size`), for use in visualizations and error bars.
+Simulation JSON output also includes a top-level **`simulation_stats`** object with distribution statistics (mean, std, median, min, max, n) over all jobs for:
+- job overhead (wallclock time and CPU-seconds)
+- events per job (`batch_size`)
+- and I/O operations (total_write_local_mb, total_write_remote_mb, total_read_local_mb, total_read_remote_mb).
+
 
 ## Development
 
