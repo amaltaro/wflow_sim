@@ -20,6 +20,8 @@
     "total_read_remote_mb": 2134984.375,
     "total_read_local_mb": 1257745.3125,
     "total_network_transfer_mb": 4674046.875,
+    "total_job_overhead_secs": 498724.625,
+    "total_job_overhead_cpu_time": 19009592.0,
     "total_write_local_mb_per_event": 3.431261875,
     "total_write_remote_mb_per_event": 2.5390625,
     "total_read_remote_mb_per_event": 2.134984375,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 5.0,
+    "actual_failure_rate": 6.172839506172839,
     "total_job_retries": 10,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -563,5 +566,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 2899.561773255814,
+      "std": 1696.8709879612943,
+      "median": 1962.40625,
+      "min": 350.625,
+      "max": 5664.375,
+      "n": 172
+    },
+    "job_overhead_cpu_time": {
+      "mean": 110520.88372093023,
+      "std": 153895.79576864874,
+      "median": 15699.25,
+      "min": 7299.75,
+      "max": 362520.0,
+      "n": 172
+    },
+    "batch_size": {
+      "mean": 12289.116279069767,
+      "std": 5859.473377966817,
+      "median": 8816.0,
+      "min": 672.0,
+      "max": 21600.0,
+      "n": 172
+    },
+    "total_write_local_mb": {
+      "mean": 19949.19694767442,
+      "std": 7543.238367828349,
+      "median": 25311.5625,
+      "min": 301.875,
+      "max": 25311.5625,
+      "n": 172
+    },
+    "total_write_remote_mb": {
+      "mean": 14761.991279069767,
+      "std": 5554.741095656198,
+      "median": 18424.0625,
+      "min": 0.0,
+      "max": 18424.0625,
+      "n": 172
+    },
+    "total_read_local_mb": {
+      "mean": 7312.472747093023,
+      "std": 1645.5282152480306,
+      "median": 6887.5,
+      "min": 295.3125,
+      "max": 9492.1875,
+      "n": 172
+    },
+    "total_read_remote_mb": {
+      "mean": 12412.699854651162,
+      "std": 19999.456582010742,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 45140.625,
+      "n": 172
+    }
   }
 }

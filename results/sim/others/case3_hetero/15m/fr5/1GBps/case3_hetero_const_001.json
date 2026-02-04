@@ -20,6 +20,8 @@
     "total_read_remote_mb": 0.0,
     "total_read_local_mb": 3390811.083984375,
     "total_network_transfer_mb": 449218.75,
+    "total_job_overhead_secs": 2364310.1100585936,
+    "total_job_overhead_cpu_time": 151315847.04375,
     "total_write_local_mb_per_event": 3.4008134765625,
     "total_write_remote_mb_per_event": 0.44921875,
     "total_read_remote_mb_per_event": 0.0,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 5.0,
+    "actual_failure_rate": 4.848563629273365,
     "total_job_retries": 373,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -342,5 +345,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 293.1205194716828,
+      "std": 31.509881033253674,
+      "median": 300.0583984375,
+      "min": 150.02919921875,
+      "max": 300.0583984375,
+      "n": 8066
+    },
+    "job_overhead_cpu_time": {
+      "mean": 18759.7132461877,
+      "std": 2016.632386128235,
+      "median": 19203.7375,
+      "min": 9601.86875,
+      "max": 19203.7375,
+      "n": 8066
+    },
+    "batch_size": {
+      "mean": 129.98884205306223,
+      "std": 1.0021053958535053,
+      "median": 130.0,
+      "min": 40.0,
+      "max": 130.0,
+      "n": 8066
+    },
+    "total_write_local_mb": {
+      "mean": 421.62329240794696,
+      "std": 45.44148066321273,
+      "median": 431.640625,
+      "min": 132.8125,
+      "max": 431.640625,
+      "n": 8066
+    },
+    "total_write_remote_mb": {
+      "mean": 55.69287751053806,
+      "std": 12.27228696490166,
+      "median": 58.3984375,
+      "min": 0.0,
+      "max": 58.3984375,
+      "n": 8066
+    },
+    "total_read_local_mb": {
+      "mean": 420.3832239008647,
+      "std": 45.3078292494974,
+      "median": 430.37109375,
+      "min": 132.421875,
+      "max": 430.37109375,
+      "n": 8066
+    },
+    "total_read_remote_mb": {
+      "mean": 0.0,
+      "std": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "n": 8066
+    }
   }
 }

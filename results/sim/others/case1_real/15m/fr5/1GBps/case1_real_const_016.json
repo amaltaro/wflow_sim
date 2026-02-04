@@ -20,6 +20,8 @@
     "total_read_remote_mb": 3393517.4047851562,
     "total_read_local_mb": 0.0,
     "total_network_transfer_mb": 6713829.904785156,
+    "total_job_overhead_secs": 479508.0091210938,
+    "total_job_overhead_cpu_time": 2913512.9538183594,
     "total_write_local_mb_per_event": 3.404491716308594,
     "total_write_remote_mb_per_event": 3.3203125,
     "total_read_remote_mb_per_event": 3.393517404785156,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 5.0,
+    "actual_failure_rate": 4.84919396775871,
     "total_job_retries": 373,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -1225,5 +1228,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 59.4554258054673,
+      "std": 6.438719267711847,
+      "median": 60.184375,
+      "min": 30.0921875,
+      "max": 62.3485546875,
+      "n": 8065
+    },
+    "job_overhead_cpu_time": {
+      "mean": 361.25393103761434,
+      "std": 130.2406045299945,
+      "median": 481.475,
+      "min": 60.805078125,
+      "max": 481.475,
+      "n": 8065
+    },
+    "batch_size": {
+      "mean": 648.3182889026658,
+      "std": 1553.9441782672513,
+      "median": 236.0,
+      "min": 16.0,
+      "max": 18000.0,
+      "n": 8065
+    },
+    "total_write_local_mb": {
+      "mean": 422.1316449235702,
+      "std": 547.7209405175174,
+      "median": 184.375,
+      "min": 17.890625,
+      "max": 1709.4921875,
+      "n": 8065
+    },
+    "total_write_remote_mb": {
+      "mean": 411.69404835709855,
+      "std": 550.0484368706572,
+      "median": 184.375,
+      "min": 0.0,
+      "max": 1709.4921875,
+      "n": 8065
+    },
+    "total_read_local_mb": {
+      "mean": 0.0,
+      "std": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "n": 8065
+    },
+    "total_read_remote_mb": {
+      "mean": 420.77091193864305,
+      "std": 498.1944959165524,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 1174.4921875,
+      "n": 8065
+    }
   }
 }

@@ -20,6 +20,8 @@
     "total_read_remote_mb": 2529296.875,
     "total_read_local_mb": 781250.0,
     "total_network_transfer_mb": 5068359.375,
+    "total_job_overhead_secs": 67303.59375,
+    "total_job_overhead_cpu_time": 538428.75,
     "total_write_local_mb_per_event": 3.3203125,
     "total_write_remote_mb_per_event": 2.5390625,
     "total_read_remote_mb_per_event": 2.529296875,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 0.0,
+    "actual_failure_rate": 0.0,
     "total_job_retries": 0,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -816,5 +819,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 412.90548312883436,
+      "std": 186.38607646356863,
+      "median": 304.240625,
+      "min": 84.658203125,
+      "max": 725.771484375,
+      "n": 163
+    },
+    "job_overhead_cpu_time": {
+      "mean": 3303.243865030675,
+      "std": 1491.088611708549,
+      "median": 2433.925,
+      "min": 677.265625,
+      "max": 5806.171875,
+      "n": 163
+    },
+    "batch_size": {
+      "mean": 24539.877300613498,
+      "std": 71346.717550074,
+      "median": 8816.0,
+      "min": 1000.0,
+      "max": 864000.0,
+      "n": 163
+    },
+    "total_write_local_mb": {
+      "mean": 20370.015337423312,
+      "std": 7559.507028841343,
+      "median": 25311.5625,
+      "min": 375.9765625,
+      "max": 25311.5625,
+      "n": 163
+    },
+    "total_write_remote_mb": {
+      "mean": 15577.07055214724,
+      "std": 4476.76867968381,
+      "median": 18424.0625,
+      "min": 375.9765625,
+      "max": 18424.0625,
+      "n": 163
+    },
+    "total_read_local_mb": {
+      "mean": 4792.944785276074,
+      "std": 3166.9039375076804,
+      "median": 6887.5,
+      "min": 0.0,
+      "max": 6887.5,
+      "n": 163
+    },
+    "total_read_remote_mb": {
+      "mean": 15517.158742331289,
+      "std": 24707.285294071018,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 56425.78125,
+      "n": 163
+    }
   }
 }

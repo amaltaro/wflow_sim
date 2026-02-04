@@ -20,6 +20,8 @@
     "total_read_remote_mb": 2916234.375,
     "total_read_local_mb": 448945.3125,
     "total_network_transfer_mb": 6236546.875,
+    "total_job_overhead_secs": 14330.65625,
+    "total_job_overhead_cpu_time": 71785.25,
     "total_write_local_mb_per_event": 3.374421875,
     "total_write_remote_mb_per_event": 3.3203125,
     "total_read_remote_mb_per_event": 2.916234375,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 5.0,
+    "actual_failure_rate": 7.317073170731707,
     "total_job_retries": 6,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -783,5 +786,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 162.84836647727272,
+      "std": 104.20309955829758,
+      "median": 77.7625,
+      "min": 38.88125,
+      "max": 289.6875,
+      "n": 88
+    },
+    "job_overhead_cpu_time": {
+      "mean": 815.7414772727273,
+      "std": 284.2205356226744,
+      "median": 622.1,
+      "min": 311.05,
+      "max": 1158.75,
+      "n": 88
+    },
+    "batch_size": {
+      "mean": 35873.63636363636,
+      "std": 19176.69176051341,
+      "median": 22736.0,
+      "min": 22320.0,
+      "max": 78545.0,
+      "n": 88
+    },
+    "total_write_local_mb": {
+      "mean": 38345.703125,
+      "std": 50786.893325982164,
+      "median": 17762.5,
+      "min": 8881.25,
+      "max": 164146.77734375,
+      "n": 88
+    },
+    "total_write_remote_mb": {
+      "mean": 37730.82386363636,
+      "std": 51195.78849835656,
+      "median": 17762.5,
+      "min": 0.0,
+      "max": 164146.77734375,
+      "n": 88
+    },
+    "total_read_local_mb": {
+      "mean": 5101.651278409091,
+      "std": 8282.79581446556,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 18984.375,
+      "n": 88
+    },
+    "total_read_remote_mb": {
+      "mean": 33139.02698863636,
+      "std": 39592.916826390036,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 90281.25,
+      "n": 88
+    }
   }
 }

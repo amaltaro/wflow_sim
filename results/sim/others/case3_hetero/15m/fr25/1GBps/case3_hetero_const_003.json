@@ -20,6 +20,8 @@
     "total_read_remote_mb": 442175.5078125,
     "total_read_local_mb": 3404955.234375,
     "total_network_transfer_mb": 889724.8046875,
+    "total_job_overhead_secs": 1576984.4245996093,
+    "total_job_overhead_cpu_time": 97118904.35875,
     "total_write_local_mb_per_event": 3.852551318359375,
     "total_write_remote_mb_per_event": 0.447549296875,
     "total_read_remote_mb_per_event": 0.4421755078125,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 25.0,
+    "actual_failure_rate": 32.54484013517026,
     "total_job_retries": 2504,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -563,5 +566,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 154.6366370464414,
+      "std": 40.217650182030866,
+      "median": 180.051884765625,
+      "min": 60.32298828125,
+      "max": 180.051884765625,
+      "n": 10198
+    },
+    "job_overhead_cpu_time": {
+      "mean": 9523.328530961953,
+      "std": 3322.277840736759,
+      "median": 11523.320625,
+      "min": 241.291953125,
+      "max": 11523.320625,
+      "n": 10198
+    },
+    "batch_size": {
+      "mean": 262.62796626789566,
+      "std": 497.36339749897076,
+      "median": 138.0,
+      "min": 52.0,
+      "max": 2250.0,
+      "n": 10198
+    },
+    "total_write_local_mb": {
+      "mean": 377.77518320841097,
+      "std": 111.20520390772603,
+      "median": 448.095703125,
+      "min": 27.978515625,
+      "max": 448.095703125,
+      "n": 10198
+    },
+    "total_write_remote_mb": {
+      "mean": 43.885987142086684,
+      "std": 34.04209212647234,
+      "median": 51.884765625,
+      "min": 0.0,
+      "max": 164.794921875,
+      "n": 10198
+    },
+    "total_read_local_mb": {
+      "mean": 333.88460819523436,
+      "std": 98.6309737547852,
+      "median": 396.2109375,
+      "min": 24.248046875,
+      "max": 396.2109375,
+      "n": 10198
+    },
+    "total_read_remote_mb": {
+      "mean": 43.35904175451069,
+      "std": 178.8323610445404,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 845.947265625,
+      "n": 10198
+    }
   }
 }

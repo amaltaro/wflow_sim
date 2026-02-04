@@ -20,6 +20,8 @@
     "total_read_remote_mb": 794934.375,
     "total_read_local_mb": 2573600.0390625,
     "total_network_transfer_mb": 2025403.125,
+    "total_job_overhead_secs": 342966.7734375,
+    "total_job_overhead_cpu_time": 14868383.109375,
     "total_write_local_mb_per_event": 3.3832828125,
     "total_write_remote_mb_per_event": 1.23046875,
     "total_read_remote_mb_per_event": 0.794934375,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 5.0,
+    "actual_failure_rate": 4.166666666666666,
     "total_job_retries": 40,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -562,5 +565,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 342.9667734375,
+      "std": 159.93977452028471,
+      "median": 207.96875,
+      "min": 103.984375,
+      "max": 525.71484375,
+      "n": 1000
+    },
+    "job_overhead_cpu_time": {
+      "mean": 14868.383109375,
+      "std": 16463.741238942715,
+      "median": 207.96875,
+      "min": 103.984375,
+      "max": 33645.75,
+      "n": 1000
+    },
+    "batch_size": {
+      "mean": 2082.382,
+      "std": 220.82582757033228,
+      "median": 1894.0,
+      "min": 202.0,
+      "max": 2322.0,
+      "n": 1000
+    },
+    "total_write_local_mb": {
+      "mean": 3383.2828125,
+      "std": 2195.022508600754,
+      "median": 1479.6875,
+      "min": 256.4453125,
+      "max": 5895.703125,
+      "n": 1000
+    },
+    "total_write_remote_mb": {
+      "mean": 1230.46875,
+      "std": 332.1084677100691,
+      "median": 1479.6875,
+      "min": 0.0,
+      "max": 1479.6875,
+      "n": 1000
+    },
+    "total_read_local_mb": {
+      "mean": 2573.6000390625,
+      "std": 2891.2525131202397,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 5873.02734375,
+      "n": 1000
+    },
+    "total_read_remote_mb": {
+      "mean": 794.934375,
+      "std": 893.050969303549,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 1814.0625,
+      "n": 1000
+    }
   }
 }

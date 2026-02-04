@@ -20,6 +20,8 @@
     "total_read_remote_mb": 3310546.875,
     "total_read_local_mb": 0.0,
     "total_network_transfer_mb": 6630859.375,
+    "total_job_overhead_secs": 35550.859375,
+    "total_job_overhead_cpu_time": 204809.53125,
     "total_write_local_mb_per_event": 3.3203125,
     "total_write_remote_mb_per_event": 3.3203125,
     "total_read_remote_mb_per_event": 3.310546875,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 0.0,
+    "actual_failure_rate": 0.0,
     "total_job_retries": 0,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -1099,5 +1102,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 73.75696965767635,
+      "std": 13.107670122105992,
+      "median": 62.96015625,
+      "min": 62.4658203125,
+      "max": 97.5826171875,
+      "n": 482
+    },
+    "job_overhead_cpu_time": {
+      "mean": 424.9160399377593,
+      "std": 98.55751362395299,
+      "median": 503.68125,
+      "min": 131.0671875,
+      "max": 503.68125,
+      "n": 482
+    },
+    "batch_size": {
+      "mean": 10373.443983402489,
+      "std": 24216.2951682038,
+      "median": 3789.0,
+      "min": 1000.0,
+      "max": 288000.0,
+      "n": 482
+    },
+    "total_write_local_mb": {
+      "mean": 6888.615145228216,
+      "std": 8875.638599158265,
+      "median": 2960.15625,
+      "min": 375.9765625,
+      "max": 27356.0546875,
+      "n": 482
+    },
+    "total_write_remote_mb": {
+      "mean": 6888.615145228216,
+      "std": 8875.638599158265,
+      "median": 2960.15625,
+      "min": 375.9765625,
+      "max": 27356.0546875,
+      "n": 482
+    },
+    "total_read_local_mb": {
+      "mean": 0.0,
+      "std": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "n": 482
+    },
+    "total_read_remote_mb": {
+      "mean": 6868.3545124481325,
+      "std": 8072.010305963387,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 18808.59375,
+      "n": 482
+    }
   }
 }

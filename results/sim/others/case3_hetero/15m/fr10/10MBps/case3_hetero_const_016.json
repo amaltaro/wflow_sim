@@ -20,6 +20,8 @@
     "total_read_remote_mb": 3490792.6538085938,
     "total_read_local_mb": 0.0,
     "total_network_transfer_mb": 6811105.153808594,
+    "total_job_overhead_secs": 1186532.923828125,
+    "total_job_overhead_cpu_time": 27559627.951171875,
     "total_write_local_mb_per_event": 3.5085365844726564,
     "total_write_remote_mb_per_event": 3.3203125,
     "total_read_remote_mb_per_event": 3.490792653808594,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 10.0,
+    "actual_failure_rate": 10.75883575883576,
     "total_job_retries": 828,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -1225,5 +1228,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 139.19907600048393,
+      "std": 81.81357194942538,
+      "median": 78.4375,
+      "min": 39.21875,
+      "max": 294.85546875,
+      "n": 8524
+    },
+    "job_overhead_cpu_time": {
+      "mean": 3233.1801913622567,
+      "std": 5000.96646592391,
+      "median": 78.4375,
+      "min": 39.21875,
+      "max": 12709.0625,
+      "n": 8524
+    },
+    "batch_size": {
+      "mean": 650.2990380103238,
+      "std": 1558.5212631215627,
+      "median": 236.0,
+      "min": 62.0,
+      "max": 18000.0,
+      "n": 8524
+    },
+    "total_write_local_mb": {
+      "mean": 411.6068259587818,
+      "std": 538.6921079940604,
+      "median": 184.375,
+      "min": 5.48828125,
+      "max": 1709.4921875,
+      "n": 8524
+    },
+    "total_write_remote_mb": {
+      "mean": 389.52516424213985,
+      "std": 542.9606074089244,
+      "median": 184.375,
+      "min": 0.0,
+      "max": 1709.4921875,
+      "n": 8524
+    },
+    "total_read_local_mb": {
+      "mean": 0.0,
+      "std": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "n": 8524
+    },
+    "total_read_remote_mb": {
+      "mean": 409.5251822863202,
+      "std": 490.2402889705861,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 1174.4921875,
+      "n": 8524
+    }
   }
 }

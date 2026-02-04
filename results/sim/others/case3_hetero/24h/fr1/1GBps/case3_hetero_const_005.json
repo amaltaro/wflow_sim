@@ -20,6 +20,8 @@
     "total_read_remote_mb": 2089843.75,
     "total_read_local_mb": 1227590.625,
     "total_network_transfer_mb": 4628906.25,
+    "total_job_overhead_secs": 15867.3303125,
+    "total_job_overhead_cpu_time": 511046.1425,
     "total_write_local_mb_per_event": 3.3456240625,
     "total_write_remote_mb_per_event": 2.5390625,
     "total_read_remote_mb_per_event": 2.08984375,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 1.0,
+    "actual_failure_rate": 1.2345679012345678,
     "total_job_retries": 1,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -563,5 +566,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 193.5040282012195,
+      "std": 60.8373093601714,
+      "median": 156.848125,
+      "min": 78.4240625,
+      "max": 289.6875,
+      "n": 82
+    },
+    "job_overhead_cpu_time": {
+      "mean": 6232.270030487805,
+      "std": 7820.021559711531,
+      "median": 1254.785,
+      "min": 627.3925,
+      "max": 18540.0,
+      "n": 82
+    },
+    "batch_size": {
+      "mean": 24605.268292682926,
+      "std": 11453.226729604325,
+      "median": 17632.0,
+      "min": 12608.0,
+      "max": 43200.0,
+      "n": 82
+    },
+    "total_write_local_mb": {
+      "mean": 40800.29344512195,
+      "std": 14704.515493474404,
+      "median": 50623.125,
+      "min": 7920.625,
+      "max": 50623.125,
+      "n": 82
+    },
+    "total_write_remote_mb": {
+      "mean": 30964.176829268294,
+      "std": 9070.65394557454,
+      "median": 36848.125,
+      "min": 0.0,
+      "max": 36848.125,
+      "n": 82
+    },
+    "total_read_local_mb": {
+      "mean": 14970.61737804878,
+      "std": 2673.7068259272296,
+      "median": 13775.0,
+      "min": 6887.5,
+      "max": 18984.375,
+      "n": 82
+    },
+    "total_read_remote_mb": {
+      "mean": 25485.899390243903,
+      "std": 40349.56094772012,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 90281.25,
+      "n": 82
+    }
   }
 }

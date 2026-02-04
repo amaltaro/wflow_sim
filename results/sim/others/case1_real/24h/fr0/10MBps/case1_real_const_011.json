@@ -20,6 +20,8 @@
     "total_read_remote_mb": 2871093.75,
     "total_read_local_mb": 439453.125,
     "total_network_transfer_mb": 6191406.25,
+    "total_job_overhead_secs": 626880.625,
+    "total_job_overhead_cpu_time": 2830582.5,
     "total_write_local_mb_per_event": 3.3203125,
     "total_write_remote_mb_per_event": 3.3203125,
     "total_read_remote_mb_per_event": 2.87109375,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 0.0,
+    "actual_failure_rate": 0.0,
     "total_job_retries": 0,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -783,5 +786,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 7739.266975308642,
+      "std": 7556.391195001053,
+      "median": 1836.25,
+      "min": 1805.0,
+      "max": 22611.005859375,
+      "n": 81
+    },
+    "job_overhead_cpu_time": {
+      "mean": 34945.46296296296,
+      "std": 27136.76836430391,
+      "median": 14690.0,
+      "min": 7220.0,
+      "max": 90444.0234375,
+      "n": 81
+    },
+    "batch_size": {
+      "mean": 37037.03703703704,
+      "std": 19973.182527106466,
+      "median": 22736.0,
+      "min": 6400.0,
+      "max": 78545.0,
+      "n": 81
+    },
+    "total_write_local_mb": {
+      "mean": 40991.51234567901,
+      "std": 52937.10534145736,
+      "median": 17762.5,
+      "min": 2875.0,
+      "max": 164146.77734375,
+      "n": 81
+    },
+    "total_write_remote_mb": {
+      "mean": 40991.51234567901,
+      "std": 52937.10534145736,
+      "median": 17762.5,
+      "min": 2875.0,
+      "max": 164146.77734375,
+      "n": 81
+    },
+    "total_read_local_mb": {
+      "mean": 5425.347222222223,
+      "std": 8597.291528781572,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 18984.375,
+      "n": 81
+    },
+    "total_read_remote_mb": {
+      "mean": 35445.601851851854,
+      "std": 40785.72585188154,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 90281.25,
+      "n": 81
+    }
   }
 }

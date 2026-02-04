@@ -20,6 +20,8 @@
     "total_read_remote_mb": 794934.375,
     "total_read_local_mb": 2573600.0390625,
     "total_network_transfer_mb": 2025403.125,
+    "total_job_overhead_secs": 158307.67734375,
+    "total_job_overhead_cpu_time": 1266461.41875,
     "total_write_local_mb_per_event": 3.3832828125,
     "total_write_remote_mb_per_event": 1.23046875,
     "total_read_remote_mb_per_event": 0.794934375,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 5.0,
+    "actual_failure_rate": 4.166666666666666,
     "total_job_retries": 40,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -562,5 +565,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 158.30767734375002,
+      "std": 96.46357983653508,
+      "median": 74.796875,
+      "min": 37.3984375,
+      "max": 268.571484375,
+      "n": 1000
+    },
+    "job_overhead_cpu_time": {
+      "mean": 1266.4614187500001,
+      "std": 771.7086386922806,
+      "median": 598.375,
+      "min": 299.1875,
+      "max": 2148.571875,
+      "n": 1000
+    },
+    "batch_size": {
+      "mean": 2082.382,
+      "std": 220.82582757033228,
+      "median": 1894.0,
+      "min": 202.0,
+      "max": 2322.0,
+      "n": 1000
+    },
+    "total_write_local_mb": {
+      "mean": 3383.2828125,
+      "std": 2195.022508600754,
+      "median": 1479.6875,
+      "min": 256.4453125,
+      "max": 5895.703125,
+      "n": 1000
+    },
+    "total_write_remote_mb": {
+      "mean": 1230.46875,
+      "std": 332.1084677100691,
+      "median": 1479.6875,
+      "min": 0.0,
+      "max": 1479.6875,
+      "n": 1000
+    },
+    "total_read_local_mb": {
+      "mean": 2573.6000390625,
+      "std": 2891.2525131202397,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 5873.02734375,
+      "n": 1000
+    },
+    "total_read_remote_mb": {
+      "mean": 794.934375,
+      "std": 893.050969303549,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 1814.0625,
+      "n": 1000
+    }
   }
 }

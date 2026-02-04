@@ -20,6 +20,8 @@
     "total_read_remote_mb": 2871093.75,
     "total_read_local_mb": 439453.125,
     "total_network_transfer_mb": 6191406.25,
+    "total_job_overhead_secs": 69832.875,
+    "total_job_overhead_cpu_time": 321616.75,
     "total_write_local_mb_per_event": 3.32919375,
     "total_write_remote_mb_per_event": 3.3203125,
     "total_read_remote_mb_per_event": 2.87109375,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 1.0,
+    "actual_failure_rate": 1.2195121951219512,
     "total_job_retries": 1,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -783,5 +786,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 841.3599397590361,
+      "std": 756.030984043639,
+      "median": 237.625,
+      "min": 118.8125,
+      "max": 2315.1005859375,
+      "n": 83
+    },
+    "job_overhead_cpu_time": {
+      "mean": 3874.9006024096384,
+      "std": 2621.724697852108,
+      "median": 1901.0,
+      "min": 950.5,
+      "max": 9260.40234375,
+      "n": 83
+    },
+    "batch_size": {
+      "mean": 36418.50602409639,
+      "std": 19509.59103306377,
+      "median": 22736.0,
+      "min": 22352.0,
+      "max": 78545.0,
+      "n": 83
+    },
+    "total_write_local_mb": {
+      "mean": 40110.76807228916,
+      "std": 51773.777454290095,
+      "median": 17762.5,
+      "min": 8881.25,
+      "max": 164146.77734375,
+      "n": 83
+    },
+    "total_write_remote_mb": {
+      "mean": 40003.76506024096,
+      "std": 51848.23199592908,
+      "median": 17762.5,
+      "min": 0.0,
+      "max": 164146.77734375,
+      "n": 83
+    },
+    "total_read_local_mb": {
+      "mean": 5294.615963855422,
+      "std": 8440.180202216212,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 18984.375,
+      "n": 83
+    },
+    "total_read_remote_mb": {
+      "mean": 34591.49096385542,
+      "std": 40068.00108451259,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 90281.25,
+      "n": 83
+    }
   }
 }

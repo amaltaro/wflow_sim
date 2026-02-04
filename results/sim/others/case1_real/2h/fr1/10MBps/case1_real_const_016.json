@@ -20,6 +20,8 @@
     "total_read_remote_mb": 3317805.6640625,
     "total_read_local_mb": 0.0,
     "total_network_transfer_mb": 6638118.1640625,
+    "total_job_overhead_secs": 723356.171875,
+    "total_job_overhead_cpu_time": 3242497.5,
     "total_write_local_mb_per_event": 3.3346560546875,
     "total_write_remote_mb_per_event": 3.3203125,
     "total_read_remote_mb_per_event": 3.3178056640625,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 1.0,
+    "actual_failure_rate": 1.142263759086189,
     "total_job_retries": 11,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -1183,5 +1186,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 742.6654742043121,
+      "std": 654.6491299470657,
+      "median": 207.96875,
+      "min": 103.984375,
+      "max": 1939.130859375,
+      "n": 974
+    },
+    "job_overhead_cpu_time": {
+      "mean": 3329.0528747433264,
+      "std": 2274.9269730296874,
+      "median": 1663.75,
+      "min": 565.78125,
+      "max": 7756.5234375,
+      "n": 974
+    },
+    "batch_size": {
+      "mean": 5162.311088295688,
+      "std": 12178.049249610573,
+      "median": 1894.0,
+      "min": 1091.0,
+      "max": 144000.0,
+      "n": 974
+    },
+    "total_write_local_mb": {
+      "mean": 3423.671514052875,
+      "std": 4422.972691600834,
+      "median": 1479.6875,
+      "min": 274.326171875,
+      "max": 13678.02734375,
+      "n": 974
+    },
+    "total_write_remote_mb": {
+      "mean": 3408.945071868583,
+      "std": 4428.266305529824,
+      "median": 1479.6875,
+      "min": 0.0,
+      "max": 13678.02734375,
+      "n": 974
+    },
+    "total_read_local_mb": {
+      "mean": 0.0,
+      "std": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "n": 974
+    },
+    "total_read_remote_mb": {
+      "mean": 3406.3713183393224,
+      "std": 4027.3167944354623,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 9404.296875,
+      "n": 974
+    }
   }
 }

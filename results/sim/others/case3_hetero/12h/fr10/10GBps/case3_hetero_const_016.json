@@ -20,6 +20,8 @@
     "total_read_remote_mb": 3495963.125,
     "total_read_local_mb": 0.0,
     "total_network_transfer_mb": 6816275.625,
+    "total_job_overhead_secs": 11467.7999140625,
+    "total_job_overhead_cpu_time": 199833.6955625,
     "total_write_local_mb_per_event": 3.482036015625,
     "total_write_remote_mb_per_event": 3.3203125,
     "total_read_remote_mb_per_event": 3.495963125,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 10.0,
+    "actual_failure_rate": 12.352941176470589,
     "total_job_retries": 21,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -1099,5 +1102,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 60.04083724640052,
+      "std": 11.196296471978128,
+      "median": 60.888125,
+      "min": 30.24978515625,
+      "max": 71.275359375,
+      "n": 191
+    },
+    "job_overhead_cpu_time": {
+      "mean": 1046.249714986911,
+      "std": 1657.6644006847882,
+      "median": 60.888125,
+      "min": 30.4440625,
+      "max": 4266.09375,
+      "n": 191
+    },
+    "batch_size": {
+      "mean": 29126.324607329843,
+      "std": 53494.463702915054,
+      "median": 11368.0,
+      "min": 10984.0,
+      "max": 493712.0,
+      "n": 191
+    },
+    "total_write_local_mb": {
+      "mean": 18230.555055628272,
+      "std": 24975.35138664905,
+      "median": 8881.25,
+      "min": 111.015625,
+      "max": 82072.34375,
+      "n": 191
+    },
+    "total_write_remote_mb": {
+      "mean": 17383.83507853403,
+      "std": 25289.999981169356,
+      "median": 8881.25,
+      "min": 0.0,
+      "max": 82072.34375,
+      "n": 191
+    },
+    "total_read_local_mb": {
+      "mean": 0.0,
+      "std": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "n": 191
+    },
+    "total_read_remote_mb": {
+      "mean": 18303.471858638743,
+      "std": 22665.942692894252,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 56425.78125,
+      "n": 191
+    }
   }
 }

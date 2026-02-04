@@ -20,6 +20,8 @@
     "total_read_remote_mb": 441960.44921875,
     "total_read_local_mb": 3383919.74609375,
     "total_network_transfer_mb": 890555.4541015625,
+    "total_job_overhead_secs": 391296.14177539066,
+    "total_job_overhead_cpu_time": 3130369.1342031253,
     "total_write_local_mb_per_event": 3.8287603515625,
     "total_write_remote_mb_per_event": 0.4485950048828125,
     "total_read_remote_mb_per_event": 0.44196044921875,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 25.0,
+    "actual_failure_rate": 30.905306971904267,
     "total_job_retries": 594,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -563,5 +566,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 155.52310881374825,
+      "std": 39.743272615765655,
+      "median": 180.02079150390625,
+      "min": 60.2021484375,
+      "max": 180.02079150390625,
+      "n": 2516
+    },
+    "job_overhead_cpu_time": {
+      "mean": 1244.184870509986,
+      "std": 317.94618092612524,
+      "median": 1440.16633203125,
+      "min": 481.6171875,
+      "max": 1440.16633203125,
+      "n": 2516
+    },
+    "batch_size": {
+      "mean": 1056.4050079491255,
+      "std": 1996.2229504022052,
+      "median": 553.0,
+      "min": 176.0,
+      "max": 9000.0,
+      "n": 2516
+    },
+    "total_write_local_mb": {
+      "mean": 1521.7648456130762,
+      "std": 443.9644506826726,
+      "median": 1795.6298828125,
+      "min": 60.8642578125,
+      "max": 1795.6298828125,
+      "n": 2516
+    },
+    "total_write_remote_mb": {
+      "mean": 178.29690178172197,
+      "std": 135.31641309405086,
+      "median": 207.9150390625,
+      "min": 0.0,
+      "max": 659.1796875,
+      "n": 2516
+    },
+    "total_read_local_mb": {
+      "mean": 1344.9601534553856,
+      "std": 393.8015615227501,
+      "median": 1587.71484375,
+      "min": 52.7490234375,
+      "max": 1587.71484375,
+      "n": 2516
+    },
+    "total_read_remote_mb": {
+      "mean": 175.6599559692965,
+      "std": 718.6546626957437,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 3383.7890625,
+      "n": 2516
+    }
   }
 }

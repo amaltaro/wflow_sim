@@ -20,6 +20,8 @@
     "total_read_remote_mb": 1220703.125,
     "total_read_local_mb": 2089843.75,
     "total_network_transfer_mb": 2451171.875,
+    "total_job_overhead_secs": 31530.53125,
+    "total_job_overhead_cpu_time": 159018.3125,
     "total_write_local_mb_per_event": 3.32919375,
     "total_write_remote_mb_per_event": 1.23046875,
     "total_read_remote_mb_per_event": 1.220703125,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 1.0,
+    "actual_failure_rate": 1.2048192771084338,
     "total_job_retries": 1,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -731,5 +734,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 375.36346726190476,
+      "std": 216.7207411628303,
+      "median": 237.625,
+      "min": 76.65234375,
+      "max": 1144.82080078125,
+      "n": 84
+    },
+    "job_overhead_cpu_time": {
+      "mean": 1893.0751488095239,
+      "std": 321.109018394048,
+      "median": 1901.0,
+      "min": 306.609375,
+      "max": 3103.078125,
+      "n": 84
+    },
+    "batch_size": {
+      "mean": 47889.71428571428,
+      "std": 112851.76553418401,
+      "median": 22736.0,
+      "min": 17294.0,
+      "max": 977264.0,
+      "n": 84
+    },
+    "total_write_local_mb": {
+      "mean": 39633.25892857143,
+      "std": 30019.093588724183,
+      "median": 17762.5,
+      "min": 222.03125,
+      "max": 78903.7841796875,
+      "n": 84
+    },
+    "total_write_remote_mb": {
+      "mean": 14648.4375,
+      "std": 4048.5549919718237,
+      "median": 17762.5,
+      "min": 0.0,
+      "max": 17762.5,
+      "n": 84
+    },
+    "total_read_local_mb": {
+      "mean": 24879.092261904763,
+      "std": 32138.63795176637,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 66872.91015625,
+      "n": 84
+    },
+    "total_read_remote_mb": {
+      "mean": 14532.18005952381,
+      "std": 21730.14866042398,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 92812.4462890625,
+      "n": 84
+    }
   }
 }

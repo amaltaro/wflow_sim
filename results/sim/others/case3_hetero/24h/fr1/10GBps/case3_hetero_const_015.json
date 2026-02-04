@@ -20,6 +20,8 @@
     "total_read_remote_mb": 3247070.3125,
     "total_read_local_mb": 63476.5625,
     "total_network_transfer_mb": 6567382.8125,
+    "total_job_overhead_secs": 6087.6264062499995,
+    "total_job_overhead_cpu_time": 107406.825625,
     "total_write_local_mb_per_event": 3.32919375,
     "total_write_remote_mb_per_event": 3.3203125,
     "total_read_remote_mb_per_event": 3.2470703125,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 1.0,
+    "actual_failure_rate": 1.1904761904761905,
     "total_job_retries": 1,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -920,5 +923,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 71.61913419117647,
+      "std": 17.719413240399223,
+      "median": 61.77625,
+      "min": 30.888125,
+      "max": 129.703125,
+      "n": 85
+    },
+    "job_overhead_cpu_time": {
+      "mean": 1263.609713235294,
+      "std": 1893.4719719333816,
+      "median": 61.77625,
+      "min": 30.888125,
+      "max": 4692.1875,
+      "n": 85
+    },
+    "batch_size": {
+      "mean": 47326.30588235294,
+      "std": 43863.95215186968,
+      "median": 22736.0,
+      "min": 5264.0,
+      "max": 216000.0,
+      "n": 85
+    },
+    "total_write_local_mb": {
+      "mean": 39166.98529411765,
+      "std": 51521.97082359919,
+      "median": 17762.5,
+      "min": 1665.234375,
+      "max": 164146.77734375,
+      "n": 85
+    },
+    "total_write_remote_mb": {
+      "mean": 39062.5,
+      "std": 51593.077139043155,
+      "median": 17762.5,
+      "min": 0.0,
+      "max": 164146.77734375,
+      "n": 85
+    },
+    "total_read_local_mb": {
+      "mean": 746.7830882352941,
+      "std": 3004.6181188424484,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 13710.9375,
+      "n": 85
+    },
+    "total_read_remote_mb": {
+      "mean": 38200.82720588235,
+      "std": 46557.78568843393,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 112851.5625,
+      "n": 85
+    }
   }
 }

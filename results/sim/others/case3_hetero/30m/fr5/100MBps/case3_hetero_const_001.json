@@ -20,6 +20,8 @@
     "total_read_remote_mb": 0.0,
     "total_read_local_mb": 3386292.1875,
     "total_network_transfer_mb": 449218.75,
+    "total_job_overhead_secs": 1185094.96875,
+    "total_job_overhead_cpu_time": 75846078.0,
     "total_write_local_mb_per_event": 3.39628125,
     "total_write_remote_mb_per_event": 0.44921875,
     "total_read_remote_mb_per_event": 0.0,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 5.0,
+    "actual_failure_rate": 4.574993501429685,
     "total_job_retries": 176,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -342,5 +345,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 294.5799077181208,
+      "std": 30.80345823214428,
+      "median": 301.16796875,
+      "min": 150.583984375,
+      "max": 301.16796875,
+      "n": 4023
+    },
+    "job_overhead_cpu_time": {
+      "mean": 18853.11409395973,
+      "std": 1971.421326857234,
+      "median": 19274.75,
+      "min": 9637.375,
+      "max": 19274.75,
+      "n": 4023
+    },
+    "batch_size": {
+      "mean": 259.9453144419587,
+      "std": 3.4685476454962823,
+      "median": 260.0,
+      "min": 40.0,
+      "max": 260.0,
+      "n": 4023
+    },
+    "total_write_local_mb": {
+      "mean": 844.2160700969425,
+      "std": 89.00591798540877,
+      "median": 863.28125,
+      "min": 132.8125,
+      "max": 863.28125,
+      "n": 4023
+    },
+    "total_write_remote_mb": {
+      "mean": 111.66262739249316,
+      "std": 23.937514352524765,
+      "median": 116.796875,
+      "min": 0.0,
+      "max": 116.796875,
+      "n": 4023
+    },
+    "total_read_local_mb": {
+      "mean": 841.733081655481,
+      "std": 88.74413587368699,
+      "median": 860.7421875,
+      "min": 132.421875,
+      "max": 860.7421875,
+      "n": 4023
+    },
+    "total_read_remote_mb": {
+      "mean": 0.0,
+      "std": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "n": 4023
+    }
   }
 }

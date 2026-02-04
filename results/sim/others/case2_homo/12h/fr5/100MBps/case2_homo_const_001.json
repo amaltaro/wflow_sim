@@ -20,6 +20,8 @@
     "total_read_remote_mb": 0.0,
     "total_read_local_mb": 3414166.9921875,
     "total_network_transfer_mb": 449218.75,
+    "total_job_overhead_secs": 54132.79296875,
+    "total_job_overhead_cpu_time": 433062.34375,
     "total_write_local_mb_per_event": 3.42423828125,
     "total_write_remote_mb_per_event": 0.44921875,
     "total_read_remote_mb_per_event": 0.0,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 5.0,
+    "actual_failure_rate": 6.25,
     "total_job_retries": 10,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -342,5 +345,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 318.42819393382354,
+      "std": 38.709844504310674,
+      "median": 328.12109375,
+      "min": 164.060546875,
+      "max": 328.12109375,
+      "n": 170
+    },
+    "job_overhead_cpu_time": {
+      "mean": 2547.4255514705883,
+      "std": 309.6787560344854,
+      "median": 2624.96875,
+      "min": 1312.484375,
+      "max": 2624.96875,
+      "n": 170
+    },
+    "batch_size": {
+      "mean": 6250.588235294118,
+      "std": 122.71439821557927,
+      "median": 6260.0,
+      "min": 4660.0,
+      "max": 6260.0,
+      "n": 170
+    },
+    "total_write_local_mb": {
+      "mean": 20142.578125,
+      "std": 2478.410121164167,
+      "median": 20785.15625,
+      "min": 10392.578125,
+      "max": 20785.15625,
+      "n": 170
+    },
+    "total_write_remote_mb": {
+      "mean": 2642.4632352941176,
+      "std": 664.8558360005777,
+      "median": 2812.109375,
+      "min": 0.0,
+      "max": 2812.109375,
+      "n": 170
+    },
+    "total_read_local_mb": {
+      "mean": 20083.335248161766,
+      "std": 2471.120679631331,
+      "median": 20724.0234375,
+      "min": 10362.01171875,
+      "max": 20724.0234375,
+      "n": 170
+    },
+    "total_read_remote_mb": {
+      "mean": 0.0,
+      "std": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "n": 170
+    }
   }
 }

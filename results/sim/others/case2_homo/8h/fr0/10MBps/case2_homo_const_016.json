@@ -20,6 +20,8 @@
     "total_read_remote_mb": 3310546.875,
     "total_read_local_mb": 0.0,
     "total_network_transfer_mb": 6630859.375,
+    "total_job_overhead_secs": 677605.9375,
+    "total_job_overhead_cpu_time": 5420847.5,
     "total_write_local_mb_per_event": 3.3203125,
     "total_write_remote_mb_per_event": 3.3203125,
     "total_read_remote_mb_per_event": 3.310546875,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 0.0,
+    "actual_failure_rate": 0.0,
     "total_job_retries": 0,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -1057,5 +1060,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 2800.024535123967,
+      "std": 2618.846151623384,
+      "median": 652.03125,
+      "min": 612.83203125,
+      "max": 7576.810546875,
+      "n": 242
+    },
+    "job_overhead_cpu_time": {
+      "mean": 22400.196280991735,
+      "std": 20950.76921298707,
+      "median": 5216.25,
+      "min": 4902.65625,
+      "max": 60614.484375,
+      "n": 242
+    },
+    "batch_size": {
+      "mean": 20661.15702479339,
+      "std": 47389.237809770784,
+      "median": 7578.0,
+      "min": 5122.0,
+      "max": 576000.0,
+      "n": 242
+    },
+    "total_write_local_mb": {
+      "mean": 13720.299586776859,
+      "std": 17740.782834413407,
+      "median": 5920.3125,
+      "min": 798.53515625,
+      "max": 54714.19921875,
+      "n": 242
+    },
+    "total_write_remote_mb": {
+      "mean": 13720.299586776859,
+      "std": 17740.782834413407,
+      "median": 5920.3125,
+      "min": 798.53515625,
+      "max": 54714.19921875,
+      "n": 242
+    },
+    "total_read_local_mb": {
+      "mean": 0.0,
+      "std": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "n": 242
+    },
+    "total_read_remote_mb": {
+      "mean": 13679.94576446281,
+      "std": 16098.662017668916,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 37617.1875,
+      "n": 242
+    }
   }
 }

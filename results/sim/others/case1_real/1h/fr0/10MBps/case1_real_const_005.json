@@ -20,6 +20,8 @@
     "total_read_remote_mb": 781250.0,
     "total_read_local_mb": 2529296.875,
     "total_network_transfer_mb": 2011718.75,
+    "total_job_overhead_secs": 471411.875,
+    "total_job_overhead_cpu_time": 2451587.5,
     "total_write_local_mb_per_event": 3.3203125,
     "total_write_remote_mb_per_event": 1.23046875,
     "total_read_remote_mb_per_event": 0.78125,
@@ -36,6 +38,7 @@
     "error_message": null,
     "overhead_enabled": true,
     "failure_rate": 0.0,
+    "actual_failure_rate": 0.0,
     "total_job_retries": 0,
     "jobs_per_group_limit": 10,
     "groups": [
@@ -562,5 +565,63 @@
         "original_job_id": null
       }
     ]
+  },
+  "simulation_stats": {
+    "job_overhead_secs": {
+      "mean": 245.78304223149112,
+      "std": 123.7957701421198,
+      "median": 133.984375,
+      "min": 131.484375,
+      "max": 382.857421875,
+      "n": 1918
+    },
+    "job_overhead_cpu_time": {
+      "mean": 1278.1999478623566,
+      "std": 228.61513515270863,
+      "median": 1071.875,
+      "min": 1051.875,
+      "max": 1531.4296875,
+      "n": 1918
+    },
+    "batch_size": {
+      "mean": 1042.752867570386,
+      "std": 107.53705639104159,
+      "median": 947.0,
+      "min": 379.0,
+      "max": 1161.0,
+      "n": 1918
+    },
+    "total_write_local_mb": {
+      "mean": 1731.1326903023983,
+      "std": 1098.4297144536663,
+      "median": 739.84375,
+      "min": 714.84375,
+      "max": 2947.8515625,
+      "n": 1918
+    },
+    "total_write_remote_mb": {
+      "mean": 641.5374087591241,
+      "std": 109.10647988504927,
+      "median": 739.84375,
+      "min": 170.25390625,
+      "max": 739.84375,
+      "n": 1918
+    },
+    "total_read_local_mb": {
+      "mean": 1318.715784671533,
+      "std": 1460.6640411947628,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 2936.513671875,
+      "n": 1918
+    },
+    "total_read_remote_mb": {
+      "mean": 407.325338894682,
+      "std": 451.1703602145986,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 907.03125,
+      "n": 1918
+    }
   }
 }
