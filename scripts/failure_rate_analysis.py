@@ -129,7 +129,7 @@ def plot_throughput_vs_failure_rate(data_by_composition: Dict[int, List[Dict[str
         data_by_composition: Dictionary mapping composition_number to metrics list
         output_dir: Output directory for plots
     """
-    print(f"\n==> Creating throughput vs. failure rate plot")
+    print(f"==> Creating throughput vs. failure rate plot")
 
     fig, ax = plt.subplots(figsize=(14, 8))
 
@@ -213,7 +213,7 @@ def plot_throughput_degradation(data_by_composition: Dict[int, List[Dict[str, An
         data_by_composition: Dictionary mapping composition_number to metrics list
         output_dir: Output directory for plots
     """
-    print(f"\n==> Creating throughput degradation plot")
+    print(f"==> Creating throughput degradation plot")
 
     fig, ax = plt.subplots(figsize=(14, 8))
 
@@ -340,7 +340,7 @@ def plot_network_activity_vs_failure_rate(data_by_composition: Dict[int, List[Di
         data_by_composition: Dictionary mapping composition_number to metrics list
         output_dir: Output directory for plots
     """
-    print(f"\n==> Creating network activity vs. failure rate plot")
+    print(f"==> Creating network activity vs. failure rate plot")
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
 
@@ -446,7 +446,7 @@ def plot_best_hybrid_comparison(data_by_composition: Dict[int, List[Dict[str, An
         data_by_composition: Dictionary mapping composition_number to metrics list
         output_dir: Output directory for plots
     """
-    print(f"\n==> Creating best hybrid comparison plot")
+    print(f"==> Creating best hybrid comparison plot")
 
     # Get all failure rates from the data
     all_failure_rates = set()
@@ -549,7 +549,7 @@ def generate_summary_table(data_by_composition: Dict[int, List[Dict[str, Any]]],
     Returns:
         DataFrame with summary metrics
     """
-    print(f"\n==> Generating summary table")
+    print(f"==> Generating summary table")
 
     table_data = []
 
@@ -626,7 +626,7 @@ def main():
         print("Error: No data collected. Please check directory paths and file availability.")
         return
 
-    print(f"\nCollected data for {len(data_by_composition)} constructions")
+    print(f"\nCollected data for {len(data_by_composition)} constructions\n")
 
     plot_throughput_vs_failure_rate(data_by_composition, args.output_dir)
     plot_throughput_degradation(data_by_composition, args.output_dir)

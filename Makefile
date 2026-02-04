@@ -193,18 +193,17 @@ analyze-failure-rate:
 		echo "Analyzing failure rate impact for target job length: $$time_dir"; \
 		echo "=========================================="; \
 		for use_case in $(USE_CASES); do \
-			echo "=== Analyzing use case: $$use_case ($$time_dir) ==="; \
+			echo "" && echo "*** Analyzing use case: $$use_case ($$time_dir) ***"; \
 			use_case_base_dir="$(RESULTS_DIR)/$$use_case/$$time_dir"; \
 			if [ -d "$$use_case_base_dir" ]; then \
 				$(PYTHON) scripts/failure_rate_analysis.py \
 					$(RESULTS_DIR) \
 					$$use_case \
 					$$time_dir || exit 1; \
-				echo "  Results saved to: results/analysis/failure_rate/$$use_case/$$time_dir/"; \
 			else \
 				echo "  Warning: Results base directory $$use_case_base_dir not found. Skipping."; \
 			fi; \
-			echo "=== Completed analysis for use case: $$use_case ($$time_dir) ==="; \
+			echo "*** Completed analysis for use case: $$use_case ($$time_dir) ***"; \
 			echo ""; \
 		done; \
 		echo ""; \
