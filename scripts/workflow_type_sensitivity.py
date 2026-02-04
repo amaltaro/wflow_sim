@@ -263,7 +263,7 @@ def plot_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Dict[str, 
         data_by_workflow: Dictionary mapping workflow_type to composition metrics
         output_dir: Output directory for plots
     """
-    print(f"\n==> Creating improvement percentage plot")
+    print(f"==> Creating improvement percentage plot")
 
     fig, ax = plt.subplots(figsize=(12, 7))
 
@@ -348,7 +348,7 @@ def plot_network_efficiency_comparison(data_by_workflow: Dict[str, Dict[int, Dic
         data_by_workflow: Dictionary mapping workflow_type to composition metrics
         output_dir: Output directory for plots
     """
-    print(f"\n==> Creating network efficiency comparison plot")
+    print(f"==> Creating network efficiency comparison plot")
 
     fig, ax = plt.subplots(figsize=(12, 7))
 
@@ -440,7 +440,7 @@ def plot_network_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Di
         data_by_workflow: Dictionary mapping workflow_type to composition metrics
         output_dir: Output directory for plots
     """
-    print(f"\n==> Creating network improvement percentage plot")
+    print(f"==> Creating network improvement percentage plot")
 
     fig, ax = plt.subplots(figsize=(12, 7))
 

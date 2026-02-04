@@ -220,12 +220,11 @@ analyze-workflow-type-sensitivity:
 	@echo "Configuration: 12h target, failure rates fr0 (0%), fr5 (5%), fr25 (25%)"
 	@echo ""
 	@for failure_rate in fr0 fr5 fr25; do \
-		echo "=== Failure rate: $$failure_rate ==="; \
+		echo "*** Failure rate: $$failure_rate ***"; \
 		$(PYTHON) scripts/workflow_type_sensitivity.py \
 			$(RESULTS_DIR) \
 			12h \
 			$$failure_rate || exit 1; \
-		echo "  Results saved to: results/analysis/workflow_type_sensitivity/12h/$$failure_rate/"; \
 		echo ""; \
 	done
 	@echo "Workflow type sensitivity analysis completed!"
