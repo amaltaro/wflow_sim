@@ -212,11 +212,13 @@ def get_best_hybrid_colors(best_hybrids: Dict[str, Optional[int]]) -> Dict[int, 
 
 
 def plot_throughput_vs_target_length(data_by_composition: Dict[int, List[Dict[str, Any]]],
-                                     output_dir: str) -> None:
+                                    best_hybrids: Dict[str, Optional[int]],
+                                    output_dir: str) -> None:
     """Plot event throughput vs. target job length for all constructions.
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
+        best_hybrids: Dictionary mapping target_length to best hybrid composition number
         output_dir: Output directory for plots
     """
     print(f"\n==> Creating throughput vs. target job length plot")
@@ -235,12 +237,6 @@ def plot_throughput_vs_target_length(data_by_composition: Dict[int, List[Dict[st
         if not target_lengths:
             target_lengths = target_length_values
 
-    # Find best hybrid for each target length
-    best_hybrids = {}
-    for target_length in target_lengths:
-        best_hybrids[target_length] = identify_best_hybrid(data_by_composition, target_length)
-
-    # Get color mapping for best hybrids
     hybrid_color_map = get_best_hybrid_colors(best_hybrids)
 
     # Convert target lengths to hours for x-axis
@@ -313,7 +309,7 @@ def plot_throughput_improvement(data_by_composition: Dict[int, List[Dict[str, An
         data_by_composition: Dictionary mapping composition_number to metrics list
         output_dir: Output directory for plots
     """
-    print(f"\n==> Creating throughput improvement plot")
+    print(f"==> Creating throughput improvement plot")
 
     fig, ax = plt.subplots(figsize=(14, 8))
 
@@ -440,7 +436,40 @@ def identify_best_hybrid(data_by_composition: Dict[int, List[Dict[str, Any]]],
     return best_comp
 
 
+def identify_best_hybrid_per_target_length(
+    data_by_composition: Dict[int, List[Dict[str, Any]]],
+    verbose: bool = False,
+) -> Dict[str, Optional[int]]:
+    """Identify the best hybrid construction (2-15) for each target job length.
+
+    Target job lengths are derived from the data. Each target length can have a
+    different best hybrid. Uses identify_best_hybrid per target length (throughput
+    as primary metric, network transfer as tiebreaker).
+
+    Args:
+        data_by_composition: Dictionary mapping composition_number to metrics list
+        verbose: If True, print best hybrid per target length and tie details
+
+    Returns:
+        Dictionary mapping target_length -> best composition number, or None if not found
+    """
+    all_target_lengths = set()
+    for comp_data in data_by_composition.values():
+        for d in comp_data:
+            all_target_lengths.add(d['target_job_length'])
+    target_lengths = sorted(all_target_lengths, key=target_length_to_hours)
+
+    best_hybrids: Dict[str, Optional[int]] = {}
+    for target_length in target_lengths:
+        best_hybrid = identify_best_hybrid(data_by_composition, target_length, verbose=verbose)
+        best_hybrids[target_length] = best_hybrid
+        if verbose and best_hybrid is not None:
+            print(f"  Best hybrid for {target_length}: Const {best_hybrid}")
+    return best_hybrids
+
+
 def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[Dict[str, Any]]],
+                                           best_hybrids: Dict[str, Optional[int]],
                                            output_dir: str) -> None:
     """Plot network transfer vs. target job length for all constructions.
 
@@ -450,9 +479,10 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
+        best_hybrids: Dictionary mapping target_length to best hybrid composition number
         output_dir: Output directory for plots
     """
-    print(f"\n==> Creating network activity vs. target job length plot")
+    print(f"==> Creating network activity vs. target job length plot")
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
 
@@ -493,12 +523,6 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
     ax1.set_xticklabels(target_lengths)
 
     # Plot 2: Remote Read vs. Remote Write breakdown (focus on extremes and best hybrid)
-    # Find best hybrid for each target length
-    best_hybrids = {}
-    for target_length in target_lengths:
-        best_hybrids[target_length] = identify_best_hybrid(data_by_composition, target_length)
-
-    # Get color mapping for best hybrids
     hybrid_color_map = get_best_hybrid_colors(best_hybrids)
 
     # Plot only Const 1, Const 16, and best hybrid for each target length
@@ -560,14 +584,16 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
 
 
 def plot_best_hybrid_comparison(data_by_composition: Dict[int, List[Dict[str, Any]]],
+                                best_hybrids: Dict[str, Optional[int]],
                                 output_dir: str) -> None:
     """Plot comparison of Const 1, Const 16, and best hybrid for each target job length.
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
+        best_hybrids: Dictionary mapping target_length to best hybrid composition number
         output_dir: Output directory for plots
     """
-    print(f"\n==> Creating best hybrid comparison plot")
+    print(f"==> Creating best hybrid comparison plot")
 
     # Get all target lengths from the data
     all_target_lengths = set()
@@ -576,14 +602,6 @@ def plot_best_hybrid_comparison(data_by_composition: Dict[int, List[Dict[str, An
             all_target_lengths.add(d['target_job_length'])
     target_lengths = sorted(all_target_lengths, key=target_length_to_hours)
     target_hours = [target_length_to_hours(tl) for tl in target_lengths]
-
-    # Find best hybrid for each target length (each target length can have a different best hybrid)
-    best_hybrids = {}
-    for target_length in target_lengths:
-        best_hybrid = identify_best_hybrid(data_by_composition, target_length, verbose=True)
-        best_hybrids[target_length] = best_hybrid
-        if best_hybrid:
-            print(f"  Best hybrid for {target_length}: Const {best_hybrid}")
 
     # Extract throughput values
     const1_throughput = []
@@ -671,14 +689,16 @@ def plot_best_hybrid_comparison(data_by_composition: Dict[int, List[Dict[str, An
 
 
 def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any]]],
+                               best_hybrids: Dict[str, Optional[int]],
                                output_dir: str) -> None:
     """Plot failure cost analysis: cost per failure vs target job length.
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
+        best_hybrids: Dictionary mapping target_length to best hybrid composition number
         output_dir: Output directory for plots
     """
-    print(f"\n==> Creating failure cost analysis plot")
+    print(f"==> Creating failure cost analysis plot")
 
     # Get all target lengths and sort them
     all_target_lengths = set()
@@ -704,13 +724,6 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
 
-    # Get color mapping for best hybrids (each target length can have a different best hybrid)
-    best_hybrids = {}
-    for tl in target_lengths:
-        best_hybrid = identify_best_hybrid(data_by_composition, tl, verbose=True)
-        best_hybrids[tl] = best_hybrid
-        if best_hybrid:
-            print(f"  Best hybrid for {tl}: Const {best_hybrid}")
     hybrid_color_map = get_best_hybrid_colors(best_hybrids)
 
     # Plot 1: Average cost per failure (CPU time only - wall time matches target length and is redundant)
@@ -783,14 +796,16 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
 
 
 def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, Any]]],
+                                best_hybrids: Dict[str, Optional[int]],
                                 output_dir: str) -> None:
     """Plot failure count distribution vs target job length.
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
+        best_hybrids: Dictionary mapping target_length to best hybrid composition number
         output_dir: Output directory for plots
     """
-    print(f"\n==> Creating failure count analysis plot")
+    print(f"==> Creating failure count analysis plot")
 
     # Get all target lengths and sort them
     all_target_lengths = set()
@@ -816,13 +831,6 @@ def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, An
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
 
-    # Get color mapping for best hybrids (each target length can have a different best hybrid)
-    best_hybrids = {}
-    for tl in target_lengths:
-        best_hybrid = identify_best_hybrid(data_by_composition, tl, verbose=True)
-        best_hybrids[tl] = best_hybrid
-        if best_hybrid:
-            print(f"  Best hybrid for {tl}: Const {best_hybrid}")
     hybrid_color_map = get_best_hybrid_colors(best_hybrids)
 
     # Plot 1: Failure count vs target job length
@@ -915,7 +923,7 @@ def generate_summary_table(data_by_composition: Dict[int, List[Dict[str, Any]]],
     Returns:
         DataFrame with summary metrics
     """
-    print(f"\n==> Generating summary table")
+    print(f"==> Generating summary table")
 
     table_data = []
 
@@ -1006,12 +1014,14 @@ def main():
 
     print(f"\nCollected data for {len(data_by_composition)} constructions")
 
-    plot_throughput_vs_target_length(data_by_composition, args.output_dir)
+    best_hybrids = identify_best_hybrid_per_target_length(data_by_composition, verbose=True)
+
+    plot_throughput_vs_target_length(data_by_composition, best_hybrids, args.output_dir)
     plot_throughput_improvement(data_by_composition, args.output_dir)
-    plot_network_activity_vs_target_length(data_by_composition, args.output_dir)
-    plot_best_hybrid_comparison(data_by_composition, args.output_dir)
-    plot_failure_cost_analysis(data_by_composition, args.output_dir)
-    plot_failure_count_analysis(data_by_composition, args.output_dir)
+    plot_network_activity_vs_target_length(data_by_composition, best_hybrids, args.output_dir)
+    plot_best_hybrid_comparison(data_by_composition, best_hybrids, args.output_dir)
+    plot_failure_cost_analysis(data_by_composition, best_hybrids, args.output_dir)
+    plot_failure_count_analysis(data_by_composition, best_hybrids, args.output_dir)
     generate_summary_table(data_by_composition, args.output_dir)
 
     print("\n" + "="*70)

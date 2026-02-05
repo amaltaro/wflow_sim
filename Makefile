@@ -238,7 +238,7 @@ analyze-target-job-length:
 	@echo "Failure rates: fr0 (0%), fr5 (5%), fr25 (25%)"
 	@echo ""
 	@for use_case in $(USE_CASES); do \
-		echo "=== Analyzing use case: $$use_case ==="; \
+		echo "*** Analyzing use case: $$use_case ***"; \
 		use_case_base_dir="$(RESULTS_DIR)/$$use_case"; \
 		if [ -d "$$use_case_base_dir" ]; then \
 			for failure_rate in fr0 fr5 fr25; do \
@@ -247,12 +247,11 @@ analyze-target-job-length:
 					$(RESULTS_DIR) \
 					$$use_case \
 					$$failure_rate || exit 1; \
-				echo "    Results saved to: results/analysis/target_job_length/$$use_case/$$failure_rate/"; \
 			done; \
 		else \
 			echo "  Warning: Results base directory $$use_case_base_dir not found. Skipping."; \
 		fi; \
-		echo "=== Completed analysis for use case: $$use_case ==="; \
+		echo "*** Completed analysis for use case: $$use_case ***"; \
 		echo ""; \
 	done
 	@echo "All target job length optimization analyses completed!"
