@@ -266,12 +266,11 @@ analyze-data-transfer-rate:
 	@echo "Output: results/analysis/data_transfer_rate/<failure_rate>/"
 	@echo ""
 	@for failure_rate in fr0 fr5; do \
-		echo "=== Failure rate: $$failure_rate ==="; \
+		echo "*** Failure rate: $$failure_rate ***"; \
 		$(PYTHON) scripts/data_transfer_rate_analysis.py \
 			$(RESULTS_DIR) \
 			--failure-rate $$failure_rate \
 			--output-dir results/analysis/data_transfer_rate/$$failure_rate || exit 1; \
-		echo "  Results saved to: results/analysis/data_transfer_rate/$$failure_rate/"; \
 		echo ""; \
 	done
 	@echo "Data transfer rate analysis completed!"

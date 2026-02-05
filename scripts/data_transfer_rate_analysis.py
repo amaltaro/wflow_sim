@@ -11,14 +11,14 @@ Analysis: Data Transfer Rate Sensitivity
 - Variable: network data transfer rate (10, 100, 1000, 10000 MB/s)
 - Compare: Const 1, Const 16, and best hybrid across data rates
 - Primary Metric: event_throughput
-- Job overhead: mean and std of job_overhead_secs from simulation_result.jobs
-  (sample of up to 10 jobs per group); lower data rate increases overhead.
+- Job overhead: mean and std from simulation_stats (job_overhead_secs, job_overhead_cpu_time);
+  lower data rate increases overhead.
 """
 
 import argparse
 import json
 import os
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
@@ -34,26 +34,11 @@ FAILURE_RATE = 'fr0'
 WORKFLOW_TYPES = ['case1_real', 'case2_homo', 'case3_hetero']
 
 
-def _job_overhead_stats(jobs: List[Dict[str, Any]], key: str = 'job_overhead_secs') -> Tuple[float, float, int]:
-    """Compute mean, std and count for a job overhead field from simulation_result.jobs."""
-    overheads = [
-        j.get(key, 0.0)
-        for j in jobs
-        if isinstance(j.get(key), (int, float))
-    ]
-    n = len(overheads)
-    if n == 0:
-        return 0.0, 0.0, 0
-    mean = float(np.mean(overheads))
-    std = float(np.std(overheads)) if n > 1 else 0.0
-    return mean, std, n
-
-
 def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
     """Load and extract key metrics from a simulation JSON file.
 
-    Includes job-level overhead stats from simulation_result.jobs (sample of up to 10
-    jobs per group): mean and std of job_overhead_secs and job_overhead_cpu_time.
+    Uses metrics for workflow-level values and simulation_stats for job-level
+    overhead (mean, std, n of job_overhead_secs and job_overhead_cpu_time).
     """
     try:
         with open(file_path, 'r') as f:
@@ -61,9 +46,15 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
 
         metrics = data.get('metrics', {})
         sim_result = data.get('simulation_result', {})
-        jobs = sim_result.get('jobs', [])
-        secs_mean, secs_std, overhead_n = _job_overhead_stats(jobs, 'job_overhead_secs')
-        cpu_mean, cpu_std, _ = _job_overhead_stats(jobs, 'job_overhead_cpu_time')
+        sim_stats = data.get('simulation_stats', {})
+
+        secs_stats = sim_stats.get('job_overhead_secs', {})
+        cpu_stats = sim_stats.get('job_overhead_cpu_time', {})
+        secs_mean = secs_stats.get('mean', 0.0)
+        secs_std = secs_stats.get('std', 0.0)
+        cpu_mean = cpu_stats.get('mean', 0.0)
+        cpu_std = cpu_stats.get('std', 0.0)
+        overhead_n = secs_stats.get('n', 0)
 
         return {
             'composition_number': metrics.get('composition_number', 0),
@@ -308,7 +299,7 @@ def plot_job_overhead_vs_data_rate(data_by_rate: Dict[str, Dict[str, Dict[int, D
     Creates two grouped bar charts: job_overhead_secs and job_overhead_cpu_time.
     One group per data rate; three bars per group (Const 1, Const 16, Best Hybrid).
     """
-    print("\n==> Creating job overhead vs. data transfer rate plots")
+    print("==> Creating job overhead vs. data transfer rate plots")
     _plot_one_job_overhead_bar_chart(
         data_by_rate, output_dir, failure_rate,
         mean_key='job_overhead_secs_mean',
@@ -330,7 +321,7 @@ def plot_job_overhead_vs_data_rate(data_by_rate: Dict[str, Dict[str, Dict[int, D
 def generate_summary_table(data_by_rate: Dict[str, Dict[str, Dict[int, Dict[str, Any]]]],
                            output_dir: str) -> pd.DataFrame:
     """Generate CSV summary: rate, workflow_type, composition, throughput, network_per_event, etc."""
-    print("\n==> Generating summary table")
+    print("==> Generating summary table")
 
     rows = []
     for rate_dir in sorted(data_by_rate.keys(), key=rate_dir_to_mbps):
