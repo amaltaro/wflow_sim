@@ -28,6 +28,11 @@ TEMPLATES_DIR := templates/others
 RESULTS_DIR := results/sim/others
 # Visualization output directory
 VIZ_OUTPUT_DIR := results/vis/others
+# Construction metrics analysis: fixed scenario (12h, fr5, 100MBps, all workflow types)
+CONSTRUCTION_METRICS_TIME := 12h
+CONSTRUCTION_METRICS_FR := fr5
+CONSTRUCTION_METRICS_RATE := 100MBps
+CONSTRUCTION_METRICS_OUTPUT := results/analysis/construction_metrics
 
 # Default target
 .PHONY: help
@@ -45,6 +50,7 @@ help:
 	@echo "  analyze-workflow-type-sensitivity - Analyze workflow type sensitivity (12h, fr0/fr5/fr25)"
 	@echo "  analyze-target-job-length      - Analyze target job length optimization (all workflow types, fr0/fr5/fr25)"
 	@echo "  analyze-data-transfer-rate    - Analyze data transfer rate sensitivity (12h, fr0 & fr5)"
+	@echo "  analyze-construction-metrics  - Multi-metric construction comparison (12h, fr5, 100MBps, all types)"
 	@echo ""
 	@echo "Cleanup targets:"
 	@echo "  clean          - Clean up all generated files"
@@ -275,6 +281,31 @@ analyze-data-transfer-rate:
 	done
 	@echo "Data transfer rate analysis completed!"
 
+# Construction metrics analysis: 12h, fr5, 100MBps, all 3 workflow types
+# Output: results/analysis/construction_metrics/<use_case>/12h/fr5/100MBps/
+.PHONY: analyze-construction-metrics
+analyze-construction-metrics:
+	@echo "Starting construction metrics analysis"
+	@echo "Scenario: job length=$(CONSTRUCTION_METRICS_TIME), failure rate=$(CONSTRUCTION_METRICS_FR), data rate=$(CONSTRUCTION_METRICS_RATE)"
+	@echo "Use cases: $(USE_CASES)"
+	@echo ""
+	@for use_case in $(USE_CASES); do \
+		sim_dir="$(RESULTS_DIR)/$$use_case/$(CONSTRUCTION_METRICS_TIME)/$(CONSTRUCTION_METRICS_FR)/$(CONSTRUCTION_METRICS_RATE)"; \
+		output_dir="$(CONSTRUCTION_METRICS_OUTPUT)/$$use_case/$(CONSTRUCTION_METRICS_TIME)/$(CONSTRUCTION_METRICS_FR)/$(CONSTRUCTION_METRICS_RATE)"; \
+		if [ -d "$$sim_dir" ]; then \
+			echo "  Processing: $$use_case"; \
+			$(PYTHON) scripts/construction_metrics_analysis.py \
+				$$sim_dir \
+				--output-dir $$output_dir \
+				--scenario-label "$$use_case $(CONSTRUCTION_METRICS_TIME) $(CONSTRUCTION_METRICS_FR) $(CONSTRUCTION_METRICS_RATE)" || exit 1; \
+		else \
+			echo "  Warning: $$sim_dir not found. Skipping $$use_case."; \
+		fi; \
+		echo ""; \
+	done
+	@echo "Construction metrics analysis completed!"
+	@echo "Output: $(CONSTRUCTION_METRICS_OUTPUT)/"
+
 # Combined target: run simulations and generate visualizations
 .PHONY: all
 all:
@@ -313,6 +344,7 @@ clean:
 	find results -name "*_overhead.json" -type f -delete 2>/dev/null || true
 	rm -rf $(VIZ_OUTPUT_DIR)/
 	rm -rf results/analysis/data_transfer_rate/
+	rm -rf $(CONSTRUCTION_METRICS_OUTPUT)/
 	@echo "Cleanup complete!"
 
 # Clean only visualization outputs
