@@ -6,7 +6,8 @@ For a given scenario (workflow type, target job length, failure rate, data rate)
 loads all 16 workflow construction results from the scenario directory, normalizes
 selected metrics to [0, 1] (higher = better), and produces:
 - A normalized heatmap (constructions x metrics) for quick comparison
-- A CSV of raw and normalized metrics (same metrics and order as the heatmap)
+- A single weighted score per construction (sum of weights = 1.0) and two score plots
+- A CSV of raw and normalized metrics plus weighted_score (same metrics as heatmap)
 
 Metrics (9 total, same for heatmap and CSV): event_throughput, total_cpu_cores_used,
 cpu_utilization, total_memory_used_mb, memory_occupancy, total_turnaround_time,
@@ -32,6 +33,16 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+
+# Weighted score: metric key -> weight (weights must sum to 1.0). Focus: throughput + utilization.
+# Alternatives: cpu_cores_per_event, memory_mb_per_event (resource intensity vs utilization).
+SCORE_METRICS_WEIGHTS = {
+    'event_throughput': 0.4,
+    'cpu_utilization': 0.2,
+    'memory_occupancy': 0.2,
+    'network_transfer_mb_per_event': 0.2,
+}
 
 # Single source of truth: (key, label, higher_is_better). Full list = heatmap order.
 _ALL_SPECS = [
@@ -150,6 +161,29 @@ def normalize_metrics(
     return M
 
 
+def compute_weighted_score(
+    norm_matrix: np.ndarray,
+    metrics_weights: Dict[str, float] = None,
+) -> np.ndarray:
+    """Compute a single weighted score per construction (normalized 0--1).
+
+    Score = sum(weight_i * normalized_metric_i) over the selected metrics.
+    metrics_weights: dict of metric_key -> weight; weights must sum to 1.0.
+    Uses column order from HEATMAP_METRIC_SPECS.
+    """
+    if metrics_weights is None:
+        metrics_weights = SCORE_METRICS_WEIGHTS
+    metric_keys = list(metrics_weights.keys())
+    weights = np.asarray(list(metrics_weights.values()), dtype=float)
+    if abs(weights.sum() - 1.0) > 1e-9:
+        raise ValueError(f"weights must sum to 1.0, got {weights.sum()}")
+    key_to_col = {s[0]: j for j, s in enumerate(HEATMAP_METRIC_SPECS)}
+    indices = [key_to_col[k] for k in metric_keys]
+    # (n_const, n_metrics) * (n_metrics,) -> sum over axis=1
+    scores = (norm_matrix[:, indices] * weights).sum(axis=1)
+    return scores
+
+
 def plot_normalized_heatmap(
     norm_matrix: np.ndarray,
     composition_numbers: List[int],
@@ -181,15 +215,72 @@ def plot_normalized_heatmap(
     print(f"  => Heatmap saved to {output_path}")
 
 
+def plot_score_bars(
+    composition_numbers: List[int],
+    scores: np.ndarray,
+    output_path: str,
+    scenario_label: str = "",
+) -> None:
+    """Bar chart: construction (x) vs weighted score (y). Color by score (green=high)."""
+    fig, ax = plt.subplots(figsize=(10, 5))
+    x = np.arange(len(composition_numbers))
+    bars = ax.bar(x, scores, color=plt.cm.RdYlGn(scores), edgecolor='gray', linewidth=0.5)
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"Const {c}" for c in composition_numbers], rotation=45, ha='right')
+    ax.set_ylabel("Weighted score (0–1)")
+    ax.set_xlabel("Workflow construction")
+    ax.set_ylim(0, 1.05)
+    ax.set_title(
+        f"Weighted score by construction – {scenario_label}"
+        if scenario_label else "Weighted score by construction"
+    )
+    ax.axhline(y=scores.mean(), color='gray', linestyle='--', alpha=0.7, label=f"Mean = {scores.mean():.3f}")
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150)
+    plt.close()
+    print(f"  => Score bar chart saved to {output_path}")
+
+
+def plot_score_ranked(
+    composition_numbers: List[int],
+    scores: np.ndarray,
+    output_path: str,
+    scenario_label: str = "",
+) -> None:
+    """Horizontal bar chart: constructions sorted by score (best at top)."""
+    order = np.argsort(scores)[::-1]
+    sorted_scores = scores[order]
+    sorted_labels = [f"Const {composition_numbers[i]}" for i in order]
+    fig, ax = plt.subplots(figsize=(8, 6))
+    y_pos = np.arange(len(sorted_labels))
+    colors = plt.cm.RdYlGn(sorted_scores)
+    ax.barh(y_pos, sorted_scores, color=colors, edgecolor='gray', linewidth=0.5)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(sorted_labels)
+    ax.set_xlabel("Weighted score (0–1)")
+    ax.set_xlim(0, 1.05)
+    ax.set_title(
+        f"Constructions ranked by score – {scenario_label}"
+        if scenario_label else "Constructions ranked by score"
+    )
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150)
+    plt.close()
+    print(f"  => Score ranking saved to {output_path}")
+
+
 def export_metrics_csv(
     all_metrics: List[Dict[str, Any]],
     norm_matrix: np.ndarray,
     composition_numbers: List[int],
     output_path: str,
+    weighted_scores: np.ndarray = None,
 ) -> None:
-    """Write CSV with construction, raw metrics, and normalized scores for scoring.
+    """Write CSV with construction, raw metrics, normalized scores, and optional weighted score.
 
-    Exports the same metrics as the heatmap, in the same order.
+    Exports the same metrics as the heatmap, in the same order. If weighted_scores
+    is provided, adds a 'weighted_score' column.
     """
     rows = []
     for i, (comp, raw) in enumerate(zip(composition_numbers, all_metrics)):
@@ -200,6 +291,8 @@ def export_metrics_csv(
                 norm_matrix[i, j] if i < norm_matrix.shape[0] and j < norm_matrix.shape[1]
                 else None
             )
+        if weighted_scores is not None and i < len(weighted_scores):
+            row['weighted_score'] = weighted_scores[i]
         rows.append(row)
     df = pd.DataFrame(rows)
     df.to_csv(output_path, index=False)
@@ -250,6 +343,7 @@ def main() -> None:
     print(f"  Loaded {len(all_metrics)} constructions: {composition_numbers}")
 
     norm_matrix = normalize_metrics(all_metrics)  # same for heatmap and CSV
+    scores = compute_weighted_score(norm_matrix)
 
     plot_normalized_heatmap(
         norm_matrix,
@@ -257,11 +351,24 @@ def main() -> None:
         os.path.join(out_dir, "construction_metrics_heatmap.png"),
         scenario_label=scenario_label,
     )
+    plot_score_bars(
+        composition_numbers,
+        scores,
+        os.path.join(out_dir, "construction_score_bars.png"),
+        scenario_label=scenario_label,
+    )
+    plot_score_ranked(
+        composition_numbers,
+        scores,
+        os.path.join(out_dir, "construction_score_ranked.png"),
+        scenario_label=scenario_label,
+    )
     export_metrics_csv(
         all_metrics,
         norm_matrix,
         composition_numbers,
         os.path.join(out_dir, "construction_metrics.csv"),
+        weighted_scores=scores,
     )
     print("Done.")
 
