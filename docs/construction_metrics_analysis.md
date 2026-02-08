@@ -69,9 +69,9 @@ score = Σ (weight_i × normalized_metric_i)
 | Metric key | Default weight | Rationale |
 |------------|----------------|-----------|
 | event_throughput | 0.40 | Primary research focus: maximize throughput |
-| cpu_utilization | 0.25 | Resource utilization |
-| memory_occupancy | 0.25 | Resource utilization |
-| network_transfer_mb_per_event | 0.10 | Lower is better (already normalized) |
+| cpu_utilization | 0.2 | Resource utilization |
+| memory_occupancy | 0.2 | Resource utilization |
+| network_transfer_mb_per_event | 0.20 | Lower is better (already normalized) |
 | **Sum** | **1.00** | |
 
 The score is in **[0, 1]** (same scale as each normalized metric).
@@ -81,7 +81,7 @@ The score is in **[0, 1]** (same scale as each normalized metric).
 To change metrics or weights, edit in `scripts/construction_metrics_analysis.py`:
 
 - **`SCORE_METRICS_WEIGHTS`**: dictionary mapping each metric key to its weight
-  (e.g. `{'event_throughput': 0.4, 'cpu_utilization': 0.25, ...}`). Keys must exist
+  (e.g. `{'event_throughput': 0.4, 'cpu_utilization': 0.2, ...}`). Keys must exist
   in the heatmap/CSV metric list. **Weights must sum to 1.0**.
 
 Alternative metrics you might consider:
@@ -109,7 +109,7 @@ override with `--output-dir`.
 |------|-------------|
 | **construction_metrics_heatmap.png** | Heatmap: rows = Const 1–16, columns = 9 metrics; color = normalized score (green = 1, red = 0). |
 | **construction_score_bars.png** | Bar chart: construction (x) vs weighted score (y); color by score; mean line. |
-| **construction_score_ranked.png** | Horizontal bar chart: constructions sorted by score (best on top). |
+| **construction_score_ranked.png** | Horizontal bar chart: constructions sorted by score (best on bottom). |
 | **construction_metrics.csv** | One row per construction: `construction`, then for each metric `*_raw` and `*_normalized`, plus `weighted_score`. |
 
 ## Usage
