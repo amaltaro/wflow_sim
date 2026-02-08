@@ -118,22 +118,9 @@ python scripts/real_workflow_visualization.py results/real/ [--output-dir result
 
 ### `construction_metrics_analysis.py`
 
-Multi-metric comparison for a single scenario (one workflow type, target job length, failure rate, data rate).
+Multi-metric comparison and weighted score for the 16 workflow constructions in a single scenario. Produces a heatmap, two score plots, and a CSV (raw + normalized metrics + `weighted_score`).
 
-**Purpose**: For a scenario directory containing all 16 workflow construction JSONs, normalizes selected metrics to [0, 1] (higher = better) and produces a heatmap and a CSV; both use the same nine metrics in the same order.
-
-**Metrics** (heatmap and CSV): Throughput, Alloc CPU Cores, CPU Util, Alloc Memory, Memory Occ, Turnaround, Wall Time/Evt, Net MB/Evt, Write Remote (event_throughput, total_cpu_cores_used, cpu_utilization, total_memory_used_mb, memory_occupancy, total_turnaround_time, wall_time_per_event, network_transfer_mb_per_event, total_write_remote_mb).
-
-**Output directory**: Same schema as other analysis scripts: `results/analysis/construction_metrics` suffixed by workflow type, target job length, failure rate and data rate (e.g. `results/analysis/construction_metrics/case1_real/12h/fr5/100MBps`). If `--output-dir` is omitted, this path is derived from the simulation directory when it matches the standard sim tree.
-
-**Usage**:
-```bash
-python scripts/construction_metrics_analysis.py results/sim/others/case1_real/12h/fr5/100MBps \
-  [--output-dir results/analysis/construction_metrics/case1_real/12h/fr5/100MBps] \
-  [--scenario-label "case1_real 12h fr5 100MBps"]
-```
-
-**Output** (under the output directory): `construction_metrics_heatmap.png`, `construction_metrics.csv` (same nine metrics as heatmap, with _raw and _normalized columns per metric for formula-based scoring).
+**See**: [Construction metrics analysis](construction_metrics_analysis.md) for full documentation (metrics, normalization, score formula, outputs, usage, and Makefile target).
 
 ## Workflow
 
