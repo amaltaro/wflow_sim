@@ -26,21 +26,23 @@ resource utilization by letting you prioritize metrics via weights.
 
 ## Metrics
 
-### Heatmap and CSV (nine metrics)
+### Heatmap and CSV (11 metrics)
 
-All nine metrics appear in the heatmap and in the CSV, in this order (left to right):
+All eleven metrics appear in the heatmap and in the CSV, in this order (left to right):
 
 | Order | Key | Label | Higher is better |
 |-------|-----|--------|------------------|
 | 1 | event_throughput | Throughput | Yes |
 | 2 | total_cpu_cores_used | Alloc CPU Cores | No |
 | 3 | cpu_utilization | CPU Util | Yes |
-| 4 | total_memory_used_mb | Alloc Memory | No |
-| 5 | memory_occupancy | Memory Occ | Yes |
-| 6 | total_turnaround_time | Turnaround | No |
-| 7 | wall_time_per_event | Wall Time/Evt | No |
-| 8 | network_transfer_mb_per_event | Net MB/Evt | No |
-| 9 | total_write_remote_mb | Write Remote | No |
+| 4 | cpu_cores_per_event | CPU Cores/Evt | No |
+| 5 | total_memory_used_mb | Alloc Memory | No |
+| 6 | memory_occupancy | Memory Occ | Yes |
+| 7 | memory_mb_per_event | Memory MB/Evt | No |
+| 8 | total_turnaround_time | Turnaround | No |
+| 9 | wall_time_per_event | Wall Time/Evt | No |
+| 10 | network_transfer_mb_per_event | Net MB/Evt | No |
+| 11 | total_write_remote_mb | Write Remote | No |
 
 ### Normalization
 
@@ -69,9 +71,9 @@ score = Σ (weight_i × normalized_metric_i)
 | Metric key | Default weight | Rationale |
 |------------|----------------|-----------|
 | event_throughput | 0.40 | Primary research focus: maximize throughput |
-| cpu_utilization | 0.2 | Resource utilization |
-| memory_occupancy | 0.2 | Resource utilization |
-| network_transfer_mb_per_event | 0.20 | Lower is better (already normalized) |
+| cpu_cores_per_event | 0.20 | Per-event CPU intensity (lower is better; normalized) |
+| memory_mb_per_event | 0.20 | Per-event memory intensity (lower is better; normalized) |
+| network_transfer_mb_per_event | 0.20 | Per-event network transfer (lower is better; normalized) |
 | **Sum** | **1.00** | |
 
 The score is in **[0, 1]** (same scale as each normalized metric).
@@ -81,14 +83,13 @@ The score is in **[0, 1]** (same scale as each normalized metric).
 To change metrics or weights, edit in `scripts/construction_metrics_analysis.py`:
 
 - **`SCORE_METRICS_WEIGHTS`**: dictionary mapping each metric key to its weight
-  (e.g. `{'event_throughput': 0.4, 'cpu_utilization': 0.2, ...}`). Keys must exist
+  (e.g. `{'event_throughput': 0.4, 'cpu_cores_per_event': 0.2, ...}`). Keys must exist
   in the heatmap/CSV metric list. **Weights must sum to 1.0**.
 
-Alternative metrics you might consider:
-
-- **cpu_cores_per_event** (vs cpu_utilization): resource intensity per event;
-  add to the script’s metric list if you want to use it in the score.
-- **memory_mb_per_event** (vs memory_occupancy): same idea for memory.
+The default score uses **cpu_cores_per_event** and **memory_mb_per_event** (per-event
+intensity; correlation analysis supports these as strong drivers of throughput). You
+can switch back to **cpu_utilization** and **memory_occupancy** (efficiency) in
+`SCORE_METRICS_WEIGHTS` if preferred.
 
 ### Which CPU, memory, and I/O metrics are most meaningful for throughput?
 
@@ -142,7 +143,7 @@ override with `--output-dir`.
 
 | File | Description |
 |------|-------------|
-| **construction_metrics_heatmap.png** | Heatmap: rows = Const 1–16, columns = 9 metrics; color = normalized score (green = 1, red = 0). |
+| **construction_metrics_heatmap.png** | Heatmap: rows = Const 1–16, columns = 11 metrics; color = normalized score (green = 1, red = 0). |
 | **construction_score_bars.png** | Bar chart: construction (x) vs weighted score (y); color by score; mean line. |
 | **construction_score_ranked.png** | Horizontal bar chart: constructions sorted by score (best on bottom). |
 | **construction_metrics.csv** | One row per construction: `construction`, then for each metric `*_raw` and `*_normalized`, plus `weighted_score`. |
