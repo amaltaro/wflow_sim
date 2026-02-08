@@ -90,6 +90,41 @@ Alternative metrics you might consider:
   add to the script’s metric list if you want to use it in the score.
 - **memory_mb_per_event** (vs memory_occupancy): same idea for memory.
 
+### Which CPU, memory, and I/O metrics are most meaningful for throughput?
+
+The script **`scripts/analyze_throughput_drivers.py`** compares how well ten
+metrics (including the one used in the score formula) correlate with **event_throughput**.
+Output is ordered by resource (CPU, then Memory, then I/O):
+
+- **CPU:** cpu_utilization (efficiency), total_cpu_cores_used, cpu_cores_per_event (intensity)
+- **Memory:** memory_occupancy (efficiency), total_memory_used_mb, memory_mb_per_event (intensity)
+- **I/O:** total_network_transfer_mb, network_transfer_mb_per_event (used in the score), total_write_remote_mb_per_event, total_read_remote_mb_per_event (lower is often better for efficiency)
+
+It loads one scenario directory (same path as construction metrics) and prints
+**Pearson correlation** of each of the ten with event_throughput. Higher |r|
+means a stronger linear relationship; the sign indicates direction.
+
+**Interpretation:**
+
+- **Utilization metrics** (cpu_utilization, memory_occupancy): positive r with throughput
+  means better utilization tends to go with higher throughput.
+- **Total- or per-event usage** (total_cpu_cores_used, cpu_cores_per_event,
+  total_memory_used_mb, memory_mb_per_event, total_network_transfer_mb,
+  network_transfer_mb_per_event, total_write_remote_mb_per_event,
+  total_read_remote_mb_per_event): negative r often means lower resource or I/O
+  use (or per event) is associated with higher throughput (more efficient workflows).
+
+Use the output to decide which **CPU**, **memory**, and **I/O** metrics to
+include in the construction score (e.g. cpu_utilization vs cpu_cores_per_event,
+memory_occupancy vs memory_mb_per_event); network_transfer_mb_per_event is already
+in the default score formula.
+
+**Usage:**
+
+```bash
+python scripts/analyze_throughput_drivers.py results/sim/others/case1_real/12h/fr5/100MBps
+```
+
 ## Output directory schema
 
 Outputs follow the same schema as other analysis scripts:
