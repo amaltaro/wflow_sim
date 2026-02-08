@@ -9,11 +9,12 @@ selected metrics to [0, 1] (higher = better), and produces:
 - A single weighted score per construction (sum of weights = 1.0) and two score plots
 - A CSV of raw and normalized metrics plus weighted_score (same metrics as heatmap)
 
-Metrics (9 total, same for heatmap and CSV): event_throughput, total_cpu_cores_used,
-cpu_utilization, total_memory_used_mb, memory_occupancy, total_turnaround_time,
-wall_time_per_event, network_transfer_mb_per_event, total_write_remote_mb.
-Higher-is-better: throughput, CPU util, memory occupancy. Lower-is-better: the rest
-(inverted so normalized score 1 = best).
+Metrics (11 total, same for heatmap and CSV): event_throughput, total_cpu_cores_used,
+cpu_utilization, cpu_cores_per_event, total_memory_used_mb, memory_occupancy,
+memory_mb_per_event, total_turnaround_time, wall_time_per_event,
+network_transfer_mb_per_event, total_write_remote_mb.
+Score uses: event_throughput, cpu_cores_per_event, memory_mb_per_event,
+network_transfer_mb_per_event (lower is better for the last three; normalized so 1 = best).
 
 Output directory follows the same schema as other analysis scripts: output goes to
 results/analysis/construction_metrics and is suffixed by workflow type, target job
@@ -35,12 +36,11 @@ import numpy as np
 import pandas as pd
 
 
-# Weighted score: metric key -> weight (weights must sum to 1.0). Focus: throughput + utilization.
-# Alternatives: cpu_cores_per_event, memory_mb_per_event (resource intensity vs utilization).
+# Weighted score: metric key -> weight (weights must sum to 1.0). Focus: throughput + per-event resource use.
 SCORE_METRICS_WEIGHTS = {
     'event_throughput': 0.4,
-    'cpu_utilization': 0.2,
-    'memory_occupancy': 0.2,
+    'cpu_cores_per_event': 0.2,
+    'memory_mb_per_event': 0.2,
     'network_transfer_mb_per_event': 0.2,
 }
 
@@ -49,8 +49,10 @@ _ALL_SPECS = [
     ('event_throughput', 'Throughput', True),
     ('total_cpu_cores_used', 'Alloc CPU Cores', False),
     ('cpu_utilization', 'CPU Util', True),
+    ('cpu_cores_per_event', 'CPU Cores/Evt', False),
     ('total_memory_used_mb', 'Alloc Memory', False),
     ('memory_occupancy', 'Memory Occ', True),
+    ('memory_mb_per_event', 'Memory MB/Evt', False),
     ('total_turnaround_time', 'Turnaround', False),
     ('wall_time_per_event', 'Wall Time/Evt', False),
     ('network_transfer_mb_per_event', 'Net MB/Evt', False),
