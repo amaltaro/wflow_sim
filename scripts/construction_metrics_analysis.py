@@ -47,12 +47,10 @@ SCORE_METRICS_WEIGHTS = {
 # Single source of truth: (key, label, higher_is_better). Full list = heatmap order.
 _ALL_SPECS = [
     ('event_throughput', 'Throughput', True),
-    ('total_cpu_cores_used', 'Alloc CPU Cores', False),
-    ('cpu_utilization', 'CPU Util', True),
     ('cpu_cores_per_event', 'CPU Cores/Evt', False),
-    ('total_memory_used_mb', 'Alloc Memory', False),
-    ('memory_occupancy', 'Memory Occ', True),
     ('memory_mb_per_event', 'Memory MB/Evt', False),
+    ('cpu_utilization', 'CPU Util', True),
+    ('memory_occupancy', 'Memory Occ', True),
     ('total_turnaround_time', 'Turnaround', False),
     ('wall_time_per_event', 'Wall Time/Evt', False),
     ('network_transfer_mb_per_event', 'Net MB/Evt', False),
