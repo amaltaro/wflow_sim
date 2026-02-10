@@ -6,7 +6,8 @@ For a given scenario (workflow type, target job length, failure rate, data rate)
 loads all 16 workflow construction results from the scenario directory, normalizes
 selected metrics to [0, 1] (higher = better), and produces:
 - A normalized heatmap (constructions x metrics) for quick comparison
-- A single weighted score per construction (sum of weights = 1.0) and two score plots
+- A single weighted score per construction (sum of weights = 1.0) and score plots
+  (bars, ranked, and stacked-by-metric-contribution)
 - A CSV of raw and normalized metrics plus weighted_score (same metrics as heatmap)
 
 Metrics (11 total, same for heatmap and CSV): event_throughput, total_cpu_cores_used,
@@ -182,6 +183,78 @@ def compute_weighted_score(
     # (n_const, n_metrics) * (n_metrics,) -> sum over axis=1
     scores = (norm_matrix[:, indices] * weights).sum(axis=1)
     return scores
+
+
+def compute_score_contributions(
+    norm_matrix: np.ndarray,
+    metrics_weights: Dict[str, float] = None,
+) -> Tuple[np.ndarray, List[str], List[float]]:
+    """Per-metric contribution to weighted score for each construction.
+
+    Returns:
+        contributions: (n_constructions, n_score_metrics) array; row sum = weighted score.
+        labels: short display names for each score metric.
+        weights: weight per metric (for reference).
+    """
+    if metrics_weights is None:
+        metrics_weights = SCORE_METRICS_WEIGHTS
+    metric_keys = list(metrics_weights.keys())
+    weights = np.asarray(list(metrics_weights.values()), dtype=float)
+    key_to_col = {s[0]: j for j, s in enumerate(HEATMAP_METRIC_SPECS)}
+    indices = [key_to_col[k] for k in metric_keys]
+    # (n_const, n_metrics) * (n_metrics,) broadcast -> (n_const, n_metrics)
+    contributions = norm_matrix[:, indices] * weights
+    short_labels = ["Throughput", "CPU/Evt", "Mem/Evt", "Net/Evt"]
+    return contributions, short_labels, weights.tolist()
+
+
+def plot_score_stacked(
+    composition_numbers: List[int],
+    norm_matrix: np.ndarray,
+    output_path: str,
+    scenario_label: str = "",
+) -> None:
+    """Stacked bar chart: each bar = total score; segments = metric contributions.
+
+    Shows how much each score metric (throughput, cpu, memory, network) contributes
+    to the final weighted score per construction, for quick comparison of balance.
+    """
+    contributions, labels, _ = compute_score_contributions(norm_matrix)
+    n_const = contributions.shape[0]
+    x = np.arange(n_const)
+    width = 0.7
+    # Distinct colors for the 4 segments (repeatable and colorblind-friendly)
+    segment_colors = ["#2ecc71", "#3498db", "#9b59b6", "#e74c3c"]
+    fig, ax = plt.subplots(figsize=(max(10, n_const * 0.6), 5))
+    bottom = np.zeros(n_const)
+    for j in range(contributions.shape[1]):
+        ax.bar(
+            x,
+            contributions[:, j],
+            width,
+            label=labels[j],
+            bottom=bottom,
+            color=segment_colors[j],
+            edgecolor="white",
+            linewidth=0.5,
+        )
+        bottom = bottom + contributions[:, j]
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"Const {c}" for c in composition_numbers], rotation=45, ha="right")
+    ax.set_ylabel("Weighted score contribution (0–1)")
+    ax.set_xlabel("Workflow construction")
+    ax.set_ylim(0, 1.05)
+    ax.yaxis.grid(True, linestyle="-", alpha=0.3)
+    ax.set_axisbelow(True)
+    ax.legend(loc="upper right", ncol=2)
+    ax.set_title(
+        f"Score composition by construction – {scenario_label}"
+        if scenario_label else "Score composition by construction"
+    )
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150)
+    plt.close()
+    print(f"  => Score stacked bar chart saved to {output_path}")
 
 
 def plot_normalized_heatmap(
@@ -365,6 +438,12 @@ def main() -> None:
         composition_numbers,
         scores,
         os.path.join(out_dir, "construction_score_ranked.png"),
+        scenario_label=scenario_label,
+    )
+    plot_score_stacked(
+        composition_numbers,
+        norm_matrix,
+        os.path.join(out_dir, "construction_score_stacked.png"),
         scenario_label=scenario_label,
     )
     export_metrics_csv(
