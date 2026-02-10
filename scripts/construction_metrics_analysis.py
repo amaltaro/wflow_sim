@@ -235,6 +235,8 @@ def plot_score_bars(
         if scenario_label else "Weighted score by construction"
     )
     ax.axhline(y=scores.mean(), color='gray', linestyle='--', alpha=0.7, label=f"Mean = {scores.mean():.3f}")
+    ax.yaxis.grid(True, linestyle='-', alpha=0.3)
+    ax.set_axisbelow(True)
     ax.legend()
     plt.tight_layout()
     plt.savefig(output_path, dpi=150)
@@ -260,6 +262,8 @@ def plot_score_ranked(
     ax.set_yticklabels(sorted_labels)
     ax.set_xlabel("Weighted score (0–1)")
     ax.set_xlim(0, 1.05)
+    ax.xaxis.grid(True, linestyle='-', alpha=0.3)
+    ax.set_axisbelow(True)
     ax.set_title(
         f"Constructions ranked by score – {scenario_label}"
         if scenario_label else "Constructions ranked by score"
