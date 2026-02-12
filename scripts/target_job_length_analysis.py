@@ -169,6 +169,29 @@ def target_length_to_hours(target_length: str) -> float:
     return float(target_length.replace('h', ''))
 
 
+def get_target_length_xconfig(
+    target_lengths: List[str],
+    include_zero: bool = False,
+) -> Tuple[List[str], Dict[str, int]]:
+    """Get x-axis labels and mapping for categorical (equal) spacing.
+
+    Uses integer positions so 15m, 30m, 1h are clearly separated (unlike linear hours).
+
+    Args:
+        target_lengths: Sorted list of target length strings (e.g. ['15m', '30m', '1h', ...])
+        include_zero: If True, prepend '0' as first category (for origin plots)
+
+    Returns:
+        (xtick_labels, tl_to_x): labels for xticks and dict mapping target_length -> x position
+    """
+    if include_zero:
+        labels = ["0"] + list(target_lengths)
+    else:
+        labels = list(target_lengths)
+    tl_to_x = {tl: i for i, tl in enumerate(labels)}
+    return labels, tl_to_x
+
+
 def get_best_hybrid_colors(best_hybrids: Dict[str, Optional[int]]) -> Dict[int, str]:
     """Get unique colors for each best hybrid construction.
 
@@ -229,18 +252,13 @@ def plot_throughput_vs_target_length(data_by_composition: Dict[int, List[Dict[st
     target_lengths = []
     for comp_num in sorted(data_by_composition.keys()):
         comp_data = data_by_composition[comp_num]
-        # Sort by target job length (convert to hours for sorting)
         comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
         target_length_values = [d['target_job_length'] for d in comp_data_sorted]
-        throughput_values = [d['event_throughput'] for d in comp_data_sorted]
-
         if not target_lengths:
             target_lengths = target_length_values
 
     hybrid_color_map = get_best_hybrid_colors(best_hybrids)
-
-    # Convert target lengths to hours for x-axis
-    target_hours = [target_length_to_hours(tl) for tl in target_lengths]
+    xtick_labels, tl_to_x = get_target_length_xconfig(target_lengths, include_zero=False)
 
     # Plot lines for all constructions
     for comp_num in sorted(data_by_composition.keys()):
@@ -248,42 +266,33 @@ def plot_throughput_vs_target_length(data_by_composition: Dict[int, List[Dict[st
         comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
         target_length_values = [d['target_job_length'] for d in comp_data_sorted]
         throughput_values = [d['event_throughput'] for d in comp_data_sorted]
-        target_hours_values = [target_length_to_hours(tl) for tl in target_length_values]
+        x_positions = [tl_to_x[tl] for tl in target_length_values]
+        y_values = throughput_values
 
         # Plot line for this construction
         label = f"Const {comp_num}"
         if comp_num == 1:
-            # Highlight Const 1 (all chained)
-            ax.plot(target_hours_values, throughput_values, 'o-', label=label, linewidth=2.5,
+            ax.plot(x_positions, y_values, 'o-', label=label, linewidth=2.5,
                    color='#d62728', markersize=8, zorder=10)
         elif comp_num == 16:
-            # Highlight Const 16 (all independent)
-            ax.plot(target_hours_values, throughput_values, 's-', label=label, linewidth=2.5,
+            ax.plot(x_positions, y_values, 's-', label=label, linewidth=2.5,
                    color='#2ca02c', markersize=8, zorder=10)
         else:
-            # Check if this is the best hybrid for any target length
-            is_best_hybrid = any(best_hybrids[tl] == comp_num for tl in target_lengths if best_hybrids[tl] is not None)
-
+            is_best_hybrid = any(best_hybrids[tl] == comp_num for tl in target_lengths
+                                if best_hybrids[tl] is not None)
             if is_best_hybrid:
-                # Get unique color for this best hybrid
                 hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
-                # Highlight best hybrid with triangle markers
-                marker_targets = [tl for tl in target_length_values if best_hybrids.get(tl) == comp_num]
-                marker_throughput = [th for tl, th in zip(target_length_values, throughput_values)
-                                    if best_hybrids.get(tl) == comp_num]
-
-                # Plot the full line
-                ax.plot(target_hours_values, throughput_values, '-', label=label, linewidth=1.5,
+                marker_x = [tl_to_x[tl] for tl in target_length_values if best_hybrids.get(tl) == comp_num]
+                marker_y = [th for tl, th in zip(target_length_values, throughput_values)
+                            if best_hybrids.get(tl) == comp_num]
+                ax.plot(x_positions, y_values, '-', label=label, linewidth=1.5,
                        alpha=0.7, markersize=5, zorder=5)
-                # Add triangle markers at best hybrid points with unique color
-                if marker_targets:
-                    marker_hours = [target_length_to_hours(tl) for tl in marker_targets]
-                    ax.plot(marker_hours, marker_throughput, '^', label=None, linewidth=0,
+                if marker_x:
+                    ax.plot(marker_x, marker_y, '^', label=None, linewidth=0,
                            color=hybrid_color, markersize=10, zorder=11, alpha=0.9,
                            markerfacecolor=hybrid_color, markeredgecolor='white', markeredgewidth=1.5)
             else:
-                # Regular hybrid constructions
-                ax.plot(target_hours_values, throughput_values, '-', label=label, linewidth=1.5,
+                ax.plot(x_positions, y_values, '-', label=label, linewidth=1.5,
                        alpha=0.7, markersize=5)
 
     ax.set_xlabel("Target Job Length", fontsize=12)
@@ -291,8 +300,8 @@ def plot_throughput_vs_target_length(data_by_composition: Dict[int, List[Dict[st
     ax.set_title("Event Throughput vs. Target Job Length", fontsize=14)
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax.grid(True, alpha=0.3)
-    ax.set_xticks(target_hours)
-    ax.set_xticklabels(target_lengths)
+    ax.set_xticks(range(len(xtick_labels)))
+    ax.set_xticklabels(xtick_labels)
 
     plt.tight_layout()
     output_path = os.path.join(output_dir, "throughput_vs_target_length.png")
@@ -313,19 +322,16 @@ def plot_throughput_improvement(data_by_composition: Dict[int, List[Dict[str, An
 
     fig, ax = plt.subplots(figsize=(14, 8))
 
-    # Get all target lengths and sort them
     all_target_lengths = set()
     for comp_data in data_by_composition.values():
         for d in comp_data:
             all_target_lengths.add(d['target_job_length'])
     target_lengths = sorted(all_target_lengths, key=target_length_to_hours)
-    target_hours = [target_length_to_hours(tl) for tl in target_lengths]
+    xtick_labels, tl_to_x = get_target_length_xconfig(target_lengths, include_zero=False)
 
     for comp_num in sorted(data_by_composition.keys()):
         comp_data = data_by_composition[comp_num]
         comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
-
-        # Find baseline (shortest target length) throughput
         baseline = comp_data_sorted[0] if comp_data_sorted else None
         if not baseline:
             continue
@@ -334,26 +340,23 @@ def plot_throughput_improvement(data_by_composition: Dict[int, List[Dict[str, An
         if baseline_throughput == 0:
             continue
 
-        # Calculate improvement percentage
-        target_length_values = []
-        improvement_values = []
-        for d in comp_data_sorted:
-            target_length_values.append(d['target_job_length'])
-            improvement = ((d['event_throughput'] - baseline_throughput) / baseline_throughput) * 100
-            improvement_values.append(improvement)
+        target_length_values = [d['target_job_length'] for d in comp_data_sorted]
+        improvement_values = [
+            ((d['event_throughput'] - baseline_throughput) / baseline_throughput) * 100
+            for d in comp_data_sorted
+        ]
+        x_positions = [tl_to_x[tl] for tl in target_length_values]
+        y_values = improvement_values
 
-        target_hours_values = [target_length_to_hours(tl) for tl in target_length_values]
-
-        # Plot line for this construction
         label = f"Const {comp_num}"
         if comp_num == 1:
-            ax.plot(target_hours_values, improvement_values, 'o-', label=label, linewidth=2.5,
+            ax.plot(x_positions, y_values, 'o-', label=label, linewidth=2.5,
                    color='#d62728', markersize=8, zorder=10)
         elif comp_num == 16:
-            ax.plot(target_hours_values, improvement_values, 's-', label=label, linewidth=2.5,
+            ax.plot(x_positions, y_values, 's-', label=label, linewidth=2.5,
                    color='#2ca02c', markersize=8, zorder=10)
         else:
-            ax.plot(target_hours_values, improvement_values, '-', label=label, linewidth=1.5,
+            ax.plot(x_positions, y_values, '-', label=label, linewidth=1.5,
                    alpha=0.7, markersize=5)
 
     baseline_label = target_lengths[0] if target_lengths else "shortest"
@@ -362,8 +365,8 @@ def plot_throughput_improvement(data_by_composition: Dict[int, List[Dict[str, An
     ax.set_title(f"Throughput Improvement vs. Target Job Length\n(Relative to {baseline_label})", fontsize=14)
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax.grid(True, alpha=0.3)
-    ax.set_xticks(target_hours)
-    ax.set_xticklabels(target_lengths)
+    ax.set_xticks(range(len(xtick_labels)))
+    ax.set_xticklabels(xtick_labels)
     ax.axhline(y=0, color='black', linestyle='--', linewidth=1, alpha=0.5)
 
     plt.tight_layout()
@@ -486,13 +489,12 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
 
-    # Get all target lengths and sort them
     all_target_lengths = set()
     for comp_data in data_by_composition.values():
         for d in comp_data:
             all_target_lengths.add(d['target_job_length'])
     target_lengths = sorted(all_target_lengths, key=target_length_to_hours)
-    target_hours = [target_length_to_hours(tl) for tl in target_lengths]
+    xtick_labels, tl_to_x = get_target_length_xconfig(target_lengths, include_zero=False)
 
     # Plot 1: Network Transfer per Event vs. Target Job Length
     for comp_num in sorted(data_by_composition.keys()):
@@ -500,27 +502,26 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
         comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
         target_length_values = [d['target_job_length'] for d in comp_data_sorted]
         network_values = [d['network_transfer_mb_per_event'] for d in comp_data_sorted]
-        target_hours_values = [target_length_to_hours(tl) for tl in target_length_values]
+        x_positions = [tl_to_x[tl] for tl in target_length_values]
 
-        # Plot line for this construction
         label = f"Const {comp_num}"
         if comp_num == 1:
-            ax1.plot(target_hours_values, network_values, 'o-', label=label, linewidth=2.5,
+            ax1.plot(x_positions, network_values, 'o-', label=label, linewidth=2.5,
                     color='#d62728', markersize=8, zorder=10)
         elif comp_num == 16:
-            ax1.plot(target_hours_values, network_values, 's-', label=label, linewidth=2.5,
+            ax1.plot(x_positions, network_values, 's-', label=label, linewidth=2.5,
                     color='#2ca02c', markersize=8, zorder=10)
         else:
-            ax1.plot(target_hours_values, network_values, '-', label=label, linewidth=1.5,
+            ax1.plot(x_positions, network_values, '-', label=label, linewidth=1.5,
                     alpha=0.7, markersize=5)
 
-    ax1.set_xlabel("Target Job Length (hours)", fontsize=12)
+    ax1.set_xlabel("Target Job Length", fontsize=12)
     ax1.set_ylabel("Network Transfer per Event (MB)", fontsize=12)
     ax1.set_title("Network Transfer vs. Target Job Length", fontsize=13)
     ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax1.grid(True, alpha=0.3)
-    ax1.set_xticks(target_hours)
-    ax1.set_xticklabels(target_lengths)
+    ax1.set_xticks(range(len(xtick_labels)))
+    ax1.set_xticklabels(xtick_labels)
 
     # Plot 2: Remote Read vs. Remote Write breakdown (focus on extremes and best hybrid)
     hybrid_color_map = get_best_hybrid_colors(best_hybrids)
@@ -540,41 +541,39 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
         target_length_values = [d['target_job_length'] for d in comp_data_sorted]
         read_remote = [d['total_read_remote_mb_per_event'] for d in comp_data_sorted]
         write_remote = [d['total_write_remote_mb_per_event'] for d in comp_data_sorted]
-        target_hours_values = [target_length_to_hours(tl) for tl in target_length_values]
+        x_positions = [tl_to_x[tl] for tl in target_length_values]
 
-        # Plot lines
         label = f"Const {comp_num}"
         if comp_num == 1:
-            ax2.plot(target_hours_values, read_remote, 'o--', label=f"{label} (Read)", linewidth=2.5,
+            ax2.plot(x_positions, read_remote, 'o--', label=f"{label} (Read)", linewidth=2.5,
                     color='#d62728', markersize=7, zorder=10, alpha=0.7, markerfacecolor='#d62728',
                     markeredgecolor='#d62728', markeredgewidth=1.5)
-            ax2.plot(target_hours_values, write_remote, 's-', label=f"{label} (Write)", linewidth=2.5,
+            ax2.plot(x_positions, write_remote, 's-', label=f"{label} (Write)", linewidth=2.5,
                     color='#d62728', markersize=7, zorder=10, alpha=0.9, markerfacecolor='#d62728',
                     markeredgecolor='#d62728', markeredgewidth=1.5)
         elif comp_num == 16:
-            ax2.plot(target_hours_values, read_remote, 'o--', label=f"{label} (Read)", linewidth=2.5,
+            ax2.plot(x_positions, read_remote, 'o--', label=f"{label} (Read)", linewidth=2.5,
                     color='#2ca02c', markersize=7, zorder=10, alpha=0.9, markerfacecolor='#2ca02c',
                     markeredgecolor='#2ca02c', markeredgewidth=1.5)
-            ax2.plot(target_hours_values, write_remote, 's-', label=f"{label} (Write)", linewidth=2.5,
+            ax2.plot(x_positions, write_remote, 's-', label=f"{label} (Write)", linewidth=2.5,
                     color='#2ca02c', markersize=7, zorder=10, alpha=0.9, markerfacecolor='#2ca02c',
                     markeredgecolor='#2ca02c', markeredgewidth=1.5)
         else:
-            # Best hybrid with unique color
             hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
-            ax2.plot(target_hours_values, read_remote, 'o--', label=f"{label} (Read)", linewidth=2,
+            ax2.plot(x_positions, read_remote, 'o--', label=f"{label} (Read)", linewidth=2,
                     color=hybrid_color, markersize=6, zorder=9, alpha=0.8, markerfacecolor=hybrid_color,
                     markeredgecolor=hybrid_color, markeredgewidth=1.5)
-            ax2.plot(target_hours_values, write_remote, 's-', label=f"{label} (Write)", linewidth=2,
+            ax2.plot(x_positions, write_remote, 's-', label=f"{label} (Write)", linewidth=2,
                     color=hybrid_color, markersize=6, zorder=9, alpha=0.8, markerfacecolor=hybrid_color,
                     markeredgecolor=hybrid_color, markeredgewidth=1.5)
 
-    ax2.set_xlabel("Target Job Length (hours)", fontsize=12)
+    ax2.set_xlabel("Target Job Length", fontsize=12)
     ax2.set_ylabel("Data Volume per Event (MB)", fontsize=12)
     ax2.set_title("Remote I/O Breakdown vs. Target Job Length", fontsize=13)
     ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=8)
     ax2.grid(True, alpha=0.3)
-    ax2.set_xticks(target_hours)
-    ax2.set_xticklabels(target_lengths)
+    ax2.set_xticks(range(len(xtick_labels)))
+    ax2.set_xticklabels(xtick_labels)
 
     plt.tight_layout()
     output_path = os.path.join(output_dir, "network_activity_vs_target_length.png")
@@ -700,13 +699,12 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
     """
     print(f"==> Creating failure cost analysis plot")
 
-    # Get all target lengths and sort them
     all_target_lengths = set()
     for comp_data in data_by_composition.values():
         for d in comp_data:
             all_target_lengths.add(d['target_job_length'])
     target_lengths = sorted(all_target_lengths, key=target_length_to_hours)
-    target_hours = [target_length_to_hours(tl) for tl in target_lengths]
+    xtick_labels, tl_to_x = get_target_length_xconfig(target_lengths, include_zero=False)
 
     # Check if we have failure data (fr25)
     has_failures = False
@@ -732,30 +730,29 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
         comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
 
         target_length_values = [d['target_job_length'] for d in comp_data_sorted]
-        avg_cpu_per_failure = [d.get('avg_cpu_per_failure', 0.0) / 3600.0 for d in comp_data_sorted]  # Convert to hours
-        target_hours_values = [target_length_to_hours(tl) for tl in target_length_values]
+        avg_cpu_per_failure = [d.get('avg_cpu_per_failure', 0.0) / 3600.0 for d in comp_data_sorted]
+        x_positions = [tl_to_x[tl] for tl in target_length_values]
 
         label = f"Const {comp_num}"
         if comp_num == 1:
-            ax1.plot(target_hours_values, avg_cpu_per_failure, 'o-', label=label,
+            ax1.plot(x_positions, avg_cpu_per_failure, 'o-', label=label,
                     linewidth=2.5, color='#d62728', markersize=8, zorder=10)
         elif comp_num == 16:
-            ax1.plot(target_hours_values, avg_cpu_per_failure, 's-', label=label,
+            ax1.plot(x_positions, avg_cpu_per_failure, 's-', label=label,
                     linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
         else:
-            # Only show best hybrid with unique colors
             if any(best_hybrids[tl] == comp_num for tl in target_lengths if best_hybrids[tl] is not None):
                 hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
-                ax1.plot(target_hours_values, avg_cpu_per_failure, '^-', label=label,
+                ax1.plot(x_positions, avg_cpu_per_failure, '^-', label=label,
                         linewidth=2, color=hybrid_color, markersize=6, zorder=9, alpha=0.8)
 
-    ax1.set_xlabel("Target Job Length (hours)", fontsize=12)
+    ax1.set_xlabel("Target Job Length", fontsize=12)
     ax1.set_ylabel("Average CPU Cost per Failure (CPU-hours)", fontsize=12)
     ax1.set_title("Average Cost per Failure vs. Target Job Length", fontsize=13)
     ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax1.grid(True, alpha=0.3)
-    ax1.set_xticks(target_hours)
-    ax1.set_xticklabels(target_lengths)
+    ax1.set_xticks(range(len(xtick_labels)))
+    ax1.set_xticklabels(xtick_labels)
 
     # Plot 2: Risk profile (max single failure cost - CPU time only)
     for comp_num in sorted(data_by_composition.keys()):
@@ -763,30 +760,29 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
         comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
 
         target_length_values = [d['target_job_length'] for d in comp_data_sorted]
-        max_cpu_per_failure = [d.get('max_cpu_per_failure', 0.0) / 3600.0 for d in comp_data_sorted]  # Convert to hours
-        target_hours_values = [target_length_to_hours(tl) for tl in target_length_values]
+        max_cpu_per_failure = [d.get('max_cpu_per_failure', 0.0) / 3600.0 for d in comp_data_sorted]
+        x_positions = [tl_to_x[tl] for tl in target_length_values]
 
         label = f"Const {comp_num}"
         if comp_num == 1:
-            ax2.plot(target_hours_values, max_cpu_per_failure, 'o-', label=label,
+            ax2.plot(x_positions, max_cpu_per_failure, 'o-', label=label,
                     linewidth=2.5, color='#d62728', markersize=8, zorder=10)
         elif comp_num == 16:
-            ax2.plot(target_hours_values, max_cpu_per_failure, 's-', label=label,
+            ax2.plot(x_positions, max_cpu_per_failure, 's-', label=label,
                     linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
         else:
-            # Only show best hybrid with unique colors
             if any(best_hybrids[tl] == comp_num for tl in target_lengths if best_hybrids[tl] is not None):
                 hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
-                ax2.plot(target_hours_values, max_cpu_per_failure, '^-', label=label,
+                ax2.plot(x_positions, max_cpu_per_failure, '^-', label=label,
                         linewidth=2, color=hybrid_color, markersize=6, zorder=9, alpha=0.8)
 
-    ax2.set_xlabel("Target Job Length (hours)", fontsize=12)
+    ax2.set_xlabel("Target Job Length", fontsize=12)
     ax2.set_ylabel("Max Single Failure Cost (CPU-hours)", fontsize=12)
     ax2.set_title("Risk Profile: Max Single Failure Cost vs. Target Job Length", fontsize=13)
     ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax2.grid(True, alpha=0.3)
-    ax2.set_xticks(target_hours)
-    ax2.set_xticklabels(target_lengths)
+    ax2.set_xticks(range(len(xtick_labels)))
+    ax2.set_xticklabels(xtick_labels)
 
     plt.tight_layout()
     output_path = os.path.join(output_dir, "failure_cost_analysis.png")
@@ -807,13 +803,12 @@ def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, An
     """
     print(f"==> Creating failure count analysis plot")
 
-    # Get all target lengths and sort them
     all_target_lengths = set()
     for comp_data in data_by_composition.values():
         for d in comp_data:
             all_target_lengths.add(d['target_job_length'])
     target_lengths = sorted(all_target_lengths, key=target_length_to_hours)
-    target_hours = [target_length_to_hours(tl) for tl in target_lengths]
+    xtick_labels, tl_to_x = get_target_length_xconfig(target_lengths, include_zero=False)
 
     # Check if we have failure data
     has_failures = False
@@ -840,31 +835,28 @@ def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, An
 
         target_length_values = [d['target_job_length'] for d in comp_data_sorted]
         failed_counts = [d.get('total_failed_jobs', 0) for d in comp_data_sorted]
-        total_jobs = [d.get('total_logical_jobs', 0) for d in comp_data_sorted]
-        failure_rate_actual = [d.get('failure_rate_actual', 0.0) for d in comp_data_sorted]
-        target_hours_values = [target_length_to_hours(tl) for tl in target_length_values]
+        x_positions = [tl_to_x[tl] for tl in target_length_values]
 
         label = f"Const {comp_num}"
         if comp_num == 1:
-            ax1.plot(target_hours_values, failed_counts, 'o-', label=label,
+            ax1.plot(x_positions, failed_counts, 'o-', label=label,
                     linewidth=2.5, color='#d62728', markersize=8, zorder=10)
         elif comp_num == 16:
-            ax1.plot(target_hours_values, failed_counts, 's-', label=label,
+            ax1.plot(x_positions, failed_counts, 's-', label=label,
                     linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
         else:
-            # Only show best hybrid with unique colors
             if any(best_hybrids[tl] == comp_num for tl in target_lengths if best_hybrids[tl] is not None):
                 hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
-                ax1.plot(target_hours_values, failed_counts, '^-', label=label,
+                ax1.plot(x_positions, failed_counts, '^-', label=label,
                         linewidth=2, color=hybrid_color, markersize=6, zorder=9, alpha=0.8)
 
-    ax1.set_xlabel("Target Job Length (hours)", fontsize=12)
+    ax1.set_xlabel("Target Job Length", fontsize=12)
     ax1.set_ylabel("Number of Failed Jobs", fontsize=12)
     ax1.set_title("Failure Count vs. Target Job Length", fontsize=13)
     ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax1.grid(True, alpha=0.3)
-    ax1.set_xticks(target_hours)
-    ax1.set_xticklabels(target_lengths)
+    ax1.set_xticks(range(len(xtick_labels)))
+    ax1.set_xticklabels(xtick_labels)
 
     # Plot 2: Failure rate (actual) vs target job length
     for comp_num in sorted(data_by_composition.keys()):
@@ -873,29 +865,28 @@ def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, An
 
         target_length_values = [d['target_job_length'] for d in comp_data_sorted]
         failure_rate_actual = [d.get('failure_rate_actual', 0.0) for d in comp_data_sorted]
-        target_hours_values = [target_length_to_hours(tl) for tl in target_length_values]
+        x_positions = [tl_to_x[tl] for tl in target_length_values]
 
         label = f"Const {comp_num}"
         if comp_num == 1:
-            ax2.plot(target_hours_values, failure_rate_actual, 'o-', label=label,
+            ax2.plot(x_positions, failure_rate_actual, 'o-', label=label,
                     linewidth=2.5, color='#d62728', markersize=8, zorder=10)
         elif comp_num == 16:
-            ax2.plot(target_hours_values, failure_rate_actual, 's-', label=label,
+            ax2.plot(x_positions, failure_rate_actual, 's-', label=label,
                     linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
         else:
-            # Only show best hybrid with unique colors
             if any(best_hybrids[tl] == comp_num for tl in target_lengths if best_hybrids[tl] is not None):
                 hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
-                ax2.plot(target_hours_values, failure_rate_actual, '^-', label=label,
+                ax2.plot(x_positions, failure_rate_actual, '^-', label=label,
                         linewidth=2, color=hybrid_color, markersize=6, zorder=9, alpha=0.8)
 
-    ax2.set_xlabel("Target Job Length (hours)", fontsize=12)
+    ax2.set_xlabel("Target Job Length", fontsize=12)
     ax2.set_ylabel("Actual Failure Rate (%)", fontsize=12)
     ax2.set_title("Actual Failure Rate vs. Target Job Length", fontsize=13)
     ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax2.grid(True, alpha=0.3)
-    ax2.set_xticks(target_hours)
-    ax2.set_xticklabels(target_lengths)
+    ax2.set_xticks(range(len(xtick_labels)))
+    ax2.set_xticklabels(xtick_labels)
     # Add horizontal line at expected failure rate if available
     if data_by_composition:
         first_data = next(iter(data_by_composition.values()))[0]
