@@ -70,6 +70,7 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
 
         return {
             'composition_number': metrics.get('composition_number', 0),
+            'total_events': metrics.get('total_events', 0),
             'event_throughput': metrics.get('event_throughput', 0.0),
             'wall_time_per_event': metrics.get('wall_time_per_event', 0.0),
             'cpu_time_per_event': metrics.get('cpu_time_per_event', 0.0),
@@ -631,7 +632,7 @@ def plot_best_hybrid_comparison(data_by_composition: Dict[int, List[Dict[str, An
             best_data = next((d for d in data_by_composition[best_comp]
                             if d['target_job_length'] == target_length), None)
             best_hybrid_throughput.append(best_data['event_throughput'] if best_data else 0.0)
-            best_hybrid_labels.append(f"Const {best_comp}")
+            best_hybrid_labels.append(f"C{best_comp}")
         else:
             best_hybrid_throughput.append(0.0)
             best_hybrid_labels.append("N/A")
@@ -682,6 +683,115 @@ def plot_best_hybrid_comparison(data_by_composition: Dict[int, List[Dict[str, An
 
     plt.tight_layout()
     output_path = os.path.join(output_dir, "best_hybrid_comparison.png")
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"  => Saved: {output_path}")
+
+
+def plot_total_jobs_comparison(data_by_composition: Dict[int, List[Dict[str, Any]]],
+                               best_hybrids: Dict[str, Optional[int]],
+                               output_dir: str) -> None:
+    """Plot total job count for Const 1, Const 16, and best hybrid per target job length.
+
+    Same grouped bar layout as best_hybrid_comparison, but for total_jobs.
+
+    Args:
+        data_by_composition: Dictionary mapping composition_number to metrics list
+        best_hybrids: Dictionary mapping target_length to best hybrid composition number
+        output_dir: Output directory for plots
+    """
+    print(f"==> Creating total jobs comparison plot")
+
+    all_target_lengths = set()
+    for comp_data in data_by_composition.values():
+        for d in comp_data:
+            all_target_lengths.add(d['target_job_length'])
+    target_lengths = sorted(all_target_lengths, key=target_length_to_hours)
+
+    const1_jobs = []
+    const16_jobs = []
+    best_hybrid_jobs = []
+    best_hybrid_labels = []
+
+    for target_length in target_lengths:
+        if 1 in data_by_composition:
+            const1_data = next((d for d in data_by_composition[1]
+                              if d['target_job_length'] == target_length), None)
+            const1_jobs.append(const1_data.get('total_jobs', 0) if const1_data else 0)
+        else:
+            const1_jobs.append(0)
+
+        if 16 in data_by_composition:
+            const16_data = next((d for d in data_by_composition[16]
+                              if d['target_job_length'] == target_length), None)
+            const16_jobs.append(const16_data.get('total_jobs', 0) if const16_data else 0)
+        else:
+            const16_jobs.append(0)
+
+        best_comp = best_hybrids[target_length]
+        if best_comp and best_comp in data_by_composition:
+            best_data = next((d for d in data_by_composition[best_comp]
+                            if d['target_job_length'] == target_length), None)
+            best_hybrid_jobs.append(best_data.get('total_jobs', 0) if best_data else 0)
+            best_hybrid_labels.append(f"C{best_comp}")
+        else:
+            best_hybrid_jobs.append(0)
+            best_hybrid_labels.append("N/A")
+
+    fig, ax = plt.subplots(figsize=(12, 7))
+    x = np.arange(len(target_lengths))
+    width = 0.25
+
+    unique_best_hybrids = sorted(set([best_hybrids[tl] for tl in target_lengths
+                                     if best_hybrids[tl] is not None]))
+    if len(unique_best_hybrids) == 1:
+        best_hybrid_legend = f"Best Hybrid (Const {unique_best_hybrids[0]})"
+    elif len(unique_best_hybrids) <= 3:
+        best_hybrid_legend = f"Best Hybrid (Const {', '.join(map(str, unique_best_hybrids))})"
+    else:
+        best_hybrid_legend = f"Best Hybrid (Const {unique_best_hybrids[0]}-{unique_best_hybrids[-1]})"
+
+    bars1 = ax.bar(x - width, const1_jobs, width, label='Const 1 (All Chained)',
+                  color='#d62728', alpha=0.8)
+    bars2 = ax.bar(x, const16_jobs, width, label='Const 16 (All Independent)',
+                  color='#2ca02c', alpha=0.8)
+    bars3 = ax.bar(x + width, best_hybrid_jobs, width, label=best_hybrid_legend,
+                  color='#1f77b4', alpha=0.8)
+
+    max_jobs = max(const1_jobs + const16_jobs + best_hybrid_jobs) or 1
+    for bars in [bars1, bars2, bars3]:
+        for bar in bars:
+            height = bar.get_height()
+            if height > 0:
+                ax.text(bar.get_x() + bar.get_width()/2., height,
+                       f'{int(height)}', ha='center', va='bottom', fontsize=8)
+
+    for i, (target_length, label) in enumerate(zip(target_lengths, best_hybrid_labels)):
+        if best_hybrid_jobs[i] > 0:
+            ax.text(i + width, best_hybrid_jobs[i] + max_jobs * 0.02,
+                   label, ha='center', va='bottom', fontsize=8, style='italic')
+
+    # Total events is common across all constructions and target lengths
+    total_events = 0
+    for comp_data in data_by_composition.values():
+        for d in comp_data:
+            total_events = d.get('total_events', 0)
+            if total_events > 0:
+                break
+        if total_events > 0:
+            break
+    events_str = f"{total_events:.2e}".replace('e+0', 'e').replace('e+', 'e') if total_events > 0 else "N/A"
+
+    ax.set_xlabel("Target Job Length", fontsize=12)
+    ax.set_ylabel("Total Jobs", fontsize=12)
+    ax.set_title(f"Total Jobs: Best Hybrid vs. Extremes ({events_str} events)", fontsize=14)
+    ax.set_xticks(x)
+    ax.set_xticklabels(target_lengths)
+    ax.legend(fontsize=11)
+    ax.grid(True, alpha=0.3, axis='y')
+
+    plt.tight_layout()
+    output_path = os.path.join(output_dir, "total_jobs_comparison.png")
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  => Saved: {output_path}")
@@ -1011,6 +1121,7 @@ def main():
     plot_throughput_improvement(data_by_composition, args.output_dir)
     plot_network_activity_vs_target_length(data_by_composition, best_hybrids, args.output_dir)
     plot_best_hybrid_comparison(data_by_composition, best_hybrids, args.output_dir)
+    plot_total_jobs_comparison(data_by_composition, best_hybrids, args.output_dir)
     plot_failure_cost_analysis(data_by_composition, best_hybrids, args.output_dir)
     plot_failure_count_analysis(data_by_composition, best_hybrids, args.output_dir)
     generate_summary_table(data_by_composition, args.output_dir)
