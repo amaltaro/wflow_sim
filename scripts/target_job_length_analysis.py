@@ -71,6 +71,7 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
         return {
             'composition_number': metrics.get('composition_number', 0),
             'total_events': metrics.get('total_events', 0),
+            'total_turnaround_time': metrics.get('total_turnaround_time', 0.0),
             'event_throughput': metrics.get('event_throughput', 0.0),
             'wall_time_per_event': metrics.get('wall_time_per_event', 0.0),
             'cpu_time_per_event': metrics.get('cpu_time_per_event', 0.0),
@@ -797,6 +798,120 @@ def plot_total_jobs_comparison(data_by_composition: Dict[int, List[Dict[str, Any
     print(f"  => Saved: {output_path}")
 
 
+def plot_turnaround_time_comparison(data_by_composition: Dict[int, List[Dict[str, Any]]],
+                                    best_hybrids: Dict[str, Optional[int]],
+                                    output_dir: str) -> None:
+    """Plot turnaround time for Const 1, Const 16, and best hybrid per target job length.
+
+    Same grouped bar layout as best_hybrid_comparison. Time is converted from seconds
+    to hours (or days if max >= 24h) for readability.
+
+    Args:
+        data_by_composition: Dictionary mapping composition_number to metrics list
+        best_hybrids: Dictionary mapping target_length to best hybrid composition number
+        output_dir: Output directory for plots
+    """
+    print(f"==> Creating turnaround time comparison plot")
+
+    all_target_lengths = set()
+    for comp_data in data_by_composition.values():
+        for d in comp_data:
+            all_target_lengths.add(d['target_job_length'])
+    target_lengths = sorted(all_target_lengths, key=target_length_to_hours)
+
+    const1_turnaround = []
+    const16_turnaround = []
+    best_hybrid_turnaround = []
+    best_hybrid_labels = []
+
+    for target_length in target_lengths:
+        if 1 in data_by_composition:
+            const1_data = next((d for d in data_by_composition[1]
+                              if d['target_job_length'] == target_length), None)
+            const1_turnaround.append(const1_data.get('total_turnaround_time', 0.0)
+                                    if const1_data else 0.0)
+        else:
+            const1_turnaround.append(0.0)
+
+        if 16 in data_by_composition:
+            const16_data = next((d for d in data_by_composition[16]
+                              if d['target_job_length'] == target_length), None)
+            const16_turnaround.append(const16_data.get('total_turnaround_time', 0.0)
+                                     if const16_data else 0.0)
+        else:
+            const16_turnaround.append(0.0)
+
+        best_comp = best_hybrids[target_length]
+        if best_comp and best_comp in data_by_composition:
+            best_data = next((d for d in data_by_composition[best_comp]
+                            if d['target_job_length'] == target_length), None)
+            best_hybrid_turnaround.append(best_data.get('total_turnaround_time', 0.0)
+                                         if best_data else 0.0)
+            best_hybrid_labels.append(f"C{best_comp}")
+        else:
+            best_hybrid_turnaround.append(0.0)
+            best_hybrid_labels.append("N/A")
+
+    # Convert seconds to hours (or days if max >= 24h)
+    all_turnaround = const1_turnaround + const16_turnaround + best_hybrid_turnaround
+    max_sec = max(all_turnaround) if all_turnaround else 0
+    use_days = max_sec >= 86400  # 24 hours
+    div = 86400.0 if use_days else 3600.0
+    unit = "days" if use_days else "hours"
+
+    const1_vals = [v / div for v in const1_turnaround]
+    const16_vals = [v / div for v in const16_turnaround]
+    best_hybrid_vals = [v / div for v in best_hybrid_turnaround]
+
+    fig, ax = plt.subplots(figsize=(12, 7))
+    x = np.arange(len(target_lengths))
+    width = 0.25
+
+    unique_best_hybrids = sorted(set([best_hybrids[tl] for tl in target_lengths
+                                    if best_hybrids[tl] is not None]))
+    if len(unique_best_hybrids) == 1:
+        best_hybrid_legend = f"Best Hybrid (Const {unique_best_hybrids[0]})"
+    elif len(unique_best_hybrids) <= 3:
+        best_hybrid_legend = f"Best Hybrid (Const {', '.join(map(str, unique_best_hybrids))})"
+    else:
+        best_hybrid_legend = f"Best Hybrid (Const {unique_best_hybrids[0]}-{unique_best_hybrids[-1]})"
+
+    bars1 = ax.bar(x - width, const1_vals, width, label='Const 1 (All Chained)',
+                  color='#d62728', alpha=0.8)
+    bars2 = ax.bar(x, const16_vals, width, label='Const 16 (All Independent)',
+                  color='#2ca02c', alpha=0.8)
+    bars3 = ax.bar(x + width, best_hybrid_vals, width, label=best_hybrid_legend,
+                  color='#1f77b4', alpha=0.8)
+
+    max_val = max(const1_vals + const16_vals + best_hybrid_vals) or 1
+    for bars in [bars1, bars2, bars3]:
+        for bar in bars:
+            height = bar.get_height()
+            if height > 0:
+                fmt = f'{height:.1f}' if use_days else f'{height:.2f}'
+                ax.text(bar.get_x() + bar.get_width()/2., height,
+                       fmt, ha='center', va='bottom', fontsize=8)
+
+    for i, (target_length, label) in enumerate(zip(target_lengths, best_hybrid_labels)):
+        if best_hybrid_vals[i] > 0:
+            ax.text(i + width, best_hybrid_vals[i] + max_val * 0.02,
+                   label, ha='center', va='bottom', fontsize=8, style='italic')
+
+    ax.set_xlabel("Target Job Length", fontsize=12)
+    ax.set_ylabel(f"Turnaround Time ({unit})", fontsize=12)
+    ax.set_title("Turnaround Time: Best Hybrid vs. Extremes", fontsize=14)
+    ax.set_xticks(x)
+    ax.set_xticklabels(target_lengths)
+    ax.legend(fontsize=11)
+    ax.grid(True, alpha=0.3, axis='y')
+
+    plt.tight_layout()
+    output_path = os.path.join(output_dir, "turnaround_time_comparison.png")
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"  => Saved: {output_path}")
+
+
 def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any]]],
                                best_hybrids: Dict[str, Optional[int]],
                                output_dir: str) -> None:
@@ -1122,6 +1237,7 @@ def main():
     plot_network_activity_vs_target_length(data_by_composition, best_hybrids, args.output_dir)
     plot_best_hybrid_comparison(data_by_composition, best_hybrids, args.output_dir)
     plot_total_jobs_comparison(data_by_composition, best_hybrids, args.output_dir)
+    plot_turnaround_time_comparison(data_by_composition, best_hybrids, args.output_dir)
     plot_failure_cost_analysis(data_by_composition, best_hybrids, args.output_dir)
     plot_failure_count_analysis(data_by_composition, best_hybrids, args.output_dir)
     generate_summary_table(data_by_composition, args.output_dir)
