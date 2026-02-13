@@ -8,10 +8,10 @@
       "groups": [
         "group_14"
       ],
-      "total_cpu_time": 441600000.0,
+      "total_cpu_time": 4416000000.0,
       "event_throughput": 0.0022644927536231885,
-      "total_memory_mb": 10240000,
-      "total_jobs": 159.7444089456869,
+      "total_memory_mb": 102272000,
+      "total_jobs": 1597.444089456869,
       "group_details": [
         {
           "group_id": "group_14",
@@ -33,10 +33,10 @@
         "group_12",
         "group_4"
       ],
-      "total_cpu_time": 438600000.0,
+      "total_cpu_time": 4386000000.0,
       "event_throughput": 0.002279981760145919,
-      "total_memory_mb": 10192000,
-      "total_jobs": 159.73653839376962,
+      "total_memory_mb": 101600000,
+      "total_jobs": 1597.3653839376962,
       "group_details": [
         {
           "group_id": "group_12",
@@ -64,10 +64,10 @@
         "group_9",
         "group_8"
       ],
-      "total_cpu_time": 417600000.00000006,
-      "event_throughput": 0.0023946360153256703,
-      "total_memory_mb": 9764000,
-      "total_jobs": 159.72570524180517,
+      "total_cpu_time": 4175999999.9999995,
+      "event_throughput": 0.0023946360153256708,
+      "total_memory_mb": 97250000,
+      "total_jobs": 1597.2570524180514,
       "group_details": [
         {
           "group_id": "group_9",
@@ -95,10 +95,10 @@
         "group_0",
         "group_13"
       ],
-      "total_cpu_time": 202200000.0,
+      "total_cpu_time": 2022000000.0,
       "event_throughput": 0.004945598417408506,
-      "total_memory_mb": 4784000,
-      "total_jobs": 159.72797195787115,
+      "total_memory_mb": 47712000,
+      "total_jobs": 1597.2797195787116,
       "group_details": [
         {
           "group_id": "group_0",
@@ -126,10 +126,10 @@
         "group_5",
         "group_11"
       ],
-      "total_cpu_time": 167200000.0,
+      "total_cpu_time": 1672000000.0,
       "event_throughput": 0.005980861244019139,
-      "total_memory_mb": 4832000,
-      "total_jobs": 159.7264233380386,
+      "total_memory_mb": 47792000,
+      "total_jobs": 1597.2642333803858,
       "group_details": [
         {
           "group_id": "group_5",
@@ -158,10 +158,10 @@
         "group_3",
         "group_4"
       ],
-      "total_cpu_time": 417600000.00000006,
-      "event_throughput": 0.0023946360153256703,
-      "total_memory_mb": 9770000,
-      "total_jobs": 159.7257427505522,
+      "total_cpu_time": 4175999999.9999995,
+      "event_throughput": 0.0023946360153256708,
+      "total_memory_mb": 97236000,
+      "total_jobs": 1597.2574275055217,
       "group_details": [
         {
           "group_id": "group_9",
@@ -196,10 +196,10 @@
         "group_10",
         "group_4"
       ],
-      "total_cpu_time": 199200000.00000003,
+      "total_cpu_time": 1992000000.0000002,
       "event_throughput": 0.00502008032128514,
-      "total_memory_mb": 4736000,
-      "total_jobs": 159.73013829876913,
+      "total_memory_mb": 47104000,
+      "total_jobs": 1597.3013829876913,
       "group_details": [
         {
           "group_id": "group_0",
@@ -234,10 +234,10 @@
         "group_7",
         "group_4"
       ],
-      "total_cpu_time": 164200000.0,
-      "event_throughput": 0.0060901339829476245,
-      "total_memory_mb": 4784000,
-      "total_jobs": 159.72814745867436,
+      "total_cpu_time": 1642000000.0000002,
+      "event_throughput": 0.006090133982947624,
+      "total_memory_mb": 47184000,
+      "total_jobs": 1597.2814745867436,
       "group_details": [
         {
           "group_id": "group_5",
@@ -272,10 +272,10 @@
         "group_6",
         "group_8"
       ],
-      "total_cpu_time": 178200000.0,
+      "total_cpu_time": 1782000000.0000002,
       "event_throughput": 0.005611672278338945,
-      "total_memory_mb": 4308000,
-      "total_jobs": 159.72938672456223,
+      "total_memory_mb": 42754000,
+      "total_jobs": 1597.2938672456223,
       "group_details": [
         {
           "group_id": "group_0",
@@ -310,10 +310,10 @@
         "group_2",
         "group_8"
       ],
-      "total_cpu_time": 143200000.0,
+      "total_cpu_time": 1432000000.0,
       "event_throughput": 0.006983240223463687,
-      "total_memory_mb": 4356000,
-      "total_jobs": 159.7264233380386,
+      "total_memory_mb": 42834000,
+      "total_jobs": 1597.2642333803858,
       "group_details": [
         {
           "group_id": "group_5",
@@ -348,10 +348,10 @@
         "group_1",
         "group_11"
       ],
-      "total_cpu_time": 140600000.0,
+      "total_cpu_time": 1406000000.0,
       "event_throughput": 0.007112375533428165,
-      "total_memory_mb": 3600000,
-      "total_jobs": 159.72595177548982,
+      "total_memory_mb": 35472000,
+      "total_jobs": 1597.2595177548983,
       "group_details": [
         {
           "group_id": "group_0",
@@ -387,10 +387,10 @@
         "group_3",
         "group_4"
       ],
-      "total_cpu_time": 178200000.0,
+      "total_cpu_time": 1782000000.0000002,
       "event_throughput": 0.005611672278338945,
-      "total_memory_mb": 4314000,
-      "total_jobs": 159.72942423330926,
+      "total_memory_mb": 42740000,
+      "total_jobs": 1597.2942423330926,
       "group_details": [
         {
           "group_id": "group_0",
@@ -432,10 +432,10 @@
         "group_3",
         "group_4"
       ],
-      "total_cpu_time": 143200000.0,
+      "total_cpu_time": 1432000000.0,
       "event_throughput": 0.006983240223463687,
-      "total_memory_mb": 4362000,
-      "total_jobs": 159.7264608467856,
+      "total_memory_mb": 42820000,
+      "total_jobs": 1597.264608467856,
       "group_details": [
         {
           "group_id": "group_5",
@@ -477,10 +477,10 @@
         "group_7",
         "group_4"
       ],
-      "total_cpu_time": 137600000.00000003,
-      "event_throughput": 0.0072674418604651144,
-      "total_memory_mb": 3552000,
-      "total_jobs": 159.72767589612562,
+      "total_cpu_time": 1376000000.0000002,
+      "event_throughput": 0.007267441860465115,
+      "total_memory_mb": 34864000,
+      "total_jobs": 1597.276758961256,
       "group_details": [
         {
           "group_id": "group_0",
@@ -522,10 +522,10 @@
         "group_2",
         "group_8"
       ],
-      "total_cpu_time": 116600000.0,
+      "total_cpu_time": 1166000000.0,
       "event_throughput": 0.008576329331046312,
-      "total_memory_mb": 3124000,
-      "total_jobs": 159.72595177548982,
+      "total_memory_mb": 30514000,
+      "total_jobs": 1597.2595177548983,
       "group_details": [
         {
           "group_id": "group_0",
@@ -568,10 +568,10 @@
         "group_3",
         "group_4"
       ],
-      "total_cpu_time": 116600000.0,
+      "total_cpu_time": 1166000000.0,
       "event_throughput": 0.008576329331046312,
-      "total_memory_mb": 3130000,
-      "total_jobs": 159.72598928423687,
+      "total_memory_mb": 30500000,
+      "total_jobs": 1597.2598928423686,
       "group_details": [
         {
           "group_id": "group_0",
