@@ -152,13 +152,13 @@ visualize-all:
 	@echo "Failure rates: $(FAILURE_RATES)%"
 	@echo "Data transfer rates: $(DATA_TRANSFER_RATE_DIRS)"
 	@echo ""
-	@for wallclock_time in $(WALLCLOCK_TIMES); do \
-		time_dir=$$(awk -v t=$$wallclock_time 'BEGIN{if(t<3600) printf "%dm", t/60; else printf "%dh", t/3600}'); \
+	@for use_case in $(USE_CASES); do \
 		echo "=========================================="; \
-		echo "Visualizing results for target job length: $$wallclock_time seconds ($$time_dir)"; \
+		echo "=== Generating visualizations for use case: $$use_case ==="; \
 		echo "=========================================="; \
-		for use_case in $(USE_CASES); do \
-			echo "=== Generating visualizations for use case: $$use_case ($$time_dir) ==="; \
+		for wallclock_time in $(WALLCLOCK_TIMES); do \
+			time_dir=$$(awk -v t=$$wallclock_time 'BEGIN{if(t<3600) printf "%dm", t/60; else printf "%dh", t/3600}'); \
+			echo "=== Visualizing results for target job length: $$wallclock_time seconds ($$time_dir) ==="; \
 			use_case_base_dir="$(RESULTS_DIR)/$$use_case/$$time_dir"; \
 			if [ -d "$$use_case_base_dir" ]; then \
 				for failure_rate in $(FAILURE_RATES); do \
@@ -166,17 +166,16 @@ visualize-all:
 						fr_dir="$$use_case_base_dir/fr$$failure_rate/$$rate_dir"; \
 						if [ -d "$$fr_dir" ]; then \
 							output_dir="$(VIZ_OUTPUT_DIR)/$$use_case/$$time_dir/fr$$failure_rate/$$rate_dir"; \
-							echo "  Processing: $$fr_dir"; \
-							$(PYTHON) scripts/workflow_visualization.py \
-								$$fr_dir \
-								--output-dir $$output_dir || exit 1; \
-						else \
-							echo "  Warning: Results directory $$fr_dir not found. Skipping."; \
+							echo "" && echo "====> Processing: $$fr_dir"; \
+							$(PYTHON) scripts/workflow_visualization.py $$fr_dir --output-dir $$output_dir || exit 1; \
+						fi; \
+						if [ ! -d "$$fr_dir" ]; then \
+							echo "" && echo "====> WARNING: Results directory $$fr_dir not found. Skipping."; \
 						fi; \
 					done; \
 				done; \
 			else \
-				echo "  Warning: Results base directory $$use_case_base_dir not found. Skipping."; \
+				echo "" && echo "====> WARNING: Results base directory $$use_case_base_dir not found. Skipping."; \
 			fi; \
 			echo "=== Completed visualizations for use case: $$use_case ($$time_dir) ==="; \
 			echo ""; \
