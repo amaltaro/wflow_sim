@@ -104,7 +104,8 @@ class TestWorkflowMetricsCalculator:
         assert metrics.total_jobs == 926
         assert metrics.total_wall_time == 30024000.0
         assert metrics.total_turnaround_time == 32400.0
-        assert metrics.success_rate == 1.0
+        # event_success_rate = events at output / total_events (1080 completed / 1M requested)
+        assert metrics.event_success_rate == pytest.approx(1080 / 1000000)
         assert len(metrics.group_metrics) == 1
         assert metrics.group_metrics[0].group_id == "group_1"
         assert metrics.group_metrics[0].job_count == 926
@@ -121,6 +122,42 @@ class TestWorkflowMetricsCalculator:
         assert metrics.total_write_remote_mb == 158.2
         assert metrics.total_read_remote_mb == 0.0
         assert metrics.total_network_transfer_mb == 158.2
+
+    def test_event_success_rate_events_at_output(self):
+        """Test event_success_rate = events at output / total_events (sink groups only)."""
+        taskset = TasksetInfo(
+            taskset_id="Taskset1",
+            group_name="group_1",
+            input_taskset=None,
+            time_per_event=10.0,
+            memory=2000,
+            multicore=1,
+            size_per_event=200,
+            group_input_events=1000,
+            scram_arch=["el9_amd64_gcc11"],
+            requires_gpu="forbidden",
+            keep_output=False
+        )
+        group = GroupInfo(
+            group_id="group_1",
+            tasksets=[taskset],
+            input_events=1000,
+            job_count=2,
+            exact_job_count=2.0,
+            total_execution_time=20000.0,
+            dependencies=[]
+        )
+        # 5M requested and 4M at output results in event_success_rate = 0.8
+        jobs = [
+            JobInfo("j1", "group_1", 4000000, 10000.0, 0.0, 10000.0, "completed"),
+            JobInfo("j2", "group_1", 1000000, 10000.0, 0.0, 10000.0, "failed"),
+        ]
+        sim = SimulationResult(
+            "wf", 1, 5000000, 1, 2, 20000.0, 20000.0, [group], jobs, success=True
+        )
+        calc = WorkflowMetricsCalculator()
+        metrics = calc.calculate_metrics(sim)
+        assert metrics.event_success_rate == pytest.approx(0.8)  # 4M / 5M
 
     def test_calculate_job_statistics(self):
         """Test job statistics calculation."""
@@ -352,7 +389,7 @@ class TestWorkflowMetricsCalculator:
         required_keys = [
             'workflow_id', 'total_tasksets', 'total_groups', 'total_jobs',
             'total_wall_time', 'total_turnaround_time', 'wall_time_per_event', 'cpu_time_per_event',
-            'network_transfer_mb_per_event', 'event_throughput', 'success_rate', 'total_cpu_used_time',
+            'network_transfer_mb_per_event', 'event_throughput', 'event_success_rate', 'total_cpu_used_time',
             'total_cpu_allocated_time',
             'total_write_local_mb', 'total_write_remote_mb', 'total_read_remote_mb', 'total_network_transfer_mb',
             'total_job_overhead_secs', 'total_job_overhead_cpu_time',

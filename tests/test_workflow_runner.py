@@ -93,7 +93,7 @@ class TestWorkflowRunner:
             assert metrics.total_tasksets == 2
             assert metrics.total_groups == 1
             assert metrics.total_jobs == 7
-            assert metrics.success_rate == 1.0
+            assert metrics.event_success_rate == 1.0
 
         finally:
             Path(temp_file).unlink()
@@ -170,7 +170,7 @@ class TestWorkflowRunner:
             def __init__(self):
                 self.total_events = 10000
                 self.event_throughput = 1.0
-                self.success_rate = 1.0
+                self.event_success_rate = 1.0
                 self.wall_time_per_event = 10.0
                 self.cpu_time_per_event = 5.0
                 self.network_transfer_mb_per_event = 0.1
@@ -284,7 +284,7 @@ class TestWorkflowRunner:
                 self.cpu_time_per_event = 5.0
                 self.network_transfer_mb_per_event = 0.1
                 self.event_throughput = 1.0
-                self.success_rate = 1.0
+                self.event_success_rate = 1.0
                 self.total_cpu_used_time = 50000.0
                 self.total_cpu_allocated_time = 60000.0
                 self.total_write_local_mb = 1000.0
@@ -354,7 +354,7 @@ class TestWorkflowRunner:
         assert metrics['memory_occupancy'] == 0.8125
         assert metrics['event_throughput'] == 1.0
         assert metrics['network_transfer_mb_per_event'] == 0.1
-        assert metrics['success_rate'] == 1.0
+        assert metrics['event_success_rate'] == 1.0
 
         # Check new aggregated job-level metrics
         assert metrics['total_cpu_used_time'] == 50000.0
