@@ -50,7 +50,7 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
         total_job_retries = sim_result.get('total_job_retries', 0)
         total_logical_jobs = total_jobs - total_job_retries
         total_failed_jobs = total_job_retries  # each retry corresponds to one failed first attempt
-        failure_rate_actual = sim_result.get('actual_failure_rate')
+        failure_rate_actual = sim_result.get('actual_job_failure_rate')
 
         # Failure cost metrics from job sample (wasted resources; sample may be limited)
         first_attempt_jobs = [j for j in jobs if j.get('retry_count', 0) == 0]
@@ -81,7 +81,7 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
             'cpu_utilization': metrics.get('cpu_utilization', 0.0),
             'memory_occupancy': metrics.get('memory_occupancy', 0.0),
             'total_groups': metrics.get('total_groups', 0),
-            'failure_rate': sim_result.get('failure_rate', 0.0),
+            'failure_rate': sim_result.get('job_failure_rate', 0.0),
             'overhead_enabled': sim_result.get('overhead_enabled', True),
             # Failure metrics (counts from metrics/simulation_result; waste from job sample)
             'total_jobs': total_jobs,

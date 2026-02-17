@@ -114,7 +114,7 @@ class SimulationResult:
     success: bool
     error_message: Optional[str] = None
     overhead_enabled: bool = True  # Whether job overhead was included in calculations
-    failure_rate: float = 0.0  # Job failure rate percentage used in simulation
+    job_failure_rate: float = 0.0  # Job failure rate percentage used in simulation
     total_job_retries: int = 0  # Total number of retry jobs (jobs with retry_count > 0)
 
 
@@ -131,7 +131,7 @@ class WorkflowSimulator:
 
     def __init__(self, resource_config: Optional[ResourceConfig] = None,
                  *,
-                 failure_rate: int,
+                 job_failure_rate: int,
                  data_transfer_rate_mb_per_s: float):
         """
         Initialize the workflow simulator.
@@ -142,16 +142,16 @@ class WorkflowSimulator:
 
         Args:
             resource_config: Resource configuration for simulation
-            failure_rate: Job failure rate as percentage (0-99); required, no default
+            job_failure_rate: Job failure rate as percentage (0-99); required, no default
                 (supply from CLI parser or caller).
             data_transfer_rate_mb_per_s: Network data transfer rate in MB/s for
                 overhead; required, no default (supply from CLI parser or caller).
         """
         self.resource_config = resource_config or ResourceConfig()
-        self.failure_rate = float(failure_rate)
+        self.job_failure_rate = float(job_failure_rate)
 
-        # Validate failure rate (protect against 100% which prevents convergence)
-        if self.failure_rate >= 100.0:
+        # Validate job failure rate (protect against 100% which prevents convergence)
+        if self.job_failure_rate >= 100.0:
             raise ValueError("Failure rate must be less than 100% to allow workflow convergence")
 
         # Set up random seed for reproducibility (hard-coded)
@@ -222,7 +222,7 @@ class WorkflowSimulator:
                 success=False,
                 error_message=str(e),
                 overhead_enabled=True,
-                failure_rate=self.failure_rate,
+                job_failure_rate=self.job_failure_rate,
                 total_job_retries=0
             )
 
@@ -246,7 +246,7 @@ class WorkflowSimulator:
                 jobs=execution_result['jobs'],
                 success=True,
                 overhead_enabled=True,
-                failure_rate=self.failure_rate,
+                job_failure_rate=self.job_failure_rate,
                 total_job_retries=total_retry_jobs
             )
 
@@ -270,7 +270,7 @@ class WorkflowSimulator:
                 success=False,
                 error_message=str(e),
                 overhead_enabled=True,
-                failure_rate=self.failure_rate,
+                job_failure_rate=self.job_failure_rate,
                 total_job_retries=0
             )
 
@@ -715,7 +715,7 @@ class WorkflowSimulator:
         completed_jobs = []
         failed_jobs = []
         total_jobs_in_batch = sum(1 for j in running_jobs if current_time >= j.start_time + j.wallclock_time)
-        cap_job_failure_rate = math.ceil(total_jobs_in_batch * self.failure_rate / 100) if self.failure_rate > 0.0 else 0
+        cap_job_failure_rate = math.ceil(total_jobs_in_batch * self.job_failure_rate / 100) if self.job_failure_rate > 0.0 else 0
         self.logger.info(
             f"Processing {total_jobs_in_batch} completed jobs. Capping failed jobs at: {cap_job_failure_rate}"
         )
@@ -729,7 +729,7 @@ class WorkflowSimulator:
                 if cap_job_failure_rate > 0:
                     # Use random number to determine if job fails
                     random_value = self.random.random() * 100.0
-                    should_fail = random_value < self.failure_rate
+                    should_fail = random_value < self.job_failure_rate
 
                 if should_fail:
                     cap_job_failure_rate -= 1
@@ -741,7 +741,7 @@ class WorkflowSimulator:
                     # Log the failure
                     self.logger.warning(
                         f"Job {job.job_id} (group {job.group_id}) failed to process "
-                        f"{job.batch_size} events (failure_rate={self.failure_rate}%, "
+                        f"{job.batch_size} events (job_failure_rate={self.job_failure_rate}%, "
                         f"retry_count={job.retry_count})"
                     )
 
@@ -982,7 +982,7 @@ class WorkflowSimulator:
         print(f"Total Jobs: {result.total_jobs} (Logical: {total_logical_jobs}, Retries: {result.total_job_retries})")
         print(f"Total Wall Time: {result.total_wall_time:.2f} seconds ({result.total_wall_time/3600:.2f} hours)")
         print(f"Total Turnaround Time: {result.total_turnaround_time:.2f} seconds ({result.total_turnaround_time/3600:.2f} hours)")
-        print(f"Failure Rate: {result.failure_rate:.1f}%")
+        print(f"Job Failure Rate: {result.job_failure_rate:.1f}%")
         print(f"Success: {result.success}")
 
         if result.error_message:
@@ -1024,20 +1024,20 @@ def load_workflow_from_file(filepath: Union[str, Path]) -> Dict[str, Any]:
 
 def _get_output_path(input_path: str,
                      target_wallclock_time: float = 43200.0,
-                     failure_rate: float = 0.0) -> str:
+                     job_failure_rate: float = 0.0) -> str:
     """
     Generate output path based on input path structure with nested organization.
 
-    Creates nested structure: results/sim/{case_name}/{time_dir}/fr{failure_rate}/
+    Creates nested structure: results/sim/{case_name}/{time_dir}/fr{job_failure_rate}/
     (time_dir is e.g. 15m, 30m, 1h, 2h, 4h, 8h, 12h, 24h)
 
     Args:
         input_path: Path to input workflow file
         target_wallclock_time: Target wallclock time in seconds (default: 43200.0 = 12 hours)
-        failure_rate: Job failure rate as percentage (default: 0.0)
+        job_failure_rate: Job failure rate as percentage (default: 0.0)
 
     Returns:
-        Output path: results/sim/{case_name}/{time_hours}/fr{failure_rate}/{filename}.json
+        Output path: results/sim/{case_name}/{time_hours}/fr{job_failure_rate}/{filename}.json
     """
     input_path_obj = Path(input_path)
 
@@ -1053,9 +1053,9 @@ def _get_output_path(input_path: str,
     else:
         time_dir = f"{int(target_wallclock_time // 3600)}h"
 
-    # Format failure rate directory (e.g., fr0, fr1, fr5, fr10, fr25)
-    failure_rate_int = int(round(failure_rate))
-    fr_dir = f"fr{failure_rate_int}"
+    # Format job failure rate directory (e.g., fr0, fr1, fr5, fr10, fr25)
+    job_failure_rate_int = int(round(job_failure_rate))
+    fr_dir = f"fr{job_failure_rate_int}"
 
     # Extract case name and preserve intermediate directories (e.g., "others")
     # Path examples:
@@ -1112,6 +1112,7 @@ def parse_arguments():
     )
     parser.add_argument(
         '--failure-rate',
+        dest='job_failure_rate',
         type=int,
         default=0,
         help='Job failure rate as percentage (0-99, default: 0). Note: 100%% is not allowed as it prevents workflow convergence.'
@@ -1129,14 +1130,14 @@ def main():
     """Main function with command line argument support."""
     args = parse_arguments()
 
-    # Validate failure rate (protect against 100% which prevents convergence)
-    if args.failure_rate >= 100:
-        print("ERROR: Failure rate must be less than 100% to allow workflow convergence.")
-        print("Please specify a failure rate between 0 and 99.")
+    # Validate job failure rate (protect against 100% which prevents convergence)
+    if args.job_failure_rate >= 100:
+        print("ERROR: Job failure rate must be less than 100% to allow workflow convergence.")
+        print("Please specify a job failure rate between 0 and 99.")
         return 1
 
-    if args.failure_rate < 0:
-        print("ERROR: Failure rate cannot be negative.")
+    if args.job_failure_rate < 0:
+        print("ERROR: Job failure rate cannot be negative.")
         return 1
 
     # Configure resources from command line arguments
@@ -1148,7 +1149,7 @@ def main():
     # Create simulator and run simulation
     simulator = WorkflowSimulator(
         resource_config,
-        failure_rate=args.failure_rate,
+        job_failure_rate=args.job_failure_rate,
         data_transfer_rate_mb_per_s=args.data_transfer_rate
     )
     result = simulator.simulate_workflow(args.input_workflow_path)
@@ -1160,7 +1161,7 @@ def main():
     output_path = _get_output_path(
         args.input_workflow_path,
         target_wallclock_time=args.target_wallclock_time,
-        failure_rate=args.failure_rate
+        job_failure_rate=args.job_failure_rate
     )
     simulator.write_simulation_result(result, output_path)
 

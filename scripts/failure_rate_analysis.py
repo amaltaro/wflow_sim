@@ -46,7 +46,7 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
         total_jobs = metrics.get('total_jobs', 0)
         total_job_retries = sim_result.get('total_job_retries', 0)
         total_logical_jobs = total_jobs - total_job_retries
-        failure_rate_actual = sim_result.get('actual_failure_rate')
+        failure_rate_actual = sim_result.get('actual_job_failure_rate')
 
         return {
             'composition_number': metrics.get('composition_number', 0),
@@ -59,7 +59,7 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
             'cpu_utilization': metrics.get('cpu_utilization', 0.0),
             'memory_occupancy': metrics.get('memory_occupancy', 0.0),
             'total_groups': metrics.get('total_groups', 0),
-            'failure_rate': sim_result.get('failure_rate', 0.0),
+            'failure_rate': sim_result.get('job_failure_rate', 0.0),
             'total_jobs': total_jobs,
             'total_job_retries': total_job_retries,
             'total_logical_jobs': total_logical_jobs,

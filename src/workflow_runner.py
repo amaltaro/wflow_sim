@@ -23,12 +23,13 @@ except ImportError:
 MAX_JOBS_PER_GROUP_IN_OUTPUT = 10
 
 
-def _actual_failure_rate(total_jobs: int, total_job_retries: int) -> float:
-    """Compute actual failure rate (percent): retries / logical jobs * 100."""
-    total_logical = total_jobs - total_job_retries
-    if total_logical <= 0:
+def _actual_job_failure_rate(jobs: List[Any]) -> float:
+    """Compute actual job failure rate (percent): failed attempts / total attempts * 100."""
+    total_executed = len(jobs)
+    if total_executed <= 0:
         return 0.0
-    return (total_job_retries / total_logical) * 100.0
+    total_failed = sum(1 for j in jobs if getattr(j, 'status', None) == 'failed')
+    return (total_failed / total_executed) * 100.0
 
 
 def _jobs_for_output(all_jobs: List[Any], max_per_group: int = MAX_JOBS_PER_GROUP_IN_OUTPUT) -> List[Any]:
@@ -56,23 +57,23 @@ class WorkflowRunner:
 
     def __init__(self, resource_config: Optional[ResourceConfig] = None,
                  *,
-                 failure_rate: int,
+                 job_failure_rate: int,
                  data_transfer_rate_mb_per_s: float):
         """
         Initialize the workflow runner.
 
         Args:
             resource_config: Resource configuration for simulation
-            failure_rate: Job failure rate as percentage (0-99); required, no default
+            job_failure_rate: Job failure rate as percentage (0-99); required, no default
                 (supply from CLI parser or caller).
             data_transfer_rate_mb_per_s: Network data transfer rate in MB/s for
                 overhead; required, no default (supply from CLI parser or caller).
         """
         self.resource_config = resource_config or ResourceConfig()
-        self.failure_rate = failure_rate
+        self.job_failure_rate = job_failure_rate
         self.simulator = WorkflowSimulator(
             self.resource_config,
-            failure_rate=failure_rate,
+            job_failure_rate=job_failure_rate,
             data_transfer_rate_mb_per_s=data_transfer_rate_mb_per_s
         )
         self.logger = logging.getLogger(__name__)
@@ -132,7 +133,7 @@ class WorkflowRunner:
         print(f"  Workflow ID: {simulation.workflow_id}")
         print(f"  Composition: {simulation.composition_number}")
         print(f"  Overhead Enabled: {simulation.overhead_enabled}")
-        print(f"  Failure Rate: {simulation.failure_rate:.1f}%")
+        print(f"  Job Failure Rate: {simulation.job_failure_rate:.1f}%")
         print(f"  Total Events: {simulation.total_events:,}")
         print(f"  Total Groups: {simulation.total_groups}")
         total_logical_jobs = simulation.total_jobs - simulation.total_job_retries
@@ -207,8 +208,8 @@ class WorkflowRunner:
                     'success': simulation.success,
                     'error_message': simulation.error_message,
                     'overhead_enabled': simulation.overhead_enabled,
-                    'failure_rate': simulation.failure_rate,
-                    'actual_failure_rate': 0.0,
+                    'job_failure_rate': simulation.job_failure_rate,
+                    'actual_job_failure_rate': 0.0,
                     'total_job_retries': simulation.total_job_retries,
                     'jobs_per_group_limit': MAX_JOBS_PER_GROUP_IN_OUTPUT,
                     'groups': [],
@@ -260,10 +261,8 @@ class WorkflowRunner:
                 'success': simulation.success,
                 'error_message': simulation.error_message,
                 'overhead_enabled': simulation.overhead_enabled,
-                'failure_rate': simulation.failure_rate,
-                'actual_failure_rate': _actual_failure_rate(
-                    metrics.total_jobs, simulation.total_job_retries
-                ),
+                'job_failure_rate': simulation.job_failure_rate,
+                'actual_job_failure_rate': _actual_job_failure_rate(simulation.jobs),
                 'total_job_retries': simulation.total_job_retries,
                 'jobs_per_group_limit': MAX_JOBS_PER_GROUP_IN_OUTPUT,
                 'groups': [
@@ -350,25 +349,25 @@ def _data_rate_dir_from_mbps(data_transfer_rate_mb_per_s: float) -> str:
 
 def _get_output_path(input_path: str,
                      target_wallclock_time: float = 43200.0,
-                     failure_rate: float = 0.0,
+                     job_failure_rate: float = 0.0,
                      data_transfer_rate_mb_per_s: float = 100.0,
                      output_base: str = "results/sim") -> str:
     """
     Generate output path based on input path structure with nested organization.
 
     Creates nested structure:
-    {output_base}/{intermediate}/{case_name}/{time_dir}/fr{failure_rate}/{data_rate}/
+    {output_base}/{intermediate}/{case_name}/{time_dir}/fr{job_failure_rate}/{data_rate}/
     (time_dir is e.g. 15m, 30m, 1h, 2h, 4h, 8h, 12h, 24h; data_rate is e.g. 10MBps, 100MBps)
 
     Args:
         input_path: Path to input workflow file
         target_wallclock_time: Target wallclock time in seconds (default: 43200.0 = 12 hours)
-        failure_rate: Job failure rate as percentage (default: 0.0)
+        job_failure_rate: Job failure rate as percentage (default: 0.0)
         data_transfer_rate_mb_per_s: Network data transfer rate in MB/s (default: 100.0)
         output_base: Base directory for output (default: results/sim)
 
     Returns:
-        Output path: {output_base}/.../fr{failure_rate}/{data_rate}/{filename}.json
+        Output path: {output_base}/.../fr{job_failure_rate}/{data_rate}/{filename}.json
     """
     input_path_obj = Path(input_path)
     base = Path(output_base)
@@ -385,9 +384,9 @@ def _get_output_path(input_path: str,
     else:
         time_dir = f"{int(target_wallclock_time // 3600)}h"
 
-    # Format failure rate directory (e.g., fr0, fr1, fr5, fr10, fr25)
-    failure_rate_int = int(round(failure_rate))
-    fr_dir = f"fr{failure_rate_int}"
+    # Format job failure rate directory (e.g., fr0, fr1, fr5, fr10, fr25)
+    job_failure_rate_int = int(round(job_failure_rate))
+    fr_dir = f"fr{job_failure_rate_int}"
 
     # Data rate directory (e.g., 10MBps, 100MBps, 1GBps, 10GBps)
     data_rate_dir = _data_rate_dir_from_mbps(data_transfer_rate_mb_per_s)
@@ -440,6 +439,7 @@ def parse_arguments():
     )
     parser.add_argument(
         '--failure-rate',
+        dest='job_failure_rate',
         type=int,
         default=0,
         help='Job failure rate as percentage (0-99, default: 0). Note: 100%% is not allowed as it prevents workflow convergence.'
@@ -463,14 +463,14 @@ def main():
     """Main function with command line argument support."""
     args = parse_arguments()
 
-    # Validate failure rate (protect against 100% which prevents convergence)
-    if args.failure_rate >= 100:
-        print("ERROR: Failure rate must be less than 100% to allow workflow convergence.")
-        print("Please specify a failure rate between 0 and 99.")
+    # Validate job failure rate (protect against 100% which prevents convergence)
+    if args.job_failure_rate >= 100:
+        print("ERROR: Job failure rate must be less than 100% to allow workflow convergence.")
+        print("Please specify a job failure rate between 0 and 99.")
         return
 
-    if args.failure_rate < 0:
-        print("ERROR: Failure rate cannot be negative.")
+    if args.job_failure_rate < 0:
+        print("ERROR: Job failure rate cannot be negative.")
         return
 
     # Configure resources from command line arguments
@@ -482,7 +482,7 @@ def main():
     # Create runner and execute workflow
     runner = WorkflowRunner(
         resource_config,
-        failure_rate=args.failure_rate,
+        job_failure_rate=args.job_failure_rate,
         data_transfer_rate_mb_per_s=args.data_transfer_rate
     )
     results = runner.run_workflow(args.input_workflow_path)
@@ -494,7 +494,7 @@ def main():
     output_path = _get_output_path(
         args.input_workflow_path,
         target_wallclock_time=args.target_wallclock_time,
-        failure_rate=args.failure_rate,
+        job_failure_rate=args.job_failure_rate,
         data_transfer_rate_mb_per_s=args.data_transfer_rate,
         output_base=args.output_base
     )

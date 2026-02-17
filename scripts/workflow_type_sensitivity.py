@@ -54,7 +54,7 @@ def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
             'cpu_utilization': metrics.get('cpu_utilization', 0.0),
             'memory_occupancy': metrics.get('memory_occupancy', 0.0),
             'total_groups': metrics.get('total_groups', 0),
-            'failure_rate': sim_result.get('failure_rate', 0.0),
+            'failure_rate': sim_result.get('job_failure_rate', 0.0),
             'overhead_enabled': sim_result.get('overhead_enabled', True),
             'file_path': file_path
         }
