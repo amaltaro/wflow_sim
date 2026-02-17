@@ -25,7 +25,7 @@ except ImportError:
 # Job overhead constants
 TASKSET_OVERHEAD_SECONDS = 60.0  # Overhead per taskset in seconds
 RND_SEED = 42  # Random seed for reproducibility
-MAX_RETRIES = 3  # Maximum number of retries per job
+MAX_RETRIES = -1  # Maximum number of retries per job (-1 means unlimited)
 FAILURE_COST = 0.5  # Cost of failure (halved resources)
 
 
@@ -746,7 +746,7 @@ class WorkflowSimulator:
                     )
 
                     # Check if we should retry (limit retries to prevent infinite loops)
-                    if job.retry_count < MAX_RETRIES:
+                    if MAX_RETRIES < 0 or job.retry_count < MAX_RETRIES:
                         # Return events to buffer for retry
                         if job.group_id in event_buffers:
                             buffer = event_buffers[job.group_id]
