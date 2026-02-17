@@ -21,7 +21,7 @@ class TestWorkflowRunner:
 
     def test_initialization(self):
         """Test runner initialization."""
-        runner = WorkflowRunner(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
+        runner = WorkflowRunner(job_failure_rate=0, data_transfer_rate_mb_per_s=100.0)
         assert runner.resource_config is not None
         assert runner.simulator is not None
         assert runner.logger is not None
@@ -39,7 +39,7 @@ class TestWorkflowRunner:
             cpu_per_slot=2,
             memory_per_slot=2000
         )
-        runner = WorkflowRunner(config, failure_rate=0, data_transfer_rate_mb_per_s=100.0)
+        runner = WorkflowRunner(config, job_failure_rate=0, data_transfer_rate_mb_per_s=100.0)
         assert runner.resource_config.target_wallclock_time == 21600.0
         assert runner.resource_config.max_job_slots == 50
 
@@ -73,7 +73,7 @@ class TestWorkflowRunner:
             temp_file = f.name
 
         try:
-            runner = WorkflowRunner(ResourceConfig(), failure_rate=0, data_transfer_rate_mb_per_s=100.0)
+            runner = WorkflowRunner(ResourceConfig(), job_failure_rate=0, data_transfer_rate_mb_per_s=100.0)
             results = runner.run_workflow(temp_file)
 
             assert results['success'] is True
@@ -100,7 +100,7 @@ class TestWorkflowRunner:
 
     def test_run_workflow_file_not_found(self):
         """Test workflow execution with non-existent file."""
-        runner = WorkflowRunner(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
+        runner = WorkflowRunner(job_failure_rate=0, data_transfer_rate_mb_per_s=100.0)
         results = runner.run_workflow('nonexistent_file.json')
 
         assert results['success'] is False
@@ -183,7 +183,7 @@ class TestWorkflowRunner:
             'metrics': MockMetrics()
         }
 
-        runner = WorkflowRunner(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
+        runner = WorkflowRunner(job_failure_rate=0, data_transfer_rate_mb_per_s=100.0)
         runner.print_complete_summary(results)
 
         captured = capsys.readouterr()
@@ -206,7 +206,7 @@ class TestWorkflowRunner:
             'metrics': None
         }
 
-        runner = WorkflowRunner(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
+        runner = WorkflowRunner(job_failure_rate=0, data_transfer_rate_mb_per_s=100.0)
         runner.print_complete_summary(results)
 
         captured = capsys.readouterr()
@@ -307,7 +307,7 @@ class TestWorkflowRunner:
             'metrics': MockMetrics()
         }
 
-        runner = WorkflowRunner(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
+        runner = WorkflowRunner(job_failure_rate=0, data_transfer_rate_mb_per_s=100.0)
         output_file = tmp_path / "test_complete_results.json"
         runner.write_complete_results(results, output_file)
 
@@ -337,8 +337,8 @@ class TestWorkflowRunner:
         sim_result = data['simulation_result']
         assert sim_result['success'] is True
         assert sim_result['error_message'] is None
-        assert 'failure_rate' in sim_result
-        assert 'actual_failure_rate' in sim_result
+        assert 'job_failure_rate' in sim_result
+        assert 'actual_job_failure_rate' in sim_result
         assert 'total_job_retries' in sim_result
         assert sim_result['groups'][0]['group_id'] == "group_1"
         assert len(sim_result['groups']) == 1
