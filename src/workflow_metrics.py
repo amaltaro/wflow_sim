@@ -140,7 +140,7 @@ class WorkflowMetrics:
     network_transfer_mb_per_event: float
     group_metrics: List[GroupMetrics]
     event_throughput: float
-    success_rate: float
+    event_success_rate: float
     # Aggregated job-level metrics
     total_cpu_used_time: float = 0.0
     total_cpu_allocated_time: float = 0.0
@@ -217,7 +217,7 @@ class WorkflowMetricsCalculator:
 
         # Calculate efficiency metrics
         event_throughput = self._calculate_event_throughput_from_simulation(simulation_result)
-        success_rate = self._calculate_success_rate_from_simulation(simulation_result)
+        event_success_rate = self._calculate_event_success_rate_from_simulation(simulation_result)
         wall_time_per_event = self._calculate_wall_time_per_event_from_simulation(simulation_result)
         cpu_time_per_event = self._calculate_cpu_time_per_event_from_simulation(simulation_result)
         network_transfer_mb_per_event = self._calculate_network_transfer_per_event_from_simulation(simulation_result)
@@ -246,7 +246,7 @@ class WorkflowMetricsCalculator:
             network_transfer_mb_per_event=network_transfer_mb_per_event,
             group_metrics=group_metrics,
             event_throughput=event_throughput,
-            success_rate=success_rate,
+            event_success_rate=event_success_rate,
             total_cpu_used_time=job_metrics_stats['total_cpu_used_time'],
             total_cpu_allocated_time=job_metrics_stats['total_cpu_allocated_time'],
             total_write_local_mb=job_metrics_stats['total_write_local_mb'],
@@ -387,10 +387,38 @@ class WorkflowMetricsCalculator:
                 return simulation_result.total_events / total_cpu_allocated_time
         return 0.0
 
-    def _calculate_success_rate_from_simulation(self, simulation_result: 'SimulationResult') -> float:
-        """Calculate success rate from simulation result."""
-        if simulation_result.success:
-            return 1.0
+    def _get_sink_groups(self, simulation_result: 'SimulationResult') -> set:
+        """
+        Return group IDs that are sinks (end of DAG) - no downstream tasksets depend on them.
+        These groups produce the final workflow output.
+        """
+        groups = simulation_result.groups
+        tasksets_as_inputs = {
+            ts.input_taskset for g in groups for ts in g.tasksets if ts.input_taskset
+        }
+        leaf_tasksets = {
+            ts.taskset_id for g in groups for ts in g.tasksets
+            if ts.taskset_id not in tasksets_as_inputs
+        }
+        return {
+            g.group_id for g in groups for ts in g.tasksets
+            if ts.taskset_id in leaf_tasksets
+        }
+
+    def _calculate_event_success_rate_from_simulation(self, simulation_result: 'SimulationResult') -> float:
+        """
+        Calculate success rate as fraction of requested events that made it to workflow output.
+        Only counts events from completed jobs in sink groups (end of DAG).
+        """
+        if simulation_result.total_events <= 0:
+            return 0.0
+        sink_groups = self._get_sink_groups(simulation_result)
+        events_at_output = sum(
+            job.batch_size for job in simulation_result.jobs
+            if job.status == 'completed' and job.group_id in sink_groups
+        )
+        rate = events_at_output / simulation_result.total_events
+        return min(1.0, rate)  # Cap at 1.0 (events_at_output cannot exceed requested)
 
     def _calculate_wall_time_per_event_from_simulation(self, simulation_result: 'SimulationResult') -> float:
         """Calculate wall time per event from simulation result."""
@@ -611,7 +639,7 @@ class WorkflowMetricsCalculator:
         print(f"CPU Time per Event: {self.metrics.cpu_time_per_event:.6f} seconds")
         print(f"Network Transfer per Event: {self.metrics.network_transfer_mb_per_event:.6f} MB")
         print(f"Event Throughput: {self.metrics.event_throughput:.6f} events/CPU-second")
-        print(f"Success Rate: {self.metrics.success_rate:.2f}")
+        print(f"Event Success Rate: {self.metrics.event_success_rate:.4f}")
         # Print total resource usage metrics
         if self.metrics.resource_utilization:
             print(f"\n" + "-"*40)
@@ -690,7 +718,7 @@ class WorkflowMetricsCalculator:
             'cpu_time_per_event': self.metrics.cpu_time_per_event,
             'network_transfer_mb_per_event': self.metrics.network_transfer_mb_per_event,
             'event_throughput': self.metrics.event_throughput,
-            'success_rate': self.metrics.success_rate,
+            'event_success_rate': self.metrics.event_success_rate,
             'total_cpu_used_time': self.metrics.total_cpu_used_time,
             'total_cpu_allocated_time': self.metrics.total_cpu_allocated_time,
             'total_write_local_mb': self.metrics.total_write_local_mb,

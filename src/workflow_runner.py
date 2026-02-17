@@ -148,7 +148,7 @@ class WorkflowRunner:
         # Metrics summary
         print(f"\n📈 PERFORMANCE METRICS:")
         print(f"  Event Throughput: {metrics.event_throughput:.6f} events/CPU-second")
-        print(f"  Success Rate: {metrics.success_rate:.2f}")
+        print(f"  Event Success Rate: {metrics.event_success_rate:.4f}")
         print(f"  Total Execution Time: {simulation.total_turnaround_time:.2f}s")
 
         # Resource usage summary
@@ -234,7 +234,7 @@ class WorkflowRunner:
                 'cpu_time_per_event': metrics.cpu_time_per_event,
                 'network_transfer_mb_per_event': metrics.network_transfer_mb_per_event,
                 'event_throughput': metrics.event_throughput,
-                'success_rate': metrics.success_rate,
+                'event_success_rate': metrics.event_success_rate,
                 'total_cpu_used_time': metrics.total_cpu_used_time,
                 'total_cpu_allocated_time': metrics.total_cpu_allocated_time,
                 'total_write_local_mb': metrics.total_write_local_mb,

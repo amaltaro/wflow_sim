@@ -714,7 +714,11 @@ class WorkflowSimulator:
         """
         completed_jobs = []
         failed_jobs = []
-
+        total_jobs_in_batch = sum(1 for j in running_jobs if current_time >= j.start_time + j.wallclock_time)
+        cap_job_failure_rate = math.ceil(total_jobs_in_batch * self.failure_rate / 100) if self.failure_rate > 0.0 else 0
+        self.logger.info(
+            f"Processing {total_jobs_in_batch} completed jobs. Capping failed jobs at: {cap_job_failure_rate}"
+        )
         for job in running_jobs:
             if current_time >= job.start_time + job.wallclock_time:
                 # Job completed execution time
@@ -722,12 +726,13 @@ class WorkflowSimulator:
 
                 # Check if job should fail based on failure rate
                 should_fail = False
-                if self.failure_rate > 0.0:
+                if cap_job_failure_rate > 0:
                     # Use random number to determine if job fails
                     random_value = self.random.random() * 100.0
                     should_fail = random_value < self.failure_rate
 
                 if should_fail:
+                    cap_job_failure_rate -= 1
                     # Job failed - apply failure metrics and prepare for retry
                     job.status = 'failed'
                     self._apply_failure_metrics(job)
@@ -768,10 +773,10 @@ class WorkflowSimulator:
                             f"Marking as permanently failed."
                         )
                         # Still add to completed_jobs so it's tracked, but don't retry
+                        # Do NOT add to processed_events - these events are lost, not propagated
                         completed_jobs.append(job)
                         if job.group_id in event_buffers:
                             buffer = event_buffers[job.group_id]
-                            buffer['processed_events'] += job.batch_size
                             buffer['jobs'].append(job)
                 else:
                     # Job succeeded
@@ -786,6 +791,7 @@ class WorkflowSimulator:
 
                         self.logger.debug(f"Completed job {job.job_id}: processed {job.batch_size} events")
 
+        self.logger.info(f"Job batch completed with {len(completed_jobs)} successful and {len(failed_jobs)} failed jobs")
         # Remove completed and failed jobs from running list
         for job in completed_jobs + failed_jobs:
             if job in running_jobs:
