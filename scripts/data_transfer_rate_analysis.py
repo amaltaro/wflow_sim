@@ -166,7 +166,7 @@ def plot_throughput_vs_data_rate(data_by_rate: Dict[str, Dict[str, Dict[int, Dic
         return
 
     x_mbps = [rate_dir_to_mbps(r) for r in rate_dirs_sorted]
-    x_labels = [f"{rate_dir_to_mbps(r)} MB/s" for r in rate_dirs_sorted]
+    x_labels = [str(rate_dir_to_mbps(r)) for r in rate_dirs_sorted]
 
     fig, axes = plt.subplots(1, 3, figsize=(16, 6), sharey=True)
     workflow_types = sorted(WORKFLOW_TYPES)
@@ -199,7 +199,7 @@ def plot_throughput_vs_data_rate(data_by_rate: Dict[str, Dict[str, Dict[int, Dic
         ax.set_xscale('log')
         ax.set_xticks(x_mbps)
         ax.set_xticklabels(x_labels)
-        ax.set_xlabel("Data Transfer Rate (MB/s)")
+        ax.set_xlabel("Job Data Transfer Rate (MB/s)")
         ax.set_ylabel("Event Throughput (events/s)" if ax == axes[0] else "")
         ax.set_title(workflow_type)
         ax.legend(loc='best', fontsize=9)
@@ -233,7 +233,7 @@ def _plot_one_job_overhead_bar_chart(
         return
 
     n_rates = len(rate_dirs_sorted)
-    x_labels = [f"{rate_dir_to_mbps(r)} MB/s" for r in rate_dirs_sorted]
+    x_labels = [str(rate_dir_to_mbps(r)) for r in rate_dirs_sorted]
     bar_width = 0.25
     group_width = bar_width * 3 + 0.15
     x_base = np.arange(n_rates) * group_width
@@ -273,7 +273,7 @@ def _plot_one_job_overhead_bar_chart(
                color='#1f77b4', capsize=3, error_kw={'linewidth': 1.5})
         ax.set_xticks(x_base)
         ax.set_xticklabels(x_labels)
-        ax.set_xlabel("Data Transfer Rate (MB/s)")
+        ax.set_xlabel("Job Data Transfer Rate (MB/s)")
         ax.set_ylabel(y_label if ax == axes[0] else "")
         ax.set_title(workflow_type)
         ax.set_yscale('log')
