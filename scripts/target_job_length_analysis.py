@@ -284,15 +284,8 @@ def plot_throughput_vs_target_length(data_by_composition: Dict[int, List[Dict[st
                                 if best_hybrids[tl] is not None)
             if is_best_hybrid:
                 hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
-                marker_x = [tl_to_x[tl] for tl in target_length_values if best_hybrids.get(tl) == comp_num]
-                marker_y = [th for tl, th in zip(target_length_values, throughput_values)
-                            if best_hybrids.get(tl) == comp_num]
-                ax.plot(x_positions, y_values, '-', label=label, linewidth=1.5,
-                       alpha=0.7, markersize=5, zorder=5)
-                if marker_x:
-                    ax.plot(marker_x, marker_y, '^', label=None, linewidth=0,
-                           color=hybrid_color, markersize=10, zorder=11, alpha=0.9,
-                           markerfacecolor=hybrid_color, markeredgecolor='white', markeredgewidth=1.5)
+                ax.plot(x_positions, y_values, '^-', label=f"Best Hybrid (C{comp_num})",
+                       linewidth=2, color=hybrid_color, markersize=7, zorder=10, alpha=0.9)
             else:
                 ax.plot(x_positions, y_values, '-', label=label, linewidth=1.5,
                        alpha=0.7, markersize=5)
@@ -950,14 +943,18 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
     hybrid_color_map = get_best_hybrid_colors(best_hybrids)
 
     # Plot 1: Average cost per failure (CPU time only - wall time matches target length and is redundant)
+    # First pass: Const 1, Const 16, and non-best-hybrid constructions
+    best_hybrid_comp_nums = [best_hybrids[tl] for tl in target_lengths if best_hybrids[tl] is not None]
+    best_hybrid_comp_nums = sorted(set(best_hybrid_comp_nums))
+
     for comp_num in sorted(data_by_composition.keys()):
+        if comp_num in best_hybrid_comp_nums:
+            continue
         comp_data = data_by_composition[comp_num]
         comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
-
         target_length_values = [d['target_job_length'] for d in comp_data_sorted]
         avg_cpu_per_failure = [d.get('avg_cpu_per_failure', 0.0) / 3600.0 for d in comp_data_sorted]
         x_positions = [tl_to_x[tl] for tl in target_length_values]
-
         label = f"Const {comp_num}"
         if comp_num == 1:
             ax1.plot(x_positions, avg_cpu_per_failure, 'o-', label=label,
@@ -965,11 +962,19 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
         elif comp_num == 16:
             ax1.plot(x_positions, avg_cpu_per_failure, 's-', label=label,
                     linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
-        else:
-            if any(best_hybrids[tl] == comp_num for tl in target_lengths if best_hybrids[tl] is not None):
-                hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
-                ax1.plot(x_positions, avg_cpu_per_failure, '^-', label=label,
-                        linewidth=2, color=hybrid_color, markersize=6, zorder=9, alpha=0.8)
+
+    # Second pass: best hybrid(s) drawn last with dashed line for visibility
+    for comp_num in best_hybrid_comp_nums:
+        if comp_num not in data_by_composition:
+            continue
+        comp_data = data_by_composition[comp_num]
+        comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
+        target_length_values = [d['target_job_length'] for d in comp_data_sorted]
+        avg_cpu_per_failure = [d.get('avg_cpu_per_failure', 0.0) / 3600.0 for d in comp_data_sorted]
+        x_positions = [tl_to_x[tl] for tl in target_length_values]
+        hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
+        ax1.plot(x_positions, avg_cpu_per_failure, '^--', label=f"Best Hybrid (C{comp_num})",
+                linewidth=2.5, color=hybrid_color, markersize=8, zorder=15, alpha=1.0)
 
     ax1.set_xlabel("Target Job Length", fontsize=12)
     ax1.set_ylabel("Average CPU Cost per Failure (CPU-hours)", fontsize=12)
@@ -980,14 +985,15 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
     ax1.set_xticklabels(xtick_labels)
 
     # Plot 2: Risk profile (max single failure cost - CPU time only)
+    # First pass: Const 1, Const 16, and non-best-hybrid constructions
     for comp_num in sorted(data_by_composition.keys()):
+        if comp_num in best_hybrid_comp_nums:
+            continue
         comp_data = data_by_composition[comp_num]
         comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
-
         target_length_values = [d['target_job_length'] for d in comp_data_sorted]
         max_cpu_per_failure = [d.get('max_cpu_per_failure', 0.0) / 3600.0 for d in comp_data_sorted]
         x_positions = [tl_to_x[tl] for tl in target_length_values]
-
         label = f"Const {comp_num}"
         if comp_num == 1:
             ax2.plot(x_positions, max_cpu_per_failure, 'o-', label=label,
@@ -995,11 +1001,19 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
         elif comp_num == 16:
             ax2.plot(x_positions, max_cpu_per_failure, 's-', label=label,
                     linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
-        else:
-            if any(best_hybrids[tl] == comp_num for tl in target_lengths if best_hybrids[tl] is not None):
-                hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
-                ax2.plot(x_positions, max_cpu_per_failure, '^-', label=label,
-                        linewidth=2, color=hybrid_color, markersize=6, zorder=9, alpha=0.8)
+
+    # Second pass: best hybrid(s) drawn last with dashed line for visibility
+    for comp_num in best_hybrid_comp_nums:
+        if comp_num not in data_by_composition:
+            continue
+        comp_data = data_by_composition[comp_num]
+        comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
+        target_length_values = [d['target_job_length'] for d in comp_data_sorted]
+        max_cpu_per_failure = [d.get('max_cpu_per_failure', 0.0) / 3600.0 for d in comp_data_sorted]
+        x_positions = [tl_to_x[tl] for tl in target_length_values]
+        hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
+        ax2.plot(x_positions, max_cpu_per_failure, '^--', label=f"Best Hybrid (C{comp_num})",
+                linewidth=2.5, color=hybrid_color, markersize=8, zorder=15, alpha=1.0)
 
     ax2.set_xlabel("Target Job Length", fontsize=12)
     ax2.set_ylabel("Max Single Failure Cost (CPU-hours)", fontsize=12)
@@ -1052,16 +1066,17 @@ def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, An
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
 
     hybrid_color_map = get_best_hybrid_colors(best_hybrids)
+    best_hybrid_comp_nums = sorted(set([best_hybrids[tl] for tl in target_lengths if best_hybrids[tl] is not None]))
 
     # Plot 1: Failure count vs target job length
     for comp_num in sorted(data_by_composition.keys()):
+        if comp_num in best_hybrid_comp_nums:
+            continue
         comp_data = data_by_composition[comp_num]
         comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
-
         target_length_values = [d['target_job_length'] for d in comp_data_sorted]
         failed_counts = [d.get('total_failed_jobs', 0) for d in comp_data_sorted]
         x_positions = [tl_to_x[tl] for tl in target_length_values]
-
         label = f"Const {comp_num}"
         if comp_num == 1:
             ax1.plot(x_positions, failed_counts, 'o-', label=label,
@@ -1069,11 +1084,18 @@ def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, An
         elif comp_num == 16:
             ax1.plot(x_positions, failed_counts, 's-', label=label,
                     linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
-        else:
-            if any(best_hybrids[tl] == comp_num for tl in target_lengths if best_hybrids[tl] is not None):
-                hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
-                ax1.plot(x_positions, failed_counts, '^-', label=label,
-                        linewidth=2, color=hybrid_color, markersize=6, zorder=9, alpha=0.8)
+
+    for comp_num in best_hybrid_comp_nums:
+        if comp_num not in data_by_composition:
+            continue
+        comp_data = data_by_composition[comp_num]
+        comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
+        target_length_values = [d['target_job_length'] for d in comp_data_sorted]
+        failed_counts = [d.get('total_failed_jobs', 0) for d in comp_data_sorted]
+        x_positions = [tl_to_x[tl] for tl in target_length_values]
+        hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
+        ax1.plot(x_positions, failed_counts, '^--', label=f"Best Hybrid (C{comp_num})",
+                linewidth=2.5, color=hybrid_color, markersize=8, zorder=15, alpha=1.0)
 
     ax1.set_xlabel("Target Job Length", fontsize=12)
     ax1.set_ylabel("Number of Failed Jobs", fontsize=12)
@@ -1085,13 +1107,13 @@ def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, An
 
     # Plot 2: Failure rate (actual) vs target job length
     for comp_num in sorted(data_by_composition.keys()):
+        if comp_num in best_hybrid_comp_nums:
+            continue
         comp_data = data_by_composition[comp_num]
         comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
-
         target_length_values = [d['target_job_length'] for d in comp_data_sorted]
         failure_rate_actual = [d.get('failure_rate_actual', 0.0) for d in comp_data_sorted]
         x_positions = [tl_to_x[tl] for tl in target_length_values]
-
         label = f"Const {comp_num}"
         if comp_num == 1:
             ax2.plot(x_positions, failure_rate_actual, 'o-', label=label,
@@ -1099,11 +1121,18 @@ def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, An
         elif comp_num == 16:
             ax2.plot(x_positions, failure_rate_actual, 's-', label=label,
                     linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
-        else:
-            if any(best_hybrids[tl] == comp_num for tl in target_lengths if best_hybrids[tl] is not None):
-                hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
-                ax2.plot(x_positions, failure_rate_actual, '^-', label=label,
-                        linewidth=2, color=hybrid_color, markersize=6, zorder=9, alpha=0.8)
+
+    for comp_num in best_hybrid_comp_nums:
+        if comp_num not in data_by_composition:
+            continue
+        comp_data = data_by_composition[comp_num]
+        comp_data_sorted = sorted(comp_data, key=lambda x: target_length_to_hours(x['target_job_length']))
+        target_length_values = [d['target_job_length'] for d in comp_data_sorted]
+        failure_rate_actual = [d.get('failure_rate_actual', 0.0) for d in comp_data_sorted]
+        x_positions = [tl_to_x[tl] for tl in target_length_values]
+        hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
+        ax2.plot(x_positions, failure_rate_actual, '^--', label=f"Best Hybrid (C{comp_num})",
+                linewidth=2.5, color=hybrid_color, markersize=8, zorder=15, alpha=1.0)
 
     ax2.set_xlabel("Target Job Length", fontsize=12)
     ax2.set_ylabel("Actual Failure Rate (%)", fontsize=12)
