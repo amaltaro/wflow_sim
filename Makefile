@@ -40,6 +40,7 @@ help:
 	@echo "Available targets:"
 	@echo "  setup          - Set up the project environment"
 	@echo "  test           - Run tests"
+	@echo "  build-workflows - Build all workflow constructions from generic templates"
 	@echo "  run            - Run single workflow simulation"
 	@echo "  simulate-all   - Run simulations (all times, failure rates, data rates)"
 	@echo "  visualize-all  - Generate visualizations (all times, failure rates, data rates)"
@@ -85,6 +86,19 @@ setup-viz:
 test:
 	@echo "Running tests..."
 	$(PYTEST) tests/ -v
+
+# Build all workflow constructions from generic templates
+# Input: templates/generic/<case>.json
+# Output: templates/others/<case>/<case>_const_*.json and compositions_summary.json
+.PHONY: build-workflows
+build-workflows:
+	@echo "Building workflow constructions from generic templates..."
+	@for use_case in $(USE_CASES); do \
+		echo "" && echo "=== Building $$use_case ==="; \
+		$(PYTHON) -m src.workflow_builder --input templates/generic/$$use_case.json \
+			--output templates/others/$$use_case; \
+	done
+	@echo "Done building all workflow constructions."
 
 # Run single workflow simulation
 .PHONY: run
