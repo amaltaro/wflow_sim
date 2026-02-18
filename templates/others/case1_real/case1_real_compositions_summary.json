@@ -8,10 +8,6 @@
       "groups": [
         "group_14"
       ],
-      "total_cpu_time": 276000000.0,
-      "event_throughput": 0.018115942028985508,
-      "total_memory_mb": 6392000,
-      "total_jobs": 798.7220447284345,
       "group_details": [
         {
           "group_id": "group_14",
@@ -21,8 +17,7 @@
             "Taskset3",
             "Taskset4",
             "Taskset5"
-          ],
-          "events_per_task": 6260
+          ]
         }
       ]
     },
@@ -30,113 +25,15 @@
       "composition_number": 2,
       "num_groups": 2,
       "groups": [
-        "group_12",
-        "group_4"
-      ],
-      "total_cpu_time": 275000000.0,
-      "event_throughput": 0.01818181818181818,
-      "total_memory_mb": 6368000,
-      "total_jobs": 798.6826919688481,
-      "group_details": [
-        {
-          "group_id": "group_12",
-          "tasks": [
-            "Taskset1",
-            "Taskset2",
-            "Taskset3",
-            "Taskset4"
-          ],
-          "events_per_task": 6306
-        },
-        {
-          "group_id": "group_4",
-          "tasks": [
-            "Taskset5"
-          ],
-          "events_per_task": 864000
-        }
-      ]
-    },
-    {
-      "composition_number": 3,
-      "num_groups": 2,
-      "groups": [
-        "group_9",
-        "group_8"
-      ],
-      "total_cpu_time": 267999999.99999997,
-      "event_throughput": 0.01865671641791045,
-      "total_memory_mb": 6212000,
-      "total_jobs": 798.6285262090257,
-      "group_details": [
-        {
-          "group_id": "group_9",
-          "tasks": [
-            "Taskset1",
-            "Taskset2",
-            "Taskset3"
-          ],
-          "events_per_task": 6646
-        },
-        {
-          "group_id": "group_8",
-          "tasks": [
-            "Taskset4",
-            "Taskset5"
-          ],
-          "events_per_task": 108000
-        }
-      ]
-    },
-    {
-      "composition_number": 4,
-      "num_groups": 2,
-      "groups": [
-        "group_5",
-        "group_11"
-      ],
-      "total_cpu_time": 236000000.0,
-      "event_throughput": 0.0211864406779661,
-      "total_memory_mb": 5832000,
-      "total_jobs": 798.6321166901929,
-      "group_details": [
-        {
-          "group_id": "group_5",
-          "tasks": [
-            "Taskset1",
-            "Taskset2"
-          ],
-          "events_per_task": 8816
-        },
-        {
-          "group_id": "group_11",
-          "tasks": [
-            "Taskset3",
-            "Taskset4",
-            "Taskset5"
-          ],
-          "events_per_task": 21600
-        }
-      ]
-    },
-    {
-      "composition_number": 5,
-      "num_groups": 2,
-      "groups": [
         "group_0",
         "group_13"
       ],
-      "total_cpu_time": 214000000.0,
-      "event_throughput": 0.02336448598130841,
-      "total_memory_mb": 4192000,
-      "total_jobs": 798.6398597893558,
       "group_details": [
         {
           "group_id": "group_0",
           "tasks": [
             "Taskset1"
-          ],
-          "events_per_task": 11368
+          ]
         },
         {
           "group_id": "group_13",
@@ -145,23 +42,42 @@
             "Taskset3",
             "Taskset4",
             "Taskset5"
-          ],
-          "events_per_task": 13935
+          ]
         }
       ]
     },
     {
-      "composition_number": 6,
-      "num_groups": 3,
+      "composition_number": 3,
+      "num_groups": 2,
+      "groups": [
+        "group_5",
+        "group_11"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset1",
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset3",
+            "Taskset4",
+            "Taskset5"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 4,
+      "num_groups": 2,
       "groups": [
         "group_9",
-        "group_3",
-        "group_4"
+        "group_8"
       ],
-      "total_cpu_time": 264499999.99999997,
-      "event_throughput": 0.018903591682419663,
-      "total_memory_mb": 6212000,
-      "total_jobs": 798.6287137527609,
       "group_details": [
         {
           "group_id": "group_9",
@@ -169,22 +85,70 @@
             "Taskset1",
             "Taskset2",
             "Taskset3"
-          ],
-          "events_per_task": 6646
+          ]
         },
         {
-          "group_id": "group_3",
+          "group_id": "group_8",
           "tasks": [
+            "Taskset4",
+            "Taskset5"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 5,
+      "num_groups": 2,
+      "groups": [
+        "group_12",
+        "group_4"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset1",
+            "Taskset2",
+            "Taskset3",
             "Taskset4"
-          ],
-          "events_per_task": 123428
+          ]
         },
         {
           "group_id": "group_4",
           "tasks": [
             "Taskset5"
-          ],
-          "events_per_task": 864000
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 6,
+      "num_groups": 3,
+      "groups": [
+        "group_0",
+        "group_1",
+        "group_11"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset3",
+            "Taskset4",
+            "Taskset5"
+          ]
         }
       ]
     },
@@ -192,37 +156,30 @@
       "composition_number": 7,
       "num_groups": 3,
       "groups": [
-        "group_5",
-        "group_7",
-        "group_4"
+        "group_0",
+        "group_6",
+        "group_8"
       ],
-      "total_cpu_time": 236000000.0,
-      "event_throughput": 0.0211864406779661,
-      "total_memory_mb": 5808000,
-      "total_jobs": 798.6407372933718,
       "group_details": [
         {
-          "group_id": "group_5",
+          "group_id": "group_0",
           "tasks": [
-            "Taskset1",
-            "Taskset2"
-          ],
-          "events_per_task": 8816
+            "Taskset1"
+          ]
         },
         {
-          "group_id": "group_7",
+          "group_id": "group_6",
           "tasks": [
-            "Taskset3",
-            "Taskset4"
-          ],
-          "events_per_task": 22153
+            "Taskset2",
+            "Taskset3"
+          ]
         },
         {
-          "group_id": "group_4",
+          "group_id": "group_8",
           "tasks": [
+            "Taskset4",
             "Taskset5"
-          ],
-          "events_per_task": 864000
+          ]
         }
       ]
     },
@@ -234,17 +191,12 @@
         "group_10",
         "group_4"
       ],
-      "total_cpu_time": 214000000.0,
-      "event_throughput": 0.02336448598130841,
-      "total_memory_mb": 4176000,
-      "total_jobs": 798.6506914938457,
       "group_details": [
         {
           "group_id": "group_0",
           "tasks": [
             "Taskset1"
-          ],
-          "events_per_task": 11368
+          ]
         },
         {
           "group_id": "group_10",
@@ -252,15 +204,13 @@
             "Taskset2",
             "Taskset3",
             "Taskset4"
-          ],
-          "events_per_task": 14163
+          ]
         },
         {
           "group_id": "group_4",
           "tasks": [
             "Taskset5"
-          ],
-          "events_per_task": 864000
+          ]
         }
       ]
     },
@@ -272,33 +222,26 @@
         "group_2",
         "group_8"
       ],
-      "total_cpu_time": 236000000.0,
-      "event_throughput": 0.0211864406779661,
-      "total_memory_mb": 5652000,
-      "total_jobs": 798.6321166901929,
       "group_details": [
         {
           "group_id": "group_5",
           "tasks": [
             "Taskset1",
             "Taskset2"
-          ],
-          "events_per_task": 8816
+          ]
         },
         {
           "group_id": "group_2",
           "tasks": [
             "Taskset3"
-          ],
-          "events_per_task": 27000
+          ]
         },
         {
           "group_id": "group_8",
           "tasks": [
             "Taskset4",
             "Taskset5"
-          ],
-          "events_per_task": 108000
+          ]
         }
       ]
     },
@@ -306,37 +249,30 @@
       "composition_number": 10,
       "num_groups": 3,
       "groups": [
-        "group_0",
-        "group_6",
-        "group_8"
+        "group_5",
+        "group_7",
+        "group_4"
       ],
-      "total_cpu_time": 214000000.0,
-      "event_throughput": 0.02336448598130841,
-      "total_memory_mb": 4012000,
-      "total_jobs": 798.6469336228112,
       "group_details": [
         {
-          "group_id": "group_0",
+          "group_id": "group_5",
           "tasks": [
-            "Taskset1"
-          ],
-          "events_per_task": 11368
+            "Taskset1",
+            "Taskset2"
+          ]
         },
         {
-          "group_id": "group_6",
+          "group_id": "group_7",
           "tasks": [
-            "Taskset2",
-            "Taskset3"
-          ],
-          "events_per_task": 15999
+            "Taskset3",
+            "Taskset4"
+          ]
         },
         {
-          "group_id": "group_8",
+          "group_id": "group_4",
           "tasks": [
-            "Taskset4",
             "Taskset5"
-          ],
-          "events_per_task": 108000
+          ]
         }
       ]
     },
@@ -344,37 +280,30 @@
       "composition_number": 11,
       "num_groups": 3,
       "groups": [
-        "group_0",
-        "group_1",
-        "group_11"
+        "group_9",
+        "group_3",
+        "group_4"
       ],
-      "total_cpu_time": 214000000.0,
-      "event_throughput": 0.02336448598130841,
-      "total_memory_mb": 4072000,
-      "total_jobs": 798.6297588774491,
       "group_details": [
         {
-          "group_id": "group_0",
+          "group_id": "group_9",
           "tasks": [
-            "Taskset1"
-          ],
-          "events_per_task": 11368
+            "Taskset1",
+            "Taskset2",
+            "Taskset3"
+          ]
         },
         {
-          "group_id": "group_1",
+          "group_id": "group_3",
           "tasks": [
-            "Taskset2"
-          ],
-          "events_per_task": 39272
+            "Taskset4"
+          ]
         },
         {
-          "group_id": "group_11",
+          "group_id": "group_4",
           "tasks": [
-            "Taskset3",
-            "Taskset4",
             "Taskset5"
-          ],
-          "events_per_task": 21600
+          ]
         }
       ]
     },
@@ -382,44 +311,36 @@
       "composition_number": 12,
       "num_groups": 4,
       "groups": [
-        "group_5",
+        "group_0",
+        "group_1",
         "group_2",
-        "group_3",
-        "group_4"
+        "group_8"
       ],
-      "total_cpu_time": 232500000.0,
-      "event_throughput": 0.021505376344086023,
-      "total_memory_mb": 5652000,
-      "total_jobs": 798.632304233928,
       "group_details": [
         {
-          "group_id": "group_5",
+          "group_id": "group_0",
           "tasks": [
-            "Taskset1",
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
             "Taskset2"
-          ],
-          "events_per_task": 8816
+          ]
         },
         {
           "group_id": "group_2",
           "tasks": [
             "Taskset3"
-          ],
-          "events_per_task": 27000
+          ]
         },
         {
-          "group_id": "group_3",
+          "group_id": "group_8",
           "tasks": [
-            "Taskset4"
-          ],
-          "events_per_task": 123428
-        },
-        {
-          "group_id": "group_4",
-          "tasks": [
+            "Taskset4",
             "Taskset5"
-          ],
-          "events_per_task": 864000
+          ]
         }
       ]
     },
@@ -428,43 +349,35 @@
       "num_groups": 4,
       "groups": [
         "group_0",
-        "group_6",
-        "group_3",
+        "group_1",
+        "group_7",
         "group_4"
       ],
-      "total_cpu_time": 210500000.0,
-      "event_throughput": 0.023752969121140142,
-      "total_memory_mb": 4012000,
-      "total_jobs": 798.6471211665463,
       "group_details": [
         {
           "group_id": "group_0",
           "tasks": [
             "Taskset1"
-          ],
-          "events_per_task": 11368
+          ]
         },
         {
-          "group_id": "group_6",
+          "group_id": "group_1",
           "tasks": [
-            "Taskset2",
-            "Taskset3"
-          ],
-          "events_per_task": 15999
+            "Taskset2"
+          ]
         },
         {
-          "group_id": "group_3",
+          "group_id": "group_7",
           "tasks": [
+            "Taskset3",
             "Taskset4"
-          ],
-          "events_per_task": 123428
+          ]
         },
         {
           "group_id": "group_4",
           "tasks": [
             "Taskset5"
-          ],
-          "events_per_task": 864000
+          ]
         }
       ]
     },
@@ -473,43 +386,35 @@
       "num_groups": 4,
       "groups": [
         "group_0",
-        "group_1",
-        "group_7",
+        "group_6",
+        "group_3",
         "group_4"
       ],
-      "total_cpu_time": 214000000.0,
-      "event_throughput": 0.02336448598130841,
-      "total_memory_mb": 4048000,
-      "total_jobs": 798.638379480628,
       "group_details": [
         {
           "group_id": "group_0",
           "tasks": [
             "Taskset1"
-          ],
-          "events_per_task": 11368
+          ]
         },
         {
-          "group_id": "group_1",
+          "group_id": "group_6",
           "tasks": [
-            "Taskset2"
-          ],
-          "events_per_task": 39272
+            "Taskset2",
+            "Taskset3"
+          ]
         },
         {
-          "group_id": "group_7",
+          "group_id": "group_3",
           "tasks": [
-            "Taskset3",
             "Taskset4"
-          ],
-          "events_per_task": 22153
+          ]
         },
         {
           "group_id": "group_4",
           "tasks": [
             "Taskset5"
-          ],
-          "events_per_task": 864000
+          ]
         }
       ]
     },
@@ -517,44 +422,36 @@
       "composition_number": 15,
       "num_groups": 4,
       "groups": [
-        "group_0",
-        "group_1",
+        "group_5",
         "group_2",
-        "group_8"
+        "group_3",
+        "group_4"
       ],
-      "total_cpu_time": 214000000.0,
-      "event_throughput": 0.02336448598130841,
-      "total_memory_mb": 3892000,
-      "total_jobs": 798.6297588774491,
       "group_details": [
         {
-          "group_id": "group_0",
+          "group_id": "group_5",
           "tasks": [
-            "Taskset1"
-          ],
-          "events_per_task": 11368
-        },
-        {
-          "group_id": "group_1",
-          "tasks": [
+            "Taskset1",
             "Taskset2"
-          ],
-          "events_per_task": 39272
+          ]
         },
         {
           "group_id": "group_2",
           "tasks": [
             "Taskset3"
-          ],
-          "events_per_task": 27000
+          ]
         },
         {
-          "group_id": "group_8",
+          "group_id": "group_3",
           "tasks": [
-            "Taskset4",
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
             "Taskset5"
-          ],
-          "events_per_task": 108000
+          ]
         }
       ]
     },
@@ -568,45 +465,36 @@
         "group_3",
         "group_4"
       ],
-      "total_cpu_time": 210500000.0,
-      "event_throughput": 0.023752969121140142,
-      "total_memory_mb": 3892000,
-      "total_jobs": 798.6299464211843,
       "group_details": [
         {
           "group_id": "group_0",
           "tasks": [
             "Taskset1"
-          ],
-          "events_per_task": 11368
+          ]
         },
         {
           "group_id": "group_1",
           "tasks": [
             "Taskset2"
-          ],
-          "events_per_task": 39272
+          ]
         },
         {
           "group_id": "group_2",
           "tasks": [
             "Taskset3"
-          ],
-          "events_per_task": 27000
+          ]
         },
         {
           "group_id": "group_3",
           "tasks": [
             "Taskset4"
-          ],
-          "events_per_task": 123428
+          ]
         },
         {
           "group_id": "group_4",
           "tasks": [
             "Taskset5"
-          ],
-          "events_per_task": 864000
+          ]
         }
       ]
     }
