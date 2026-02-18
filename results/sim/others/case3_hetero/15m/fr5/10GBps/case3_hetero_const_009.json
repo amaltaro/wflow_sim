@@ -5,41 +5,41 @@
     "total_events": 5000000,
     "total_tasksets": 5,
     "total_groups": 3,
-    "total_jobs": 40406,
-    "total_wall_time": 39790887.257866696,
-    "total_turnaround_time": 6056.361270019531,
-    "wall_time_per_event": 7.958177451573339,
-    "cpu_time_per_event": 207.04667974300315,
-    "network_transfer_mb_per_event": 2.41740990234375,
-    "event_throughput": 0.0048298287190176184,
-    "success_rate": 1.0,
-    "total_cpu_used_time": 601751463.3027616,
-    "total_cpu_allocated_time": 1035233398.7150158,
-    "total_write_local_mb": 17034776.15966797,
+    "total_jobs": 40391,
+    "total_wall_time": 39773986.93797803,
+    "total_turnaround_time": 5572.706959472656,
+    "wall_time_per_event": 7.9547973875956055,
+    "cpu_time_per_event": 206.96893877707504,
+    "network_transfer_mb_per_event": 2.416928525390625,
+    "event_throughput": 0.0048316428827858745,
+    "event_success_rate": 1.0,
+    "total_cpu_used_time": 601523650.1428173,
+    "total_cpu_allocated_time": 1034844693.8853751,
+    "total_write_local_mb": 17029408.09326172,
     "total_write_remote_mb": 6152343.75,
-    "total_read_remote_mb": 5934705.76171875,
-    "total_read_local_mb": 11049549.521484375,
-    "total_network_transfer_mb": 12087049.51171875,
-    "total_job_overhead_secs": 3427584.5027614743,
-    "total_job_overhead_cpu_time": 120796707.51501563,
-    "total_write_local_mb_per_event": 3.4069552319335936,
+    "total_read_remote_mb": 5932298.876953125,
+    "total_read_local_mb": 11045231.19140625,
+    "total_network_transfer_mb": 12084642.626953125,
+    "total_job_overhead_secs": 3426894.1428171387,
+    "total_job_overhead_cpu_time": 120758202.285375,
+    "total_write_local_mb_per_event": 3.405881618652344,
     "total_write_remote_mb_per_event": 1.23046875,
-    "total_read_remote_mb_per_event": 1.18694115234375,
-    "total_read_local_mb_per_event": 2.209909904296875,
+    "total_read_remote_mb_per_event": 1.186459775390625,
+    "total_read_local_mb_per_event": 2.20904623828125,
     "cpu_utilization": 0.881172839506173,
     "memory_occupancy": 0.889814814814815,
-    "total_cpu_cores_used": 1043243,
-    "total_memory_used_mb": 1079502000,
-    "cpu_cores_per_event": 0.2086486,
-    "memory_mb_per_event": 215.9004
+    "total_cpu_cores_used": 1042532,
+    "total_memory_used_mb": 1078782000,
+    "cpu_cores_per_event": 0.2085064,
+    "memory_mb_per_event": 215.7564
   },
   "simulation_result": {
     "success": true,
     "error_message": null,
     "overhead_enabled": true,
-    "failure_rate": 5.0,
-    "actual_failure_rate": 5.150024722200536,
-    "total_job_retries": 1979,
+    "job_failure_rate": 5.0,
+    "actual_job_failure_rate": 4.857517763858285,
+    "total_job_retries": 1962,
     "jobs_per_group_limit": 10,
     "groups": [
       {
@@ -789,60 +789,60 @@
   },
   "simulation_stats": {
     "job_overhead_secs": {
-      "mean": 84.82860225613707,
-      "std": 30.757133133469146,
+      "mean": 84.84301311720776,
+      "std": 30.75674120981928,
       "median": 60.0184375,
       "min": 30.00921875,
       "max": 120.10107421875,
-      "n": 40406
+      "n": 40391
     },
     "job_overhead_cpu_time": {
-      "mean": 2989.5735166810778,
-      "std": 3646.9149124749038,
+      "mean": 2989.730442063207,
+      "std": 3647.518050611053,
       "median": 60.0184375,
       "min": 30.00921875,
       "max": 7682.46628125,
-      "n": 40406
+      "n": 40391
     },
     "batch_size": {
-      "mean": 390.0728357174677,
-      "std": 462.36177331255146,
+      "mean": 389.98982446584637,
+      "std": 462.2597881933769,
       "median": 236.0,
-      "min": 104.0,
+      "min": 42.0,
       "max": 2250.0,
-      "n": 40406
+      "n": 40391
     },
     "total_write_local_mb": {
-      "mean": 421.5902628240353,
-      "std": 309.2938615482611,
+      "mean": 421.6139262029095,
+      "std": 309.34186451889605,
       "median": 184.375,
-      "min": 23.2177734375,
+      "min": 27.392578125,
       "max": 821.1181640625,
-      "n": 40406
+      "n": 40391
     },
     "total_write_remote_mb": {
-      "mean": 152.263123051032,
-      "std": 44.24886981475386,
+      "mean": 152.31966898566512,
+      "std": 44.15902929666528,
       "median": 184.375,
       "min": 0.0,
       "max": 184.375,
-      "n": 40406
+      "n": 40391
     },
     "total_read_local_mb": {
-      "mean": 273.463087696985,
-      "std": 329.6751532280629,
+      "mean": 273.45773046981384,
+      "std": 329.72707602405757,
       "median": 0.0,
       "min": 0.0,
       "max": 695.91796875,
-      "n": 40406
+      "n": 40391
     },
     "total_read_remote_mb": {
-      "mean": 146.87684407560138,
-      "std": 209.12087082620658,
+      "mean": 146.87180007806504,
+      "std": 209.1466201159348,
       "median": 0.0,
       "min": 0.0,
       "max": 845.947265625,
-      "n": 40406
+      "n": 40391
     }
   }
 }
