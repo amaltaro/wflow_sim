@@ -18,18 +18,31 @@ DAGFlowSim provides a powerful workflow simulation engine that:
 ## Project Structure
 
 ```
-├── src/           # Python source code
-├── tests/         # Unit tests (pytest)
-├── docs/          # Detailed documentation
-├── templates/     # JSON workflow templates
-├── results/       # Simulation, visualization, and analysis outputs
-│   ├── sim/       # Simulation results (JSON); batch: sim/others/<case>/<time>/fr<fr>/<rate>/
-│   ├── vis/       # Visualization diagrams (PNG); same nesting as sim
-│   ├── analysis/  # Cross-dimensional analyses (failure_rate, workflow_type_sensitivity, etc.)
-│   ├── real/      # Real workflow execution data (summaries, visualizations)
-│   └── real_norm/ # Normalized real data (per requested events) for fair comparison
-├── examples/      # Usage examples
-└── README.md      # Project overview
+├── src/              # Python source code (workflow_builder, simulator, metrics, runner)
+├── tests/            # Unit tests (pytest)
+├── docs/             # Detailed documentation
+├── templates/        # JSON workflow templates
+│   ├── generic/      # Generic workflow descriptions (input for workflow_builder)
+│   │   └── case1_real.json, case2_homo.json, case3_hetero.json
+│   ├── others/       # Group-based compositions (output of workflow_builder; input for simulator)
+│   │   └── case1_real/, case2_homo/, case3_hetero/, 3tasks_fullsim/, 5tasks_fullsim/
+│   ├── fork/         # Fork workflow patterns (3tasks)
+│   └── sequential/   # Sequential workflow patterns (3tasks)
+├── results/          # Simulation, visualization, and analysis outputs
+│   ├── sim/          # Simulation results (JSON); batch: sim/others/<case>/<time>/fr<fr>/<rate>/
+│   ├── vis/          # Visualization diagrams (PNG); same nesting as sim
+│   ├── analysis/     # Cross-dimensional analyses
+│   │   ├── construction_metrics/  # Multi-metric construction comparison
+│   │   ├── failure_rate/           # Failure rate impact
+│   │   ├── workflow_type_sensitivity/
+│   │   ├── target_job_length/
+│   │   └── data_transfer_rate/
+│   ├── real/         # Real workflow execution data (summaries, visualizations)
+│   └── real_norm/    # Normalized real data (per requested events) for fair comparison
+├── scripts/          # Utility scripts (normalize_real_metrics, condor_data_metrics, etc.)
+├── examples/         # Usage examples
+├── data/             # Data files
+└── README.md         # Project overview
 ```
 
 ## Key Features
@@ -49,8 +62,9 @@ DAGFlowSim provides a powerful workflow simulation engine that:
 
 ## Architecture
 
-**Four modules with distinct responsibilities:**
+**Five modules with distinct responsibilities:**
 
+- **`workflow_builder.py`** - Generates all possible workflow constructions from generic templates (hard constraints: OS, CPU arch)
 - **`workflow_simulator.py`** - Core simulation engine (executes workflow DAGs)
 - **`job_metrics.py`** - Job-level metrics calculator (CPU time, I/O operations, network transfers)
 - **`workflow_metrics.py`** - Authoritative workflow metrics calculator (aggregates job metrics)
@@ -68,7 +82,7 @@ DAGFlowSim provides a powerful workflow simulation engine that:
 ### Prerequisites
 
 - Python 3.8 or higher
-- No external dependencies required (uses only Python standard library)
+- **networkx** (required for `workflow_builder.py`; simulation modules use only the standard library)
 
 ### Quick Setup
 
@@ -78,12 +92,15 @@ DAGFlowSim provides a powerful workflow simulation engine that:
    cd wflow_sim
    ```
 
-2. **Run the example:**
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Run the example:**
    ```bash
    python examples/metrics_example.py
    ```
-
-DAGFlowSim requires only Python standard library, making it easy to get started quickly.
 
 ### Optional: Install Testing Dependencies
 
@@ -193,6 +210,7 @@ This will:
 make help                    # Show all targets
 
 # Simulations and visualizations
+make build-workflows         # Build all workflow constructions from generic templates
 make simulate-all            # All use cases × times × failure rates × data rates
 make visualize-all           # Visualizations for existing sim results
 make all                     # simulate-all + visualize-all
@@ -352,6 +370,7 @@ git push origin v1.0.0
 
 ## Documentation
 
+- [Workflow Builder Usage](docs/workflow_builder_usage.md) - Generate workflow constructions from generic templates
 - [Workflow Simulation Usage](docs/workflow_simulation_usage.md) - Complete simulation guide
 - [Workflow Metrics Usage](docs/workflow_metrics_usage.md) - Workflow-level metrics documentation
 - [Job Metrics Usage](docs/job_metrics_usage.md) - Job-level metrics documentation
@@ -360,6 +379,10 @@ git push origin v1.0.0
 - [Release Process](docs/release-process.md) - Automated release notes system
 - [Agent Instructions](AGENTS.md) - AI agent development guidelines
 - [Contributing Guidelines](CONTRIBUTING.md) - How to contribute to the project
+
+## Related Work
+
+For full details on workflow construction - including group metrics, soft constraints, scoring, comprehensive tests, and visualization - see the **[workflow_construction](https://github.com/amaltaro/workflow_construction)** repository. That project provides the complete framework for constructing hybrid workflows and performing an initial evaluation of each construction, including rich summaries and visualizations.
 
 ## Examples
 
