@@ -31,6 +31,7 @@ VIZ_OUTPUT_DIR := results/vis/others
 # Construction metrics analysis: fixed scenario (12h, fr5, 100MBps, all workflow types)
 CONSTRUCTION_METRICS_TIME := 12h
 CONSTRUCTION_METRICS_FR := fr5
+CONSTRUCTION_METRICS_FR_LIST := fr0 fr5 fr25
 CONSTRUCTION_METRICS_RATE := 100MBps
 CONSTRUCTION_METRICS_OUTPUT := results/analysis/construction_metrics
 
@@ -51,7 +52,7 @@ help:
 	@echo "  analyze-workflow-type-sensitivity - Analyze workflow type sensitivity (12h, fr0/fr5/fr25)"
 	@echo "  analyze-target-job-length      - Analyze target job length optimization (all workflow types, fr0/fr5/fr25)"
 	@echo "  analyze-data-transfer-rate    - Analyze data transfer rate sensitivity (12h, fr0 & fr5)"
-	@echo "  analyze-construction-metrics  - Multi-metric construction comparison (12h, fr5, 100MBps, all types)"
+	@echo "  analyze-construction-metrics  - Multi-metric construction comparison (12h, fr0/fr5/fr25, 100MBps, all types)"
 	@echo ""
 	@echo "Cleanup targets:"
 	@echo "  clean          - Clean up all generated files"
@@ -294,26 +295,29 @@ analyze-data-transfer-rate:
 	done
 	@echo "Data transfer rate analysis completed!"
 
-# Construction metrics analysis: 12h, fr5, 100MBps, all 3 workflow types
-# Output: results/analysis/construction_metrics/<use_case>/12h/fr5/100MBps/
+# Construction metrics analysis: 12h, fr0/fr5/fr25, 100MBps, all 3 workflow types
+# Output: results/analysis/construction_metrics/<use_case>/12h/<fr>/100MBps/
 .PHONY: analyze-construction-metrics
 analyze-construction-metrics:
 	@echo "Starting construction metrics analysis"
-	@echo "Scenario: job length=$(CONSTRUCTION_METRICS_TIME), failure rate=$(CONSTRUCTION_METRICS_FR), data rate=$(CONSTRUCTION_METRICS_RATE)"
+	@echo "Scenario: job length=$(CONSTRUCTION_METRICS_TIME), failure rates=$(CONSTRUCTION_METRICS_FR_LIST), data rate=$(CONSTRUCTION_METRICS_RATE)"
 	@echo "Use cases: $(USE_CASES)"
 	@echo ""
-	@for use_case in $(USE_CASES); do \
-		sim_dir="$(RESULTS_DIR)/$$use_case/$(CONSTRUCTION_METRICS_TIME)/$(CONSTRUCTION_METRICS_FR)/$(CONSTRUCTION_METRICS_RATE)"; \
-		output_dir="$(CONSTRUCTION_METRICS_OUTPUT)/$$use_case/$(CONSTRUCTION_METRICS_TIME)/$(CONSTRUCTION_METRICS_FR)/$(CONSTRUCTION_METRICS_RATE)"; \
-		if [ -d "$$sim_dir" ]; then \
-			echo "  Processing: $$use_case"; \
-			$(PYTHON) scripts/construction_metrics_analysis.py \
-				$$sim_dir \
-				--output-dir $$output_dir \
-				--scenario-label "$$use_case $(CONSTRUCTION_METRICS_TIME) $(CONSTRUCTION_METRICS_FR) $(CONSTRUCTION_METRICS_RATE)" || exit 1; \
-		else \
-			echo "  Warning: $$sim_dir not found. Skipping $$use_case."; \
-		fi; \
+	@for failure_rate in $(CONSTRUCTION_METRICS_FR_LIST); do \
+		echo "*** Failure rate: $$failure_rate ***"; \
+		for use_case in $(USE_CASES); do \
+			sim_dir="$(RESULTS_DIR)/$$use_case/$(CONSTRUCTION_METRICS_TIME)/$$failure_rate/$(CONSTRUCTION_METRICS_RATE)"; \
+			output_dir="$(CONSTRUCTION_METRICS_OUTPUT)/$$use_case/$(CONSTRUCTION_METRICS_TIME)/$$failure_rate/$(CONSTRUCTION_METRICS_RATE)"; \
+			if [ -d "$$sim_dir" ]; then \
+				echo "  Processing: $$use_case"; \
+				$(PYTHON) scripts/construction_metrics_analysis.py \
+					$$sim_dir \
+					--output-dir $$output_dir \
+					--scenario-label "$$use_case $(CONSTRUCTION_METRICS_TIME) $$failure_rate $(CONSTRUCTION_METRICS_RATE)" || exit 1; \
+			else \
+				echo "  Warning: $$sim_dir not found. Skipping $$use_case."; \
+			fi; \
+		done; \
 		echo ""; \
 	done
 	@echo "Construction metrics analysis completed!"

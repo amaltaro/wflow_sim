@@ -257,7 +257,7 @@ Batch outputs use a unified tree (dimensions: use case, target job length, failu
 
 - **Simulations**: `results/sim/others/<use_case>/<time_dir>/fr<failure_rate>/<data_rate>/` (e.g. `12h`, `fr0`, `100MBps`)
 - **Visualizations**: `results/vis/others/<use_case>/<time_dir>/fr<failure_rate>/<data_rate>/`
-- **Analysis**: `results/analysis/<analysis_name>/...` (e.g. `failure_rate/<use_case>/<time_dir>/`, `workflow_type_sensitivity/12h/fr0/`, `target_job_length/<use_case>/fr0/`, `data_transfer_rate/fr0/`)
+- **Analysis**: `results/analysis/<analysis_name>/...` (e.g. `failure_rate/<use_case>/<time_dir>/`, `workflow_type_sensitivity/12h/fr0/`, `target_job_length/<use_case>/fr0/`, `data_transfer_rate/fr0/`, `construction_metrics/<use_case>/12h/fr0|fr5|fr25/100MBps/`)
 - **Real execution**: `results/real/` — real workflow run summaries and visualizations
 - **Real (normalized)**: `results/real_norm/` — same data normalized so each workflow is scaled to the requested number of events for fair comparison
 

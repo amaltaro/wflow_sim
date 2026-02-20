@@ -176,15 +176,16 @@ Options:
 ### Makefile
 
 The Makefile target **`analyze-construction-metrics`** runs the analysis for a fixed
-scenario: 12h job length, 5% failure rate, 100 MB/s data rate, and all three workflow
-types. Output is written under `results/analysis/construction_metrics/<use_case>/12h/fr5/100MBps/`.
+scenario: 12h job length, 100 MB/s data rate, and all three workflow types. It runs
+for **three failure rates** (fr0, fr5, fr25). Output is written under
+`results/analysis/construction_metrics/<use_case>/12h/<fr>/100MBps/`.
 
 ```bash
 make analyze-construction-metrics
 ```
 
 Scenario parameters are controlled by Make variables: `CONSTRUCTION_METRICS_TIME`,
-`CONSTRUCTION_METRICS_FR`, `CONSTRUCTION_METRICS_RATE`, `USE_CASES`.
+`CONSTRUCTION_METRICS_FR_LIST` (fr0 fr5 fr25), `CONSTRUCTION_METRICS_RATE`, `USE_CASES`.
 
 ## See also
 
