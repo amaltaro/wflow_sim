@@ -296,12 +296,14 @@ analyze-data-transfer-rate:
 	@echo "Data transfer rate analysis completed!"
 
 # Construction metrics analysis: 12h, fr0/fr5/fr25, 100MBps, all 3 workflow types
+# Policies: default (throughput), io_prioritized, resource_prioritized
 # Output: results/analysis/construction_metrics/<use_case>/12h/<fr>/100MBps/
 .PHONY: analyze-construction-metrics
 analyze-construction-metrics:
 	@echo "Starting construction metrics analysis"
 	@echo "Scenario: job length=$(CONSTRUCTION_METRICS_TIME), failure rates=$(CONSTRUCTION_METRICS_FR_LIST), data rate=$(CONSTRUCTION_METRICS_RATE)"
 	@echo "Use cases: $(USE_CASES)"
+	@echo "Policies: default, io_prioritized, resource_prioritized"
 	@echo ""
 	@for failure_rate in $(CONSTRUCTION_METRICS_FR_LIST); do \
 		echo "*** Failure rate: $$failure_rate ***"; \
@@ -310,10 +312,14 @@ analyze-construction-metrics:
 			output_dir="$(CONSTRUCTION_METRICS_OUTPUT)/$$use_case/$(CONSTRUCTION_METRICS_TIME)/$$failure_rate/$(CONSTRUCTION_METRICS_RATE)"; \
 			if [ -d "$$sim_dir" ]; then \
 				echo "  Processing: $$use_case"; \
-				$(PYTHON) scripts/construction_metrics_analysis.py \
-					$$sim_dir \
-					--output-dir $$output_dir \
-					--scenario-label "$$use_case $(CONSTRUCTION_METRICS_TIME) $$failure_rate $(CONSTRUCTION_METRICS_RATE)" || exit 1; \
+				for policy in default io_prioritized resource_prioritized; do \
+					echo "    Policy: $$policy"; \
+					$(PYTHON) scripts/construction_metrics_analysis.py \
+						$$sim_dir \
+						--output-dir $$output_dir \
+						--scenario-label "$$use_case $(CONSTRUCTION_METRICS_TIME) $$failure_rate $(CONSTRUCTION_METRICS_RATE)" \
+						--policy $$policy || exit 1; \
+				done; \
 			else \
 				echo "  Warning: $$sim_dir not found. Skipping $$use_case."; \
 			fi; \
