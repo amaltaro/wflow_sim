@@ -37,12 +37,36 @@ import numpy as np
 import pandas as pd
 
 
-# Weighted score: metric key -> weight (weights must sum to 1.0). Focus: throughput + per-event resource use.
+# Weighted score: metric key -> weight (weights must sum to 1.0).
+# Policy presets (Table 2 in technical report):
+# - default: throughput-prioritized; balance per-event resource use
+# - io_prioritized: storage/network-constrained; minimize shared storage footprint
+# - resource_prioritized: efficient CPU/memory per event; heterogeneous resources
 SCORE_METRICS_WEIGHTS = {
     'event_throughput': 0.4,
     'cpu_cores_per_event': 0.2,
     'memory_mb_per_event': 0.2,
     'network_transfer_mb_per_event': 0.2,
+}
+POLICY_WEIGHTS = {
+    'default': {
+        'event_throughput': 0.4,
+        'cpu_cores_per_event': 0.2,
+        'memory_mb_per_event': 0.2,
+        'network_transfer_mb_per_event': 0.2,
+    },
+    'io_prioritized': {
+        'event_throughput': 0.2,
+        'cpu_cores_per_event': 0.2,
+        'memory_mb_per_event': 0.2,
+        'network_transfer_mb_per_event': 0.4,
+    },
+    'resource_prioritized': {
+        'event_throughput': 0.2,
+        'cpu_cores_per_event': 0.3,
+        'memory_mb_per_event': 0.3,
+        'network_transfer_mb_per_event': 0.2,
+    },
 }
 
 # Single source of truth: (key, label, higher_is_better). Full list = heatmap order.
@@ -187,7 +211,7 @@ def compute_weighted_score(
 
 def compute_score_contributions(
     norm_matrix: np.ndarray,
-    metrics_weights: Dict[str, float] = None,
+    metrics_weights: Dict[str, float] | None = None,
 ) -> Tuple[np.ndarray, List[str], List[float]]:
     """Per-metric contribution to weighted score for each construction.
 
@@ -213,13 +237,15 @@ def plot_score_stacked(
     norm_matrix: np.ndarray,
     output_path: str,
     scenario_label: str = "",
+    metrics_weights: Dict[str, float] | None = None,
+    policy_label: str = "",
 ) -> None:
     """Stacked bar chart: each bar = total score; segments = metric contributions.
 
     Shows how much each score metric (throughput, cpu, memory, network) contributes
     to the final weighted score per construction, for quick comparison of balance.
     """
-    contributions, labels, _ = compute_score_contributions(norm_matrix)
+    contributions, labels, _ = compute_score_contributions(norm_matrix, metrics_weights)
     n_const = contributions.shape[0]
     x = np.arange(n_const)
     width = 0.7
@@ -247,9 +273,10 @@ def plot_score_stacked(
     ax.yaxis.grid(True, linestyle="-", alpha=0.3)
     ax.set_axisbelow(True)
     ax.legend(loc="upper right", ncol=2)
+    title_parts = [p for p in [policy_label, scenario_label] if p]
     ax.set_title(
-        f"Score composition by construction – {scenario_label}"
-        if scenario_label else "Score composition by construction"
+        f"Score composition by construction – {' / '.join(title_parts)}"
+        if title_parts else "Score composition by construction"
     )
     plt.tight_layout()
     plt.savefig(output_path, dpi=150)
@@ -293,6 +320,7 @@ def plot_score_bars(
     scores: np.ndarray,
     output_path: str,
     scenario_label: str = "",
+    policy_label: str = "",
 ) -> None:
     """Bar chart: construction (x) vs weighted score (y). Color by score (green=high)."""
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -303,9 +331,10 @@ def plot_score_bars(
     ax.set_ylabel("Weighted score (0–1)")
     ax.set_xlabel("Workflow construction")
     ax.set_ylim(0, 1.05)
+    title_parts = [p for p in [policy_label, scenario_label] if p]
     ax.set_title(
-        f"Weighted score by construction – {scenario_label}"
-        if scenario_label else "Weighted score by construction"
+        f"Weighted score by construction – {' / '.join(title_parts)}"
+        if title_parts else "Weighted score by construction"
     )
     ax.axhline(y=scores.mean(), color='gray', linestyle='--', alpha=0.7, label=f"Mean = {scores.mean():.3f}")
     ax.yaxis.grid(True, linestyle='-', alpha=0.3)
@@ -322,6 +351,7 @@ def plot_score_ranked(
     scores: np.ndarray,
     output_path: str,
     scenario_label: str = "",
+    policy_label: str = "",
 ) -> None:
     """Horizontal bar chart: constructions sorted by score (best at top)."""
     order = np.argsort(scores)[::-1]
@@ -337,9 +367,10 @@ def plot_score_ranked(
     ax.set_xlim(0, 1.05)
     ax.xaxis.grid(True, linestyle='-', alpha=0.3)
     ax.set_axisbelow(True)
+    title_parts = [p for p in [policy_label, scenario_label] if p]
     ax.set_title(
-        f"Constructions ranked by score – {scenario_label}"
-        if scenario_label else "Constructions ranked by score"
+        f"Constructions ranked by score – {' / '.join(title_parts)}"
+        if title_parts else "Constructions ranked by score"
     )
     plt.tight_layout()
     plt.savefig(output_path, dpi=150)
@@ -404,6 +435,13 @@ def main() -> None:
         default=None,
         help="Optional label for plot titles (e.g. 'case1_real 1h fr1 100MBps')",
     )
+    parser.add_argument(
+        '--policy',
+        type=str,
+        choices=['default', 'io_prioritized', 'resource_prioritized'],
+        default='default',
+        help="Score policy: default (throughput), io_prioritized, resource_prioritized",
+    )
     args = parser.parse_args()
 
     sim_dir = args.simulation_dir
@@ -411,6 +449,15 @@ def main() -> None:
     Path(out_dir).mkdir(parents=True, exist_ok=True)
 
     scenario_label = args.scenario_label or sim_dir
+    policy = args.policy
+    weights = POLICY_WEIGHTS[policy]
+    policy_suffix = f"_{policy}"
+    policy_label_map = {
+        'default': '',
+        'io_prioritized': 'I/O-prioritized',
+        'resource_prioritized': 'Resource-prioritized',
+    }
+    policy_label = policy_label_map[policy]
 
     print(f"Loading scenario: {sim_dir}")
     all_metrics, composition_numbers = load_scenario_metrics(sim_dir)
@@ -420,37 +467,43 @@ def main() -> None:
     print(f"  Loaded {len(all_metrics)} constructions: {composition_numbers}")
 
     norm_matrix = normalize_metrics(all_metrics)  # same for heatmap and CSV
-    scores = compute_weighted_score(norm_matrix)
+    scores = compute_weighted_score(norm_matrix, weights)
 
-    plot_normalized_heatmap(
-        norm_matrix,
-        composition_numbers,
-        os.path.join(out_dir, "construction_metrics_heatmap.png"),
-        scenario_label=scenario_label,
-    )
+    # Heatmap is policy-independent; generate only for default to avoid redundant files
+    if policy == 'default':
+        plot_normalized_heatmap(
+            norm_matrix,
+            composition_numbers,
+            os.path.join(out_dir, f"construction_metrics_heatmap{policy_suffix}.png"),
+            scenario_label=scenario_label,
+        )
     plot_score_bars(
         composition_numbers,
         scores,
-        os.path.join(out_dir, "construction_score_bars.png"),
+        os.path.join(out_dir, f"construction_score_bars{policy_suffix}.png"),
         scenario_label=scenario_label,
+        policy_label=policy_label,
     )
     plot_score_ranked(
         composition_numbers,
         scores,
-        os.path.join(out_dir, "construction_score_ranked.png"),
+        os.path.join(out_dir, f"construction_score_ranked{policy_suffix}.png"),
         scenario_label=scenario_label,
+        policy_label=policy_label,
     )
     plot_score_stacked(
         composition_numbers,
         norm_matrix,
-        os.path.join(out_dir, "construction_score_stacked.png"),
+        os.path.join(out_dir, f"construction_score_stacked{policy_suffix}.png"),
         scenario_label=scenario_label,
+        metrics_weights=weights,
+        policy_label=policy_label,
     )
     export_metrics_csv(
         all_metrics,
         norm_matrix,
         composition_numbers,
-        os.path.join(out_dir, "construction_metrics.csv"),
+        os.path.join(out_dir, f"construction_metrics{policy_suffix}.csv"),
         weighted_scores=scores,
     )
     print("Done.")
