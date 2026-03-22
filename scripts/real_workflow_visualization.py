@@ -236,32 +236,43 @@ def process_real_data_directory(directory_path: str) -> tuple:
     return all_groups, [], all_simulation_data
 
 
+# Map composition numbers to canonical workflow type names for real execution plots
+REAL_WORKFLOW_LABELS = {1: "StepChain", 16: "TaskChain"}
+
+
+def _build_display_labels(all_simulation_data: List[Dict]) -> List[str]:
+    """Build X-axis labels for real workflow plots (StepChain/TaskChain or Const N)."""
+    labels = []
+    for sim_data in all_simulation_data:
+        comp = sim_data.get("composition_number", 0)
+        labels.append(REAL_WORKFLOW_LABELS.get(comp, f"Const {comp}"))
+    return labels
+
+
 def generate_workflow_visualizations(all_simulation_data: List[Dict],
                                     sim_groups: List[Dict],
                                     jobs: List[Dict],
-                                    output_dir: str,
-                                    overhead_enabled: bool = True) -> None:
+                                    output_dir: str) -> None:
     """Generate all workflow comparison visualizations for real data.
-    
+
     Args:
         all_simulation_data: List of simulation data dictionaries (transformed from real data)
         sim_groups: List of group metrics dictionaries (empty for real data)
         jobs: List of job metrics dictionaries (empty for real data)
         output_dir: Output directory for visualization files
-        overhead_enabled: Whether overhead is enabled (always True for real data)
     """
     if len(all_simulation_data) == 0:
         print("\nNo real data files found, skipping visualizations")
         return
     
     print(f"\nGenerating workflow comparison for {len(all_simulation_data)} real data workflow(s)...")
+    display_labels = _build_display_labels(all_simulation_data)
     try:
         # Generate summary table (works for any number of workflows)
         generate_summary_table(
             all_simulation_data=all_simulation_data,
             sim_groups=sim_groups,
-            output_dir=output_dir,
-            overhead_enabled=overhead_enabled
+            output_dir=output_dir
         )
         
         # Generate plots (only if more than one workflow)
@@ -271,7 +282,7 @@ def generate_workflow_visualizations(all_simulation_data: List[Dict],
                 sim_groups=sim_groups,
                 jobs=jobs,
                 output_dir=output_dir,
-                overhead_enabled=overhead_enabled
+                custom_labels=display_labels
             )
             
             plot_resource_utilization(
@@ -279,7 +290,7 @@ def generate_workflow_visualizations(all_simulation_data: List[Dict],
                 sim_groups=sim_groups,
                 jobs=jobs,
                 output_dir=output_dir,
-                overhead_enabled=overhead_enabled
+                custom_labels=display_labels
             )
             
             plot_performance_metrics(
@@ -287,7 +298,7 @@ def generate_workflow_visualizations(all_simulation_data: List[Dict],
                 sim_groups=sim_groups,
                 jobs=jobs,
                 output_dir=output_dir,
-                overhead_enabled=overhead_enabled
+                custom_labels=display_labels
             )
         else:
             print(f"  => Skipping comparison plots (only {len(all_simulation_data)} workflow found)")
@@ -326,8 +337,7 @@ if __name__ == "__main__":
             all_simulation_data=all_simulation_data,
             sim_groups=groups,
             jobs=jobs,
-            output_dir=args.output_dir,
-            overhead_enabled=True  # Real data always includes overhead
+            output_dir=args.output_dir
         )
         
         print("\n" + "="*60)

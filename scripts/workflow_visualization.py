@@ -83,8 +83,12 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     fig = plt.figure(figsize=(16, 12))
     gs = fig.add_gridspec(2, 2, height_ratios=[1, 1])
 
-    # Always use short labels for plots
-    construction_labels = [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
+    # Use custom labels if provided, otherwise default to Const 1, Const 2, ...
+    construction_labels = (
+        custom_labels
+        if custom_labels and len(custom_labels) >= len(all_simulation_data)
+        else [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
+    )
 
     # Define consistent colors for each metric type
     colors = {
@@ -282,8 +286,12 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     fig = plt.figure(figsize=(16, 12))
     gs = fig.add_gridspec(2, 2, height_ratios=[1, 1])
 
-    # Always use short labels for plots
-    construction_labels = [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
+    # Use custom labels if provided, otherwise default to Const 1, Const 2, ...
+    construction_labels = (
+        custom_labels
+        if custom_labels and len(custom_labels) >= len(all_simulation_data)
+        else [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
+    )
 
     # 1. Network Transfer Analysis
     ax1 = fig.add_subplot(gs[0, 0])
@@ -411,8 +419,12 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
     fig = plt.figure(figsize=(16, 6))
     gs = fig.add_gridspec(1, 2, width_ratios=[1, 1])
 
-    # Always use short labels for plots
-    construction_labels = [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
+    # Use custom labels if provided, otherwise default to Const 1, Const 2, ...
+    construction_labels = (
+        custom_labels
+        if custom_labels and len(custom_labels) >= len(all_simulation_data)
+        else [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
+    )
 
     # 1. Performance vs Remote Write Efficiency
     ax1 = fig.add_subplot(gs[0, 0])
@@ -596,9 +608,12 @@ def plot_workflow_comparison(all_simulation_data: List[Dict],
         fig = plt.figure(figsize=(20, 20))
     gs = fig.add_gridspec(4, 2, height_ratios=[1, 1, 1, 1])  # Equal height ratios for all rows
 
-    # Always use short labels for plots ("Const 1", "Const 2", etc.)
-    # custom_labels are only used in the text output file
-    construction_labels = [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
+    # Use custom labels if provided, otherwise default to Const 1, Const 2, ...
+    construction_labels = (
+        custom_labels
+        if custom_labels and len(custom_labels) >= len(all_simulation_data)
+        else [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
+    )
 
     # Define consistent colors for each metric type
     colors = {
