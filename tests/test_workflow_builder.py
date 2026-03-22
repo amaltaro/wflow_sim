@@ -104,6 +104,165 @@ class TestTaskGrouper:
         groups = grouper.generate_all_possible_groups()
         assert ["Taskset1", "Taskset2"] not in groups
 
+    def test_sequential_4tasks_path_containment(self) -> None:
+        """T1->T2->T3->T4: siblings on a path can group; non-adjacent need intermediates."""
+        tasks = {
+            "Taskset1": Task(
+                id="Taskset1",
+                resources=TaskResources("8", "amd64", None),
+                input_task=None,
+                output_tasks={"Taskset2"},
+                order=1,
+            ),
+            "Taskset2": Task(
+                id="Taskset2",
+                resources=TaskResources("8", "amd64", None),
+                input_task="Taskset1",
+                output_tasks={"Taskset3"},
+                order=2,
+            ),
+            "Taskset3": Task(
+                id="Taskset3",
+                resources=TaskResources("8", "amd64", None),
+                input_task="Taskset2",
+                output_tasks={"Taskset4"},
+                order=3,
+            ),
+            "Taskset4": Task(
+                id="Taskset4",
+                resources=TaskResources("8", "amd64", None),
+                input_task="Taskset3",
+                output_tasks=set(),
+                order=4,
+            ),
+        }
+        grouper = TaskGrouper(tasks)
+        groups = grouper.generate_all_possible_groups()
+        assert ["Taskset1", "Taskset2", "Taskset3", "Taskset4"] in groups
+        assert ["Taskset1", "Taskset2"] in groups
+        assert ["Taskset2", "Taskset3"] in groups
+        assert ["Taskset3", "Taskset4"] in groups
+        assert ["Taskset1", "Taskset3"] not in groups
+        assert ["Taskset1", "Taskset4"] not in groups
+        assert ["Taskset2", "Taskset4"] not in groups
+
+    def test_fork_t1_branches_t2_t3_siblings_not_grouped(self) -> None:
+        """T1->T2, T1->T3: siblings T2 and T3 have no dependency path; cannot group."""
+        tasks = {
+            "Taskset1": Task(
+                id="Taskset1",
+                resources=TaskResources("8", "amd64", None),
+                input_task=None,
+                output_tasks={"Taskset2", "Taskset3"},
+                order=1,
+            ),
+            "Taskset2": Task(
+                id="Taskset2",
+                resources=TaskResources("8", "amd64", None),
+                input_task="Taskset1",
+                output_tasks=set(),
+                order=2,
+            ),
+            "Taskset3": Task(
+                id="Taskset3",
+                resources=TaskResources("8", "amd64", None),
+                input_task="Taskset1",
+                output_tasks=set(),
+                order=3,
+            ),
+        }
+        grouper = TaskGrouper(tasks)
+        groups = grouper.generate_all_possible_groups()
+        assert ["Taskset2", "Taskset3"] not in groups
+        assert ["Taskset1", "Taskset2"] in groups
+        assert ["Taskset1", "Taskset3"] in groups
+
+    def test_fork_t2_branches_t3_t4_siblings_not_grouped(self) -> None:
+        """T1->T2->(T3,T4): T2 feeds both T3 and T4; siblings T3 and T4 cannot group."""
+        tasks = {
+            "Taskset1": Task(
+                id="Taskset1",
+                resources=TaskResources("8", "amd64", None),
+                input_task=None,
+                output_tasks={"Taskset2"},
+                order=1,
+            ),
+            "Taskset2": Task(
+                id="Taskset2",
+                resources=TaskResources("8", "amd64", None),
+                input_task="Taskset1",
+                output_tasks={"Taskset3", "Taskset4"},
+                order=2,
+            ),
+            "Taskset3": Task(
+                id="Taskset3",
+                resources=TaskResources("8", "amd64", None),
+                input_task="Taskset2",
+                output_tasks=set(),
+                order=3,
+            ),
+            "Taskset4": Task(
+                id="Taskset4",
+                resources=TaskResources("8", "amd64", None),
+                input_task="Taskset2",
+                output_tasks=set(),
+                order=4,
+            ),
+        }
+        grouper = TaskGrouper(tasks)
+        groups = grouper.generate_all_possible_groups()
+        assert ["Taskset3", "Taskset4"] not in groups
+        assert ["Taskset1", "Taskset2", "Taskset3"] in groups
+        assert ["Taskset1", "Taskset2", "Taskset4"] in groups
+        assert ["Taskset1", "Taskset2", "Taskset3", "Taskset4"] not in groups
+
+    def test_diamond_t2_t3_siblings_not_grouped(self) -> None:
+        """T1->(T2,T3), T2->T4, T3->T5: T2 and T3 are siblings; T4 and T5 are siblings."""
+        tasks = {
+            "Taskset1": Task(
+                id="Taskset1",
+                resources=TaskResources("8", "amd64", None),
+                input_task=None,
+                output_tasks={"Taskset2", "Taskset3"},
+                order=1,
+            ),
+            "Taskset2": Task(
+                id="Taskset2",
+                resources=TaskResources("8", "amd64", None),
+                input_task="Taskset1",
+                output_tasks={"Taskset4"},
+                order=2,
+            ),
+            "Taskset3": Task(
+                id="Taskset3",
+                resources=TaskResources("8", "amd64", None),
+                input_task="Taskset1",
+                output_tasks={"Taskset5"},
+                order=3,
+            ),
+            "Taskset4": Task(
+                id="Taskset4",
+                resources=TaskResources("8", "amd64", None),
+                input_task="Taskset2",
+                output_tasks=set(),
+                order=4,
+            ),
+            "Taskset5": Task(
+                id="Taskset5",
+                resources=TaskResources("8", "amd64", None),
+                input_task="Taskset3",
+                output_tasks=set(),
+                order=5,
+            ),
+        }
+        grouper = TaskGrouper(tasks)
+        groups = grouper.generate_all_possible_groups()
+        assert ["Taskset2", "Taskset3"] not in groups
+        assert ["Taskset4", "Taskset5"] not in groups
+        assert ["Taskset1", "Taskset2", "Taskset4"] in groups
+        assert ["Taskset1", "Taskset3", "Taskset5"] in groups
+        assert ["Taskset1", "Taskset2", "Taskset3"] not in groups
+
 
 class TestFindAllWorkflowConstructions:
     """Tests for find_all_workflow_constructions."""
