@@ -32,7 +32,7 @@ This analysis reveals important patterns:
 
 2. **Optimal Construction Shifts**:
    - The best hybrid may change with target job length
-   - Const 1 might be better at very short constraints (minimize overhead)
+   - Const 16 is better at very short constraints (minimize per-job overhead: one bootstrap vs. five in Const 1)
    - Const 16 might be better at very long constraints (maximize parallelism)
    - Hybrids may dominate in the middle range
 
