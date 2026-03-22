@@ -62,11 +62,16 @@ class TaskGrouper:
         return dag
 
     def _can_be_grouped(self, task1: Task, task2: Task) -> bool:
-        """Check if tasks can be grouped (dependency path, same OS, same CPU arch)."""
-        if not (
-            nx.has_path(self.dag, task1.id, task2.id)
-            or nx.has_path(self.dag, task2.id, task1.id)
-        ):
+        """Check if tasks can be grouped (dependency path, same OS, same CPU arch).
+
+        Two tasks can be grouped iff one depends on the other (i.e., there exists a
+        directed path from one to the other in the DAG). The OR handles argument
+        order: when (T3, T1) is passed for chain T1->T2->T3, has_path(T1,T3) is
+        True (T3 depends on T1); has_path(T3,T1) would be False.
+        """
+        has_path_1_to_2 = nx.has_path(self.dag, task1.id, task2.id)
+        has_path_2_to_1 = nx.has_path(self.dag, task2.id, task1.id)
+        if not (has_path_1_to_2 or has_path_2_to_1):
             return False
         if task1.resources.os_version != task2.resources.os_version:
             return False
