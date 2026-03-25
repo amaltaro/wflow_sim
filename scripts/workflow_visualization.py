@@ -108,7 +108,7 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     ax1.bar(x + 1.5*width, write_remote_pevt, width, label='Remote Write', color=colors['Remote Write'])
     ax1.set_xlabel("Workflow Construction")
     ax1.set_ylabel("Data Volume per Event (MB)")
-    ax1.set_title("Data Volume Analysis Per Event")
+    ax1.set_title("Data Volume Analysis Per Event (including local read)")
     ax1.set_xticks(x)
     ax1.set_xticklabels(construction_labels, rotation=45)
     ax1.legend()
@@ -123,7 +123,7 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     ax2.bar(x + width, write_remote_pevt, width, label='Remote Write', color=colors['Remote Write'])
     ax2.set_xlabel("Workflow Construction")
     ax2.set_ylabel("Data Volume per Event (MB)")
-    ax2.set_title("Data Flow Analysis")
+    ax2.set_title("Data Volume Analysis Per Event")
     ax2.set_xticks(x)
     ax2.set_xticklabels(construction_labels, rotation=45)
     ax2.legend()
@@ -160,7 +160,7 @@ def plot_io_patterns(all_simulation_data: List[Dict],
 
     ax3.set_xlabel("Workflow Construction")
     ax3.set_ylabel("Total Data Volume (GB)")
-    ax3.set_title("Total Workflow Data Volume Analysis (Including Local Read)")
+    ax3.set_title("Total Workflow Data Volume Analysis (including local read)")
     ax3.set_xticks(x)
     ax3.set_xticklabels(construction_labels, rotation=45)
     ax3.legend()
@@ -480,6 +480,62 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
     plt.savefig(os.path.join(output_dir, filename))
     plt.close()
     print(f"  => Performance metrics comparison saved to {output_dir}/{filename}")
+
+
+def plot_turnaround_time_comparison(all_simulation_data: List[Dict],
+                                    sim_groups: List[Dict],
+                                    jobs: List[Dict],
+                                    output_dir: str = "plots",
+                                    custom_labels: List[str] = None):
+    """Create a vertical bar chart of workflow turnaround time per composition.
+
+    Uses ``total_turnaround_time`` from simulation metrics (seconds) and plots
+    values in hours on the y-axis. Compositions are ordered by
+    ``composition_number``.
+    """
+    print(f"==> Creating turnaround time comparison for {len(all_simulation_data)} workflows")
+
+    rows: List[tuple] = []
+    for idx, sim_data in enumerate(all_simulation_data):
+        comp = sim_data.get("composition_number", idx + 1)
+        tt = sim_data.get("total_turnaround_time")
+        if tt is None:
+            tt = 0.0
+        rows.append((comp, float(tt), idx))
+
+    rows.sort(key=lambda r: r[0])
+    turnaround_hours = np.array([r[1] / 3600.0 for r in rows])
+    x = np.arange(len(rows))
+
+    construction_labels: List[str] = []
+    for r in rows:
+        _comp, _tt, orig_idx = r
+        if custom_labels and orig_idx < len(custom_labels):
+            construction_labels.append(custom_labels[orig_idx])
+        else:
+            construction_labels.append(f"Const {r[0]}")
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+    width = 0.65
+    ax.bar(x, turnaround_hours, width, color="#17becf", alpha=0.85)
+    ax.set_xlabel("Workflow Construction")
+    ax.set_ylabel("Turnaround Time (hours)")
+    ax.set_title("Workflow Turnaround Time by Composition")
+    ax.set_xticks(x)
+    ax.set_xticklabels(construction_labels, rotation=45, ha="right")
+    ax.grid(True, axis="y", alpha=0.3)
+    ax.set_ylim(bottom=0)
+
+    ymax = float(np.max(turnaround_hours)) if len(turnaround_hours) else 0.0
+    if ymax > 0:
+        pad = ymax * 0.05
+        ax.set_ylim(top=ymax + pad)
+
+    plt.tight_layout()
+    filename = "turnaround_time_comparison.png"
+    plt.savefig(os.path.join(output_dir, filename))
+    plt.close()
+    print(f"  => Turnaround time comparison saved to {output_dir}/{filename}")
 
 
 def plot_workflow_comparison(all_simulation_data: List[Dict],
@@ -1226,6 +1282,13 @@ def generate_workflow_visualizations(all_simulation_data: List[Dict],
                 )
 
                 plot_performance_metrics(
+                    all_simulation_data=all_simulation_data,
+                    sim_groups=sim_groups,
+                    jobs=jobs,
+                    output_dir=output_dir
+                )
+
+                plot_turnaround_time_comparison(
                     all_simulation_data=all_simulation_data,
                     sim_groups=sim_groups,
                     jobs=jobs,

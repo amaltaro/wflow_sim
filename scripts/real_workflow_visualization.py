@@ -22,6 +22,7 @@ from workflow_visualization import (
     plot_io_patterns,
     plot_resource_utilization,
     plot_performance_metrics,
+    plot_turnaround_time_comparison,
     generate_summary_table
 )
 
@@ -103,6 +104,7 @@ def transform_real_data_to_simulation_format(real_data: Dict[str, Any],
         
         # Time metrics
         'total_wall_time': total_wallclock_time,
+        'total_turnaround_time': time_metrics.get('workflow_turnaround_time_sec', 0.0),
         'wall_time_per_event': time_metrics.get('wallclock_time_per_event_overhead_sec', 0.0),
         
         # CPU metrics
@@ -294,6 +296,14 @@ def generate_workflow_visualizations(all_simulation_data: List[Dict],
             )
             
             plot_performance_metrics(
+                all_simulation_data=all_simulation_data,
+                sim_groups=sim_groups,
+                jobs=jobs,
+                output_dir=output_dir,
+                custom_labels=display_labels
+            )
+
+            plot_turnaround_time_comparison(
                 all_simulation_data=all_simulation_data,
                 sim_groups=sim_groups,
                 jobs=jobs,
