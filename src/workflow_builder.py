@@ -10,6 +10,31 @@ from typing import Dict, List, Optional, Set, Tuple
 import networkx as nx
 
 
+def _construction_sort_key(construction: List[Tuple[str, List[str]]]) -> tuple:
+    """Sort key: maximally grouped -> minimally grouped (deterministic).
+
+    Ordering rule:
+    - Fewer groups first (more grouped).
+    - Within the same number of groups, prefer larger group blocks (e.g. 4+1 before 3+2).
+    - Deterministic tie-breaker based on the grouped task indices.
+    """
+
+    def task_index(task_id: str) -> int:
+        # Task ids are "Taskset<N>" in this project.
+        return int(task_id.replace("Taskset", ""))
+
+    group_task_indices = [tuple(sorted(task_index(t) for t in tasks)) for _, tasks in construction]
+    # Canonicalize group order: biggest group first; ties by earliest task indices.
+    group_task_indices.sort(key=lambda x: (-len(x), x))
+
+    size_signature = tuple(len(x) for x in group_task_indices)
+    # Compare "more grouped" first: larger blocks earlier => descending size_signature.
+    # Implemented by negating sizes in the key.
+    size_signature_desc = tuple(-s for s in size_signature)
+
+    return (len(construction), size_signature_desc, group_task_indices)
+
+
 def extract_os_and_arch(scram_arch: List[str]) -> Tuple[str, str]:
     """Extract OS version and CPU architecture from ScramArch string.
 
@@ -198,8 +223,8 @@ def find_all_workflow_constructions(
 
     find_constructions([])
 
-    # Sort by number of groups (ascending)
-    valid_constructions.sort(key=lambda x: len(x))
+    # Sort from maximally grouped to minimally grouped (deterministic).
+    valid_constructions.sort(key=_construction_sort_key)
 
     return valid_constructions
 
