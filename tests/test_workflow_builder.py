@@ -300,6 +300,53 @@ class TestFindAllWorkflowConstructions:
             all_tasks.update(task_ids)
         assert all_tasks == {"Taskset1", "Taskset2", "Taskset3"}
 
+    def test_constructions_sorted_most_grouped_first(self) -> None:
+        """Ensure constructions are ordered from maximally grouped to minimally grouped."""
+        tasks = {
+            "Taskset1": Task(
+                id="Taskset1",
+                resources=TaskResources("8", "amd64", None),
+                input_task=None,
+                output_tasks={"Taskset2"},
+                order=1,
+            ),
+            "Taskset2": Task(
+                id="Taskset2",
+                resources=TaskResources("8", "amd64", None),
+                input_task="Taskset1",
+                output_tasks={"Taskset3"},
+                order=2,
+            ),
+            "Taskset3": Task(
+                id="Taskset3",
+                resources=TaskResources("8", "amd64", None),
+                input_task="Taskset2",
+                output_tasks={"Taskset4"},
+                order=3,
+            ),
+            "Taskset4": Task(
+                id="Taskset4",
+                resources=TaskResources("8", "amd64", None),
+                input_task="Taskset3",
+                output_tasks=set(),
+                order=4,
+            ),
+        }
+        grouper = TaskGrouper(tasks)
+        valid_groups = grouper.generate_all_possible_groups()
+        constructions = find_all_workflow_constructions(grouper, valid_groups)
+
+        group_counts = [len(c) for c in constructions]
+        assert group_counts == sorted(group_counts)
+
+        # First construction should be fully grouped (1 group).
+        assert len(constructions[0]) == 1
+        assert set(constructions[0][0][1]) == {"Taskset1", "Taskset2", "Taskset3", "Taskset4"}
+
+        # Last construction should be fully independent (4 groups of size 1).
+        assert len(constructions[-1]) == 4
+        assert sorted(len(tasks) for _, tasks in constructions[-1]) == [1, 1, 1, 1]
+
 
 class TestBuildAllConstructions:
     """Tests for build_all_constructions."""
