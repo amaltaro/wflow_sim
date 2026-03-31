@@ -98,6 +98,25 @@ python scripts/workflow_visualization.py results/sim/others/case1_real/ [--outpu
 
 **See also**: [Visualization Usage Guide](visualization_usage.md) for detailed documentation.
 
+### `plot_construction_groups_overview.py`
+
+Plots an overview of how tasksets are grouped across all constructions in a compositions summary JSON.
+
+**Purpose**: Produces a compact "barcode" figure where each row is a construction (composition), each
+column is a taskset index, and contiguous blocks are colored and labeled by `group_id`.
+
+**Usage**:
+```bash
+python scripts/plot_construction_groups_overview.py \
+  --summary-json templates/others/case1_real/case1_real_compositions_summary.json \
+  --output-dir results/vis/others/case1_real/
+```
+
+**Output**: Writes `<output-dir>/<template_name>_construction_groups_overview.png`.
+
+**Options**:
+- `--show-colorbar`: Show the colorbar legend (hidden by default because group ids are labeled inside blocks)
+
 ### `real_workflow_visualization.py`
 
 Generates comparison plots from real workflow execution data.
