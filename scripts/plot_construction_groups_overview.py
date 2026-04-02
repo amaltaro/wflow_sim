@@ -172,7 +172,7 @@ def plot_group_overview(
 
     im = ax.imshow(numeric, aspect="auto", interpolation="nearest", cmap=cmap)
 
-    ax.set_title(f"{matrix.template_name}: group assignments by composition")
+    ax.set_title("Taskset grouping for all compositions")
     ax.set_xlabel("Taskset")
     ax.set_ylabel("Composition")
 
