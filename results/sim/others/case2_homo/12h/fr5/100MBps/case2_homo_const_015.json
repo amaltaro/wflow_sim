@@ -46,7 +46,7 @@
         "group_id": "group_0",
         "job_count": 440,
         "input_events": 11368,
-        "total_execution_time": 43198.4,
+        "total_execution_time": 0.0,
         "exact_job_count": 439.8311048557354,
         "dependencies": [],
         "tasksets": [
@@ -58,7 +58,7 @@
             "memory": 8000,
             "multicore": 8,
             "size_per_event": 800.0,
-            "group_input_events": 11368,
+            "group_input_events": 0,
             "scram_arch": [
               "el8_amd64_gcc10"
             ],
@@ -71,7 +71,7 @@
         "group_id": "group_1",
         "job_count": 128,
         "input_events": 39272,
-        "total_execution_time": 43199.200000000004,
+        "total_execution_time": 0.0,
         "exact_job_count": 127.31717254023222,
         "dependencies": [
           "Taskset1"
@@ -85,7 +85,7 @@
             "memory": 8000,
             "multicore": 8,
             "size_per_event": 2140,
-            "group_input_events": 39272,
+            "group_input_events": 0,
             "scram_arch": [
               "el8_amd64_gcc10"
             ],
@@ -98,7 +98,7 @@
         "group_id": "group_2",
         "job_count": 186,
         "input_events": 27000,
-        "total_execution_time": 43200.0,
+        "total_execution_time": 0.0,
         "exact_job_count": 185.1851851851852,
         "dependencies": [
           "Taskset2"
@@ -112,7 +112,7 @@
             "memory": 8000,
             "multicore": 8,
             "size_per_event": 385,
-            "group_input_events": 27000,
+            "group_input_events": 0,
             "scram_arch": [
               "el8_amd64_gcc10"
             ],
@@ -125,7 +125,7 @@
         "group_id": "group_8",
         "job_count": 47,
         "input_events": 108000,
-        "total_execution_time": 43200.0,
+        "total_execution_time": 0.0,
         "exact_job_count": 46.2962962962963,
         "dependencies": [
           "Taskset3",
@@ -140,7 +140,7 @@
             "memory": 8000,
             "multicore": 8,
             "size_per_event": 65,
-            "group_input_events": 108000,
+            "group_input_events": 0,
             "scram_arch": [
               "el8_amd64_gcc10"
             ],
@@ -155,7 +155,7 @@
             "memory": 8000,
             "multicore": 8,
             "size_per_event": 10.0,
-            "group_input_events": 108000,
+            "group_input_events": 0,
             "scram_arch": [
               "el8_amd64_gcc10"
             ],

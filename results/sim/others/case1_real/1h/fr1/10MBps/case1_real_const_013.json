@@ -46,7 +46,7 @@
         "group_id": "group_0",
         "job_count": 5280,
         "input_events": 947,
-        "total_execution_time": 43198.4,
+        "total_execution_time": 0.0,
         "exact_job_count": 5279.831045406547,
         "dependencies": [],
         "tasksets": [
@@ -58,7 +58,7 @@
             "memory": 3000,
             "multicore": 8,
             "size_per_event": 800.0,
-            "group_input_events": 11368,
+            "group_input_events": 0,
             "scram_arch": [
               "el8_amd64_gcc10"
             ],
@@ -71,7 +71,7 @@
         "group_id": "group_6",
         "job_count": 3751,
         "input_events": 1333,
-        "total_execution_time": 43197.3,
+        "total_execution_time": 0.0,
         "exact_job_count": 3750.9377344336085,
         "dependencies": [
           "Taskset1",
@@ -86,7 +86,7 @@
             "memory": 7000,
             "multicore": 4,
             "size_per_event": 2140,
-            "group_input_events": 15999,
+            "group_input_events": 0,
             "scram_arch": [
               "el8_amd64_gcc10"
             ],
@@ -101,7 +101,7 @@
             "memory": 8000,
             "multicore": 4,
             "size_per_event": 385,
-            "group_input_events": 15999,
+            "group_input_events": 0,
             "scram_arch": [
               "el8_amd64_gcc10"
             ],
@@ -114,7 +114,7 @@
         "group_id": "group_3",
         "job_count": 487,
         "input_events": 10285,
-        "total_execution_time": 43199.799999999996,
+        "total_execution_time": 0.0,
         "exact_job_count": 486.1448711716091,
         "dependencies": [
           "Taskset3"
@@ -128,7 +128,7 @@
             "memory": 4000,
             "multicore": 2,
             "size_per_event": 65,
-            "group_input_events": 123428,
+            "group_input_events": 0,
             "scram_arch": [
               "el8_amd64_gcc11"
             ],
@@ -141,7 +141,7 @@
         "group_id": "group_4",
         "job_count": 70,
         "input_events": 72000,
-        "total_execution_time": 43200.0,
+        "total_execution_time": 0.0,
         "exact_job_count": 69.44444444444444,
         "dependencies": [
           "Taskset4"
@@ -155,7 +155,7 @@
             "memory": 4000,
             "multicore": 4,
             "size_per_event": 10.0,
-            "group_input_events": 864000,
+            "group_input_events": 0,
             "scram_arch": [
               "el8_amd64_gcc11"
             ],
