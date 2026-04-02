@@ -12,8 +12,7 @@
     ],
     "SizePerEvent": 800.0,
     "TimePerEvent": 3.8,
-    "GroupName": "group_0",
-    "GroupInputEvents": 11368
+    "GroupName": "group_0"
   },
   "Taskset2": {
     "KeepOutput": false,
@@ -26,8 +25,7 @@
     "SizePerEvent": 2140,
     "TimePerEvent": 1.1,
     "InputTaskset": "Taskset1",
-    "GroupName": "group_1",
-    "GroupInputEvents": 39272
+    "GroupName": "group_6"
   },
   "Taskset3": {
     "KeepOutput": true,
@@ -40,8 +38,7 @@
     "SizePerEvent": 385,
     "TimePerEvent": 1.6,
     "InputTaskset": "Taskset2",
-    "GroupName": "group_11",
-    "GroupInputEvents": 21600
+    "GroupName": "group_6"
   },
   "Taskset4": {
     "KeepOutput": true,
@@ -54,8 +51,7 @@
     "SizePerEvent": 65,
     "TimePerEvent": 0.35,
     "InputTaskset": "Taskset3",
-    "GroupName": "group_11",
-    "GroupInputEvents": 21600
+    "GroupName": "group_8"
   },
   "Taskset5": {
     "KeepOutput": true,
@@ -68,8 +64,7 @@
     "SizePerEvent": 10.0,
     "TimePerEvent": 0.05,
     "InputTaskset": "Taskset4",
-    "GroupName": "group_11",
-    "GroupInputEvents": 21600
+    "GroupName": "group_8"
   },
   "CompositionNumber": 11
 }
