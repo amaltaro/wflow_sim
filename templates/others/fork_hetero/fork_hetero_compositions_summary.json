@@ -1,0 +1,1974 @@
+{
+  "template_name": "fork_hetero",
+  "total_compositions": 48,
+  "compositions": [
+    {
+      "composition_number": 1,
+      "num_groups": 2,
+      "groups": [
+        "group_22",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_22",
+          "tasks": [
+            "Taskset1",
+            "Taskset2",
+            "Taskset3",
+            "Taskset4",
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 2,
+      "num_groups": 2,
+      "groups": [
+        "group_23",
+        "group_11"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_23",
+          "tasks": [
+            "Taskset1",
+            "Taskset2",
+            "Taskset3",
+            "Taskset5",
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 3,
+      "num_groups": 3,
+      "groups": [
+        "group_22",
+        "group_4",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_22",
+          "tasks": [
+            "Taskset1",
+            "Taskset2",
+            "Taskset3",
+            "Taskset4",
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 4,
+      "num_groups": 3,
+      "groups": [
+        "group_23",
+        "group_3",
+        "group_5"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_23",
+          "tasks": [
+            "Taskset1",
+            "Taskset2",
+            "Taskset3",
+            "Taskset5",
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 5,
+      "num_groups": 3,
+      "groups": [
+        "group_18",
+        "group_5",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_18",
+          "tasks": [
+            "Taskset1",
+            "Taskset2",
+            "Taskset3",
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 6,
+      "num_groups": 3,
+      "groups": [
+        "group_19",
+        "group_6",
+        "group_11"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_19",
+          "tasks": [
+            "Taskset1",
+            "Taskset2",
+            "Taskset3",
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 7,
+      "num_groups": 3,
+      "groups": [
+        "group_0",
+        "group_20",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_20",
+          "tasks": [
+            "Taskset2",
+            "Taskset3",
+            "Taskset4",
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 8,
+      "num_groups": 3,
+      "groups": [
+        "group_0",
+        "group_21",
+        "group_11"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_21",
+          "tasks": [
+            "Taskset2",
+            "Taskset3",
+            "Taskset5",
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 9,
+      "num_groups": 3,
+      "groups": [
+        "group_13",
+        "group_11",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_13",
+          "tasks": [
+            "Taskset1",
+            "Taskset2",
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 10,
+      "num_groups": 3,
+      "groups": [
+        "group_7",
+        "group_16",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_7",
+          "tasks": [
+            "Taskset1",
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_16",
+          "tasks": [
+            "Taskset3",
+            "Taskset4",
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 11,
+      "num_groups": 3,
+      "groups": [
+        "group_7",
+        "group_17",
+        "group_11"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_7",
+          "tasks": [
+            "Taskset1",
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_17",
+          "tasks": [
+            "Taskset3",
+            "Taskset5",
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 12,
+      "num_groups": 4,
+      "groups": [
+        "group_18",
+        "group_4",
+        "group_5",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_18",
+          "tasks": [
+            "Taskset1",
+            "Taskset2",
+            "Taskset3",
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 13,
+      "num_groups": 4,
+      "groups": [
+        "group_19",
+        "group_3",
+        "group_5",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_19",
+          "tasks": [
+            "Taskset1",
+            "Taskset2",
+            "Taskset3",
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 14,
+      "num_groups": 4,
+      "groups": [
+        "group_0",
+        "group_20",
+        "group_4",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_20",
+          "tasks": [
+            "Taskset2",
+            "Taskset3",
+            "Taskset4",
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 15,
+      "num_groups": 4,
+      "groups": [
+        "group_0",
+        "group_21",
+        "group_3",
+        "group_5"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_21",
+          "tasks": [
+            "Taskset2",
+            "Taskset3",
+            "Taskset5",
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 16,
+      "num_groups": 4,
+      "groups": [
+        "group_13",
+        "group_4",
+        "group_6",
+        "group_11"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_13",
+          "tasks": [
+            "Taskset1",
+            "Taskset2",
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 17,
+      "num_groups": 4,
+      "groups": [
+        "group_13",
+        "group_3",
+        "group_5",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_13",
+          "tasks": [
+            "Taskset1",
+            "Taskset2",
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 18,
+      "num_groups": 4,
+      "groups": [
+        "group_0",
+        "group_14",
+        "group_5",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_14",
+          "tasks": [
+            "Taskset2",
+            "Taskset3",
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 19,
+      "num_groups": 4,
+      "groups": [
+        "group_0",
+        "group_15",
+        "group_6",
+        "group_11"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_15",
+          "tasks": [
+            "Taskset2",
+            "Taskset3",
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 20,
+      "num_groups": 4,
+      "groups": [
+        "group_7",
+        "group_16",
+        "group_4",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_7",
+          "tasks": [
+            "Taskset1",
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_16",
+          "tasks": [
+            "Taskset3",
+            "Taskset4",
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 21,
+      "num_groups": 4,
+      "groups": [
+        "group_0",
+        "group_1",
+        "group_16",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_16",
+          "tasks": [
+            "Taskset3",
+            "Taskset4",
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 22,
+      "num_groups": 4,
+      "groups": [
+        "group_7",
+        "group_17",
+        "group_3",
+        "group_5"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_7",
+          "tasks": [
+            "Taskset1",
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_17",
+          "tasks": [
+            "Taskset3",
+            "Taskset5",
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 23,
+      "num_groups": 4,
+      "groups": [
+        "group_0",
+        "group_1",
+        "group_17",
+        "group_11"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_17",
+          "tasks": [
+            "Taskset3",
+            "Taskset5",
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 24,
+      "num_groups": 4,
+      "groups": [
+        "group_7",
+        "group_9",
+        "group_5",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_7",
+          "tasks": [
+            "Taskset1",
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_9",
+          "tasks": [
+            "Taskset3",
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 25,
+      "num_groups": 4,
+      "groups": [
+        "group_7",
+        "group_10",
+        "group_6",
+        "group_11"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_7",
+          "tasks": [
+            "Taskset1",
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_10",
+          "tasks": [
+            "Taskset3",
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 26,
+      "num_groups": 4,
+      "groups": [
+        "group_7",
+        "group_2",
+        "group_11",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_7",
+          "tasks": [
+            "Taskset1",
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_2",
+          "tasks": [
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 27,
+      "num_groups": 4,
+      "groups": [
+        "group_0",
+        "group_8",
+        "group_11",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_8",
+          "tasks": [
+            "Taskset2",
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 28,
+      "num_groups": 5,
+      "groups": [
+        "group_13",
+        "group_3",
+        "group_4",
+        "group_5",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_13",
+          "tasks": [
+            "Taskset1",
+            "Taskset2",
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 29,
+      "num_groups": 5,
+      "groups": [
+        "group_0",
+        "group_14",
+        "group_4",
+        "group_5",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_14",
+          "tasks": [
+            "Taskset2",
+            "Taskset3",
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 30,
+      "num_groups": 5,
+      "groups": [
+        "group_0",
+        "group_15",
+        "group_3",
+        "group_5",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_15",
+          "tasks": [
+            "Taskset2",
+            "Taskset3",
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 31,
+      "num_groups": 5,
+      "groups": [
+        "group_0",
+        "group_1",
+        "group_16",
+        "group_4",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_16",
+          "tasks": [
+            "Taskset3",
+            "Taskset4",
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 32,
+      "num_groups": 5,
+      "groups": [
+        "group_0",
+        "group_1",
+        "group_17",
+        "group_3",
+        "group_5"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_17",
+          "tasks": [
+            "Taskset3",
+            "Taskset5",
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 33,
+      "num_groups": 5,
+      "groups": [
+        "group_7",
+        "group_9",
+        "group_4",
+        "group_5",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_7",
+          "tasks": [
+            "Taskset1",
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_9",
+          "tasks": [
+            "Taskset3",
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 34,
+      "num_groups": 5,
+      "groups": [
+        "group_7",
+        "group_10",
+        "group_3",
+        "group_5",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_7",
+          "tasks": [
+            "Taskset1",
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_10",
+          "tasks": [
+            "Taskset3",
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 35,
+      "num_groups": 5,
+      "groups": [
+        "group_7",
+        "group_2",
+        "group_4",
+        "group_6",
+        "group_11"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_7",
+          "tasks": [
+            "Taskset1",
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_2",
+          "tasks": [
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 36,
+      "num_groups": 5,
+      "groups": [
+        "group_7",
+        "group_2",
+        "group_3",
+        "group_5",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_7",
+          "tasks": [
+            "Taskset1",
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_2",
+          "tasks": [
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 37,
+      "num_groups": 5,
+      "groups": [
+        "group_0",
+        "group_8",
+        "group_4",
+        "group_6",
+        "group_11"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_8",
+          "tasks": [
+            "Taskset2",
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 38,
+      "num_groups": 5,
+      "groups": [
+        "group_0",
+        "group_8",
+        "group_3",
+        "group_5",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_8",
+          "tasks": [
+            "Taskset2",
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 39,
+      "num_groups": 5,
+      "groups": [
+        "group_0",
+        "group_1",
+        "group_9",
+        "group_5",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_9",
+          "tasks": [
+            "Taskset3",
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 40,
+      "num_groups": 5,
+      "groups": [
+        "group_0",
+        "group_1",
+        "group_10",
+        "group_6",
+        "group_11"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_10",
+          "tasks": [
+            "Taskset3",
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 41,
+      "num_groups": 5,
+      "groups": [
+        "group_0",
+        "group_1",
+        "group_2",
+        "group_11",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_2",
+          "tasks": [
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 42,
+      "num_groups": 6,
+      "groups": [
+        "group_7",
+        "group_2",
+        "group_3",
+        "group_4",
+        "group_5",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_7",
+          "tasks": [
+            "Taskset1",
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_2",
+          "tasks": [
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 43,
+      "num_groups": 6,
+      "groups": [
+        "group_0",
+        "group_8",
+        "group_3",
+        "group_4",
+        "group_5",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_8",
+          "tasks": [
+            "Taskset2",
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 44,
+      "num_groups": 6,
+      "groups": [
+        "group_0",
+        "group_1",
+        "group_9",
+        "group_4",
+        "group_5",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_9",
+          "tasks": [
+            "Taskset3",
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 45,
+      "num_groups": 6,
+      "groups": [
+        "group_0",
+        "group_1",
+        "group_10",
+        "group_3",
+        "group_5",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_10",
+          "tasks": [
+            "Taskset3",
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 46,
+      "num_groups": 6,
+      "groups": [
+        "group_0",
+        "group_1",
+        "group_2",
+        "group_4",
+        "group_6",
+        "group_11"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_2",
+          "tasks": [
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        },
+        {
+          "group_id": "group_11",
+          "tasks": [
+            "Taskset4",
+            "Taskset6"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 47,
+      "num_groups": 6,
+      "groups": [
+        "group_0",
+        "group_1",
+        "group_2",
+        "group_3",
+        "group_5",
+        "group_12"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_2",
+          "tasks": [
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_12",
+          "tasks": [
+            "Taskset5",
+            "Taskset7"
+          ]
+        }
+      ]
+    },
+    {
+      "composition_number": 48,
+      "num_groups": 7,
+      "groups": [
+        "group_0",
+        "group_1",
+        "group_2",
+        "group_3",
+        "group_4",
+        "group_5",
+        "group_6"
+      ],
+      "group_details": [
+        {
+          "group_id": "group_0",
+          "tasks": [
+            "Taskset1"
+          ]
+        },
+        {
+          "group_id": "group_1",
+          "tasks": [
+            "Taskset2"
+          ]
+        },
+        {
+          "group_id": "group_2",
+          "tasks": [
+            "Taskset3"
+          ]
+        },
+        {
+          "group_id": "group_3",
+          "tasks": [
+            "Taskset4"
+          ]
+        },
+        {
+          "group_id": "group_4",
+          "tasks": [
+            "Taskset5"
+          ]
+        },
+        {
+          "group_id": "group_5",
+          "tasks": [
+            "Taskset6"
+          ]
+        },
+        {
+          "group_id": "group_6",
+          "tasks": [
+            "Taskset7"
+          ]
+        }
+      ]
+    }
+  ]
+}
