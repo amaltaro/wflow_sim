@@ -1,0 +1,96 @@
+{
+  "Comments": "Workflow Composition 32 - 5 groups",
+  "NumTasks": 7,
+  "RequestNumEvents": 5000000,
+  "Taskset1": {
+    "KeepOutput": false,
+    "Memory": 8000,
+    "Multicore": 4,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc12"
+    ],
+    "SizePerEvent": 630.46,
+    "TimePerEvent": 0.04,
+    "GroupName": "group_0"
+  },
+  "Taskset2": {
+    "KeepOutput": false,
+    "Memory": 8000,
+    "Multicore": 4,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc12"
+    ],
+    "SizePerEvent": 1200,
+    "TimePerEvent": 30,
+    "InputTaskset": "Taskset1",
+    "GroupName": "group_1"
+  },
+  "Taskset3": {
+    "KeepOutput": true,
+    "Memory": 8000,
+    "Multicore": 4,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc12"
+    ],
+    "SizePerEvent": 550,
+    "TimePerEvent": 6,
+    "InputTaskset": "Taskset2",
+    "GroupName": "group_17"
+  },
+  "Taskset4": {
+    "KeepOutput": true,
+    "Memory": 8000,
+    "Multicore": 4,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc12"
+    ],
+    "SizePerEvent": 150,
+    "TimePerEvent": 1,
+    "InputTaskset": "Taskset3",
+    "GroupName": "group_3"
+  },
+  "Taskset5": {
+    "KeepOutput": true,
+    "Memory": 8000,
+    "Multicore": 4,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc12"
+    ],
+    "SizePerEvent": 150,
+    "TimePerEvent": 1,
+    "InputTaskset": "Taskset3",
+    "GroupName": "group_17"
+  },
+  "Taskset6": {
+    "KeepOutput": true,
+    "Memory": 8000,
+    "Multicore": 4,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc12"
+    ],
+    "SizePerEvent": 30,
+    "TimePerEvent": 0.3,
+    "InputTaskset": "Taskset4",
+    "GroupName": "group_5"
+  },
+  "Taskset7": {
+    "KeepOutput": true,
+    "Memory": 8000,
+    "Multicore": 4,
+    "RequiresGPU": "forbidden",
+    "ScramArch": [
+      "el8_amd64_gcc12"
+    ],
+    "SizePerEvent": 30,
+    "TimePerEvent": 0.3,
+    "InputTaskset": "Taskset5",
+    "GroupName": "group_17"
+  },
+  "CompositionNumber": 32
+}
