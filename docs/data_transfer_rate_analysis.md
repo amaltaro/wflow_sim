@@ -38,7 +38,7 @@ Rate directory names use uppercase B (MBps/GBps = bytes per second) to avoid con
 
 Either run the full suite (all times, failure rates, and data rates) or only the 12h+fr0+4 rates subset:
 
-- **Full suite**: `make simulate-all` — writes to `results/sim/others/<case>/<time>/fr<fr>/<data_rate>/`
+- **Full suite**: `make simulate-all` — writes to `results/sim/others/<case>/<time>/fr<fr>/<data_rate>/`. Which cases and which target job lengths are simulated is controlled by **`WORKFLOW_PRESET`**: `sequential` (default, `case1_real` / `case2_homo` / `case3_hetero` and eight wall times) or `fork` (`fork_real` / `fork_homo` / `fork_hetero` and five wall times). See the main [README](../README.md#batch-processing-with-makefile) (section *Workflow preset*).
 - **Data transfer rate subset only (12h, fr0, 4 rates)**: `make simulate-data-transfer-rate` — same structure, fewer combinations
 
 Example single run (10 MB/s):
@@ -89,6 +89,7 @@ make simulate-data-transfer-rate
 make analyze-data-transfer-rate
 
 # Option B: Run full suite (all times, failure rates, data rates), then analyze
+# Optional: make simulate-all WORKFLOW_PRESET=fork   # or omit for default sequential
 make simulate-all
 make analyze-data-transfer-rate   # reads 12h/fr0/<rate_dir> from unified tree
 ```

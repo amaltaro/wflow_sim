@@ -185,7 +185,9 @@ make analyze-construction-metrics
 ```
 
 Scenario parameters are controlled by Make variables: `CONSTRUCTION_METRICS_TIME`,
-`CONSTRUCTION_METRICS_FR_LIST` (fr0 fr5 fr25), `CONSTRUCTION_METRICS_RATE`, `USE_CASES`.
+`CONSTRUCTION_METRICS_FR_LIST` (fr0 fr5 fr25), `CONSTRUCTION_METRICS_RATE`, `USE_CASES`
+(which follows **`WORKFLOW_PRESET`** in the `Makefile` unless you override: default
+`sequential` → the three `case*` types; `fork` → the three `fork_*` types).
 
 ## See also
 

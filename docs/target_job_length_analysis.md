@@ -102,8 +102,9 @@ python scripts/target_job_length_analysis.py \
 #### Using Makefile
 
 ```bash
-# Run analysis for all workflow types (case1_real, case2_homo, case3_hetero) 
-# at both fr0 and fr25 failure rates
+# Run analysis for every use case in USE_CASES (from Makefile: default WORKFLOW_PRESET=sequential
+# → case1_real, case2_homo, case3_hetero; use WORKFLOW_PRESET=fork for fork_* after sims exist)
+# at fr0, fr5, and fr25
 make analyze-target-job-length
 ```
 
@@ -282,8 +283,8 @@ The script generates the following outputs in the specified output directory:
 ## Recommended Configuration
 
 For comprehensive analysis, use:
-- **Workflow Types**: All workflow types (`case1_real`, `case2_homo`, `case3_hetero`) - the Makefile target processes all automatically
-- **Failure Rates**: Both `fr0` (0% - clean baseline) and `fr25` (25% - high failure rate) - the Makefile target processes both automatically
+- **Workflow Types**: All use cases in `USE_CASES` (default **`WORKFLOW_PRESET=sequential`**: `case1_real`, `case2_homo`, `case3_hetero`; or **`WORKFLOW_PRESET=fork`**: `fork_real`, `fork_homo`, `fork_hetero`). The Makefile target loops over that list when results exist.
+- **Failure Rates**: The Makefile runs `fr0`, `fr5`, and `fr25` (not only fr0 and fr25).
 
 **Baseline Analysis (fr0)**:
 - Provides a clear view of how time constraints affect hybrid construction benefits across different workflow characteristics without the complexity of failures
@@ -294,7 +295,7 @@ For comprehensive analysis, use:
 - May reveal different optimal constructions under failure conditions
 - Helps identify which constructions are more resilient to failures at different time scales
 
-**Note**: The Makefile target `analyze-target-job-length` automatically runs the analysis for all configured workflow types at both fr0 and fr25. To analyze a specific workflow type or failure rate, use the command line interface directly.
+**Note**: The Makefile target `analyze-target-job-length` runs the analysis for each `USE_CASES` entry at `fr0`, `fr5`, and `fr25` when the corresponding `results/sim/others/<use_case>/` tree exists. To analyze a specific workflow type or failure rate, use the command line interface directly.
 
 ## Requirements
 
