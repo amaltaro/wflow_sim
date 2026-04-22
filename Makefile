@@ -6,8 +6,22 @@ PIP := /Users/amaltar2/pyenv-3.12/bin/pip
 PYTEST := /Users/amaltar2/pyenv-3.12/bin/pytest
 
 # Simulation configuration
-# Target job lengths: 15m, 30m, 1h, 2h, 4h, 8h, 12h, 24h (seconds)
-WALLCLOCK_TIMES := 900 1800 3600 7200 14400 28800 43200 86400
+# Which workflow family to use for batch targets (sequential = paper default; fork = shorter time grid)
+#   make simulate-all
+#   make simulate-all WORKFLOW_PRESET=fork
+# Override USE_CASES / WALLCLOCK_TIMES on the command line to ignore the preset.
+WORKFLOW_PRESET ?= sequential
+
+ifeq ($(WORKFLOW_PRESET),fork)
+  # fork templates: 2h–24h (5 target lengths)
+  USE_CASES := fork_real fork_homo fork_hetero
+  WALLCLOCK_TIMES := 7200 14400 28800 43200 86400
+else
+  # sequential templates (default): 15m–24h (8 target lengths) — case1/case2/case3
+  USE_CASES := case1_real case2_homo case3_hetero
+  WALLCLOCK_TIMES := 900 1800 3600 7200 14400 28800 43200 86400
+endif
+
 TARGET_WALLCLOCK_TIME := 43200  # Default for single run (12h)
 MAX_JOB_SLOTS := -1
 # Failure rates as percentages: 0, 1, 5, 10, 25
@@ -17,9 +31,6 @@ FAILURE_RATES := 0 1 5 10 25
 DATA_TRANSFER_RATE_MBPS := 10 100 1000 10000
 DATA_TRANSFER_RATE_DIRS := 10MBps 100MBps 1GBps 10GBps
 DATA_TRANSFER_RATE_FR := 0
-
-# Workflow use cases to simulate (modify this list as needed)
-USE_CASES := case1_real case2_homo case3_hetero
 
 # Template base directory
 TEMPLATES_DIR := templates/others
@@ -59,11 +70,13 @@ help:
 	@echo "  clean-viz      - Clean only visualization outputs"
 	@echo "  clean-results  - Clean only simulation results"
 	@echo ""
-	@echo "Use cases configured: $(USE_CASES)"
+	@echo "Use cases configured: $(USE_CASES)  (WORKFLOW_PRESET=$(WORKFLOW_PRESET))"
 	@echo "Target job lengths: ${WALLCLOCK_TIMES} seconds"
 	@echo "Failure rates configured: $(FAILURE_RATES)%"
+	@echo "Workflow family: WORKFLOW_PRESET=sequential (default) or fork"
 	@echo "Customize by setting variables, e.g.:"
-	@echo "  make all USE_CASES='case1_real case2_homo'"
+	@echo "  make all WORKFLOW_PRESET=fork"
+	@echo "  make all USE_CASES='case1_real case2_homo'   # overrides preset"
 	@echo "  make simulate-all FAILURE_RATES='0 5 10'"
 
 # Set up the project environment
