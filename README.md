@@ -201,7 +201,7 @@ make all
 ```
 
 This will:
-1. Simulate all workflows in the configured use cases (default: `case1_real`, `case2_homo`, `case3_hetero`)
+1. Simulate all workflows in the configured use cases (see **Workflow preset** below; default is the sequential `case1_real` / `case2_homo` / `case3_hetero` set)
 2. Generate visualization diagrams for all simulation results
 
 ### Available Makefile Targets
@@ -228,9 +228,27 @@ make clean-viz               # Only visualizations
 make clean-results           # Only simulation results
 ```
 
-### Customizing Use Cases
+### Workflow preset (`WORKFLOW_PRESET`)
 
-You can customize which use cases to process by setting the `USE_CASES` variable:
+Batch targets (`build-workflows`, `simulate-all`, `visualize-all`, `all`, and several `analyze-*` targets that loop over `USE_CASES`) pick both **use cases** and **target job length grid** (wallclock seconds) from a preset:
+
+| `WORKFLOW_PRESET` | Use cases | Wallclock times (seconds) |
+|-------------------|-----------|---------------------------|
+| `sequential` (**default**) | `case1_real` `case2_homo` `case3_hetero` | `900 1800 3600 7200 14400 28800 43200 86400` (15m–24h) |
+| `fork` | `fork_real` `fork_homo` `fork_hetero` | `7200 14400 28800 43200 86400` (2h–24h) |
+
+Examples:
+
+```bash
+make all                                      # default: sequential
+make simulate-all WORKFLOW_PRESET=fork        # fork templates and shorter time grid
+```
+
+Omit `WORKFLOW_PRESET` to keep the **sequential** defaults used for the main paper / reports.
+
+### Customizing use cases
+
+You can override the preset by setting `USE_CASES` (and optionally `WALLCLOCK_TIMES`) on the command line:
 
 ```bash
 # Run only specific use cases
@@ -246,7 +264,7 @@ The Makefile uses the following default configuration (editable in `Makefile`):
 
 - **Target wallclock time**: 43200 seconds (12 hours)
 - **Max job slots**: -1 (infinite)
-- **Use cases**: `case1_real case2_homo case3_hetero`
+- **Workflow preset**: `sequential` — sets `USE_CASES` and `WALLCLOCK_TIMES` as in the table above; use `WORKFLOW_PRESET=fork` for the fork family
 - **Template directory**: `templates/others/`
 - **Results directory**: `results/sim/others`
 - **Visualization output**: `results/vis/others`

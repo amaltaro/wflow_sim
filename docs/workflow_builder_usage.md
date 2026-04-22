@@ -51,13 +51,13 @@ Each composition file is a full workflow JSON that can be used directly by the w
 
 ## Makefile Target
 
-Build all three generic workflows in one command:
+Build generic workflows in one command:
 
 ```bash
 make build-workflows
 ```
 
-This runs the workflow builder for `case1_real`, `case2_homo`, and `case3_hetero` using the `USE_CASES` variable.
+`USE_CASES` is set from **`WORKFLOW_PRESET`** in the `Makefile` (default **`sequential`**): `case1_real`, `case2_homo`, and `case3_hetero`. For the fork templates, run `make build-workflows WORKFLOW_PRESET=fork` (uses `fork_real`, `fork_homo`, `fork_hetero`). You can still pass `USE_CASES='...'` to override the list.
 
 ## Input Format
 
