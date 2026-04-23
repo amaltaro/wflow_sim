@@ -9,7 +9,8 @@ types to identify which types benefit most from hybrid compositions.
 Analysis: Workflow Type Sensitivity (Comparison #2)
 - Fixed: target_job_length + failure_rate
 - Variable: workflow_type (case1_real, case2_homo, case3_hetero)
-- Compare: Const 1, Const 16, and best hybrid across workflow types
+- Compare: most grouped, most ungrouped, and best hybrid across workflow types
+  (see :mod:`composition_extremes`)
 - Primary Metric: event_throughput
 - Second Metric: network_transfer_mb_per_event
 """
@@ -17,7 +18,7 @@ Analysis: Workflow Type Sensitivity (Comparison #2)
 import argparse
 import json
 import os
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 from collections import defaultdict
 from pathlib import Path
 import matplotlib
@@ -25,6 +26,44 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+from composition_extremes import composition_extremes_from_single_map
+
+
+def _extremes(wf: Dict[int, Dict[str, Any]]) -> tuple:
+    if not wf:
+        return (1, 16)
+    return composition_extremes_from_single_map(wf)
+
+
+def _legend_label_with_extremes(name: str, comp_nums: List[int]) -> str:
+    """Build legend as 'Const N (most grouped)'; many N: 'Const 1, 3 (most grouped)'."""
+    if not comp_nums:
+        return name
+    unique = sorted(set(comp_nums))
+    role = name.lower()
+    if len(unique) == 1:
+        return f"Const {unique[0]} ({role})"
+    return f"Const {', '.join(str(n) for n in unique)} ({role})"
+
+
+def _default_workflow_sensitivity_output_dir(
+    target_job_length: str,
+    failure_rate: str,
+    workflow_types: List[str],
+) -> str:
+    """Under results/analysis/workflow_type_sensitivity, use family subdirs when clear.
+
+    If ``case1_real`` is in *workflow_types*, use ``.../sequential/{target}/{fr}``.
+    Else if ``fork_real`` is in *workflow_types*, use ``.../fork/{target}/{fr}``.
+    Otherwise use ``.../{target}/{fr}`` (no extra segment).
+    """
+    root = "results/analysis/workflow_type_sensitivity"
+    if "case1_real" in workflow_types:
+        return f"{root}/sequential/{target_job_length}/{failure_rate}"
+    if "fork_real" in workflow_types:
+        return f"{root}/fork/{target_job_length}/{failure_rate}"
+    return f"{root}/{target_job_length}/{failure_rate}"
 
 
 def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
@@ -80,7 +119,8 @@ def collect_data_from_workflow_types(base_path: str,
         data_rate: Data transfer rate directory (e.g., '100MBps')
 
     Returns:
-        Dictionary mapping workflow_type to composition_number to metrics
+        Dictionary mapping workflow_type to composition_number to metrics. Key
+        order follows *workflow_types*; types with no data are omitted.
     """
     # Dictionary: workflow_type -> composition_number -> metrics
     data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]] = {}
@@ -113,15 +153,21 @@ def collect_data_from_workflow_types(base_path: str,
     return data_by_workflow
 
 
-def identify_best_hybrid(data_by_composition: Dict[int, Dict[str, Any]],
-                        verbose: bool = False) -> Optional[int]:
-    """Identify the best hybrid construction (2-15) for a workflow type.
+def identify_best_hybrid(
+    data_by_composition: Dict[int, Dict[str, Any]],
+    grouped_comp: int,
+    independent_comp: int,
+    verbose: bool = False,
+) -> Optional[int]:
+    """Best hybrid (strictly between grouped and ungrouped extremes).
 
     Uses event_throughput as the primary metric, with network_transfer_mb_per_event
     as a tiebreaker (lower network transfer is preferred).
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics
+        grouped_composition: From :func:`composition_extremes_from_single_map`
+        independent_comp: From :func:`composition_extremes_from_single_map`
         verbose: If True, print information about ties to stdout
 
     Returns:
@@ -130,7 +176,7 @@ def identify_best_hybrid(data_by_composition: Dict[int, Dict[str, Any]],
     # Collect all hybrid constructions with their metrics
     hybrid_candidates = []
 
-    for comp_num in range(2, 16):  # Only hybrid constructions (2-15)
+    for comp_num in range(grouped_comp + 1, independent_comp):
         if comp_num not in data_by_composition:
             continue
 
@@ -183,33 +229,33 @@ def plot_throughput_comparison(data_by_workflow: Dict[str, Dict[int, Dict[str, A
 
     fig, ax = plt.subplots(figsize=(12, 7))
 
-    workflow_types = sorted(data_by_workflow.keys())
+    workflow_types = list(data_by_workflow.keys())
     x = np.arange(len(workflow_types))
     width = 0.25
 
-    # Extract data for Const 1, Const 16, and best hybrid
-    const1_throughput = []
-    const16_throughput = []
-    best_hybrid_throughput = []
-    best_hybrid_labels = []
+    grouped_t: List[float] = []
+    indep_t: List[float] = []
+    best_hybrid_throughput: List[float] = []
+    best_hybrid_labels: List[str] = []
+    grouped_comp_nums: List[int] = []
+    indep_comp_nums: List[int] = []
 
     for workflow_type in workflow_types:
         workflow_data = data_by_workflow[workflow_type]
-        
-        # Const 1
-        if 1 in workflow_data:
-            const1_throughput.append(workflow_data[1]['event_throughput'])
+        g_comp, indep_comp = _extremes(workflow_data)
+        grouped_comp_nums.append(g_comp)
+        indep_comp_nums.append(indep_comp)
+        if g_comp in workflow_data:
+            grouped_t.append(workflow_data[g_comp]['event_throughput'])
         else:
-            const1_throughput.append(0.0)
-
-        # Const 16
-        if 16 in workflow_data:
-            const16_throughput.append(workflow_data[16]['event_throughput'])
+            grouped_t.append(0.0)
+        if indep_comp in workflow_data:
+            indep_t.append(workflow_data[indep_comp]['event_throughput'])
         else:
-            const16_throughput.append(0.0)
-
-        # Best hybrid
-        best_hybrid = identify_best_hybrid(workflow_data, verbose=False)
+            indep_t.append(0.0)
+        best_hybrid = identify_best_hybrid(
+            workflow_data, g_comp, indep_comp, verbose=False
+        )
         if best_hybrid and best_hybrid in workflow_data:
             best_hybrid_throughput.append(workflow_data[best_hybrid]['event_throughput'])
             best_hybrid_labels.append(f"Const {best_hybrid}")
@@ -217,10 +263,22 @@ def plot_throughput_comparison(data_by_workflow: Dict[str, Dict[int, Dict[str, A
             best_hybrid_throughput.append(0.0)
             best_hybrid_labels.append("N/A")
 
-    bars1 = ax.bar(x - width, const1_throughput, width, label='Const 1 (All Chained)',
-                  color='#d62728', alpha=0.8)
-    bars2 = ax.bar(x, const16_throughput, width, label='Const 16 (All Independent)',
-                  color='#2ca02c', alpha=0.8)
+    bars1 = ax.bar(
+        x - width,
+        grouped_t,
+        width,
+        label=_legend_label_with_extremes("Most grouped", grouped_comp_nums),
+        color="#d62728",
+        alpha=0.8,
+    )
+    bars2 = ax.bar(
+        x,
+        indep_t,
+        width,
+        label=_legend_label_with_extremes("Most ungrouped", indep_comp_nums),
+        color="#2ca02c",
+        alpha=0.8,
+    )
     bars3 = ax.bar(x + width, best_hybrid_throughput, width, label='Best Hybrid',
                   color='#1f77b4', alpha=0.8)
 
@@ -232,11 +290,18 @@ def plot_throughput_comparison(data_by_workflow: Dict[str, Dict[int, Dict[str, A
                 ax.text(bar.get_x() + bar.get_width()/2., height,
                        f'{height:.4f}', ha='center', va='bottom', fontsize=9)
 
-    # Add best hybrid labels
-    for i, (workflow_type, label) in enumerate(zip(workflow_types, best_hybrid_labels)):
+    # Best hybrid construction labels only (extremes appear in the legend)
+    for i, _ in enumerate(workflow_types):
         if best_hybrid_throughput[i] > 0:
-            ax.text(i + width, best_hybrid_throughput[i] + max(best_hybrid_throughput) * 0.02,
-                   label, ha='center', va='bottom', fontsize=8, style='italic')
+            ax.text(
+                i + width,
+                best_hybrid_throughput[i] + max(best_hybrid_throughput) * 0.02,
+                best_hybrid_labels[i],
+                ha="center",
+                va="bottom",
+                fontsize=8,
+                style="italic",
+            )
 
     ax.set_xlabel("Workflow Type", fontsize=12)
     ax.set_ylabel("Event Throughput (events/second)", fontsize=12)
@@ -267,7 +332,7 @@ def plot_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Dict[str, 
 
     fig, ax = plt.subplots(figsize=(12, 7))
 
-    workflow_types = sorted(data_by_workflow.keys())
+    workflow_types = list(data_by_workflow.keys())
     x = np.arange(len(workflow_types))
     width = 0.35
 
@@ -276,36 +341,40 @@ def plot_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Dict[str, 
 
     for workflow_type in workflow_types:
         workflow_data = data_by_workflow[workflow_type]
-        
+        g_comp, indep_comp = _extremes(workflow_data)
         # Get best hybrid
-        best_hybrid = identify_best_hybrid(workflow_data, verbose=False)
+        best_hybrid = identify_best_hybrid(
+            workflow_data, g_comp, indep_comp, verbose=False
+        )
         if not best_hybrid or best_hybrid not in workflow_data:
             improvement_over_const1.append(0.0)
             improvement_over_const16.append(0.0)
             continue
 
         best_throughput = workflow_data[best_hybrid]['event_throughput']
-        
-        # Improvement over Const 1
-        if 1 in workflow_data and workflow_data[1]['event_throughput'] > 0:
-            const1_throughput = workflow_data[1]['event_throughput']
-            improvement = ((best_throughput - const1_throughput) / const1_throughput) * 100
+
+        if g_comp in workflow_data and workflow_data[g_comp]['event_throughput'] > 0:
+            grouped_tp = workflow_data[g_comp]['event_throughput']
+            improvement = ((best_throughput - grouped_tp) / grouped_tp) * 100
             improvement_over_const1.append(improvement)
         else:
             improvement_over_const1.append(0.0)
 
-        # Improvement over Const 16
-        if 16 in workflow_data and workflow_data[16]['event_throughput'] > 0:
-            const16_throughput = workflow_data[16]['event_throughput']
-            improvement = ((best_throughput - const16_throughput) / const16_throughput) * 100
+        if indep_comp in workflow_data and workflow_data[indep_comp]['event_throughput'] > 0:
+            indep_tp = workflow_data[indep_comp]['event_throughput']
+            improvement = ((best_throughput - indep_tp) / indep_tp) * 100
             improvement_over_const16.append(improvement)
         else:
             improvement_over_const16.append(0.0)
 
-    bars1 = ax.bar(x - width/2, improvement_over_const1, width, 
-                  label='Over Const 1', color='#d62728', alpha=0.8)
-    bars2 = ax.bar(x + width/2, improvement_over_const16, width,
-                  label='Over Const 16', color='#2ca02c', alpha=0.8)
+    bars1 = ax.bar(
+        x - width / 2, improvement_over_const1, width,
+        label="Over most grouped", color="#d62728", alpha=0.8
+    )
+    bars2 = ax.bar(
+        x + width / 2, improvement_over_const16, width,
+        label="Over most ungrouped", color="#2ca02c", alpha=0.8
+    )
 
     # Add value labels on bars
     # Always show labels, even for zero or very small values
@@ -352,50 +421,60 @@ def plot_network_efficiency_comparison(data_by_workflow: Dict[str, Dict[int, Dic
 
     fig, ax = plt.subplots(figsize=(12, 7))
 
-    workflow_types = sorted(data_by_workflow.keys())
+    workflow_types = list(data_by_workflow.keys())
     x = np.arange(len(workflow_types))
     width = 0.25
 
-    const1_network = []
-    const16_network = []
-    best_hybrid_network = []
+    const1_network: List[float] = []
+    const16_network: List[float] = []
+    best_hybrid_network: List[float] = []
+    best_hybrid_labels: List[str] = []
+    grouped_comp_nums: List[int] = []
+    indep_comp_nums: List[int] = []
 
     for workflow_type in workflow_types:
         workflow_data = data_by_workflow[workflow_type]
-        
-        # Const 1
-        if 1 in workflow_data:
-            const1_network.append(workflow_data[1]['network_transfer_mb_per_event'])
+        g_comp, indep_comp = _extremes(workflow_data)
+        grouped_comp_nums.append(g_comp)
+        indep_comp_nums.append(indep_comp)
+        if g_comp in workflow_data:
+            const1_network.append(workflow_data[g_comp]['network_transfer_mb_per_event'])
         else:
             const1_network.append(0.0)
-
-        # Const 16
-        if 16 in workflow_data:
-            const16_network.append(workflow_data[16]['network_transfer_mb_per_event'])
+        if indep_comp in workflow_data:
+            const16_network.append(
+                workflow_data[indep_comp]['network_transfer_mb_per_event']
+            )
         else:
             const16_network.append(0.0)
-
-        # Best hybrid
-        best_hybrid = identify_best_hybrid(workflow_data, verbose=False)
+        best_hybrid = identify_best_hybrid(
+            workflow_data, g_comp, indep_comp, verbose=False
+        )
         if best_hybrid and best_hybrid in workflow_data:
-            best_hybrid_network.append(workflow_data[best_hybrid]['network_transfer_mb_per_event'])
-        else:
-            best_hybrid_network.append(0.0)
-
-    # Get best hybrid labels for each workflow type
-    best_hybrid_labels = []
-    for workflow_type in workflow_types:
-        workflow_data = data_by_workflow[workflow_type]
-        best_hybrid = identify_best_hybrid(workflow_data, verbose=False)
-        if best_hybrid:
+            best_hybrid_network.append(
+                workflow_data[best_hybrid]['network_transfer_mb_per_event']
+            )
             best_hybrid_labels.append(f"Const {best_hybrid}")
         else:
+            best_hybrid_network.append(0.0)
             best_hybrid_labels.append("N/A")
 
-    bars1 = ax.bar(x - width, const1_network, width, label='Const 1 (All Chained)',
-                  color='#d62728', alpha=0.8)
-    bars2 = ax.bar(x, const16_network, width, label='Const 16 (All Independent)',
-                  color='#2ca02c', alpha=0.8)
+    bars1 = ax.bar(
+        x - width,
+        const1_network,
+        width,
+        label=_legend_label_with_extremes("Most grouped", grouped_comp_nums),
+        color="#d62728",
+        alpha=0.8,
+    )
+    bars2 = ax.bar(
+        x,
+        const16_network,
+        width,
+        label=_legend_label_with_extremes("Most ungrouped", indep_comp_nums),
+        color="#2ca02c",
+        alpha=0.8,
+    )
     bars3 = ax.bar(x + width, best_hybrid_network, width, label='Best Hybrid',
                   color='#1f77b4', alpha=0.8)
 
@@ -407,11 +486,18 @@ def plot_network_efficiency_comparison(data_by_workflow: Dict[str, Dict[int, Dic
                 ax.text(bar.get_x() + bar.get_width()/2., height,
                        f'{height:.3f}', ha='center', va='bottom', fontsize=9)
 
-    # Add best hybrid construction labels on top of best hybrid bars
-    for i, (workflow_type, label) in enumerate(zip(workflow_types, best_hybrid_labels)):
-        if best_hybrid_network[i] > 0:
-            ax.text(i + width, best_hybrid_network[i] + max(best_hybrid_network) * 0.02,
-                   label, ha='center', va='bottom', fontsize=8, style='italic')
+    # Best hybrid construction labels only (extremes appear in the legend)
+    for i, _ in enumerate(workflow_types):
+        if best_hybrid_network[i] > 0 and best_hybrid_labels[i] != "N/A":
+            ax.text(
+                i + width,
+                best_hybrid_network[i] + max(best_hybrid_network) * 0.02,
+                best_hybrid_labels[i],
+                ha="center",
+                va="bottom",
+                fontsize=8,
+                style="italic",
+            )
 
     ax.set_xlabel("Workflow Type", fontsize=12)
     ax.set_ylabel("Network Transfer per Event (MB)", fontsize=12)
@@ -444,7 +530,7 @@ def plot_network_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Di
 
     fig, ax = plt.subplots(figsize=(12, 7))
 
-    workflow_types = sorted(data_by_workflow.keys())
+    workflow_types = list(data_by_workflow.keys())
     x = np.arange(len(workflow_types))
     width = 0.35
 
@@ -453,36 +539,39 @@ def plot_network_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Di
 
     for workflow_type in workflow_types:
         workflow_data = data_by_workflow[workflow_type]
-        
-        # Get best hybrid
-        best_hybrid = identify_best_hybrid(workflow_data, verbose=False)
+        g_comp, indep_comp = _extremes(workflow_data)
+        best_hybrid = identify_best_hybrid(
+            workflow_data, g_comp, indep_comp, verbose=False
+        )
         if not best_hybrid or best_hybrid not in workflow_data:
             reduction_over_const1.append(0.0)
             reduction_over_const16.append(0.0)
             continue
 
         best_network = workflow_data[best_hybrid]['network_transfer_mb_per_event']
-        
-        # Reduction over Const 1 (lower network is better, so we calculate reduction)
-        if 1 in workflow_data and workflow_data[1]['network_transfer_mb_per_event'] > 0:
-            const1_network = workflow_data[1]['network_transfer_mb_per_event']
-            reduction = ((const1_network - best_network) / const1_network) * 100
+
+        if g_comp in workflow_data and workflow_data[g_comp]['network_transfer_mb_per_event'] > 0:
+            gn = workflow_data[g_comp]['network_transfer_mb_per_event']
+            reduction = ((gn - best_network) / gn) * 100
             reduction_over_const1.append(reduction)
         else:
             reduction_over_const1.append(0.0)
 
-        # Reduction over Const 16
-        if 16 in workflow_data and workflow_data[16]['network_transfer_mb_per_event'] > 0:
-            const16_network = workflow_data[16]['network_transfer_mb_per_event']
-            reduction = ((const16_network - best_network) / const16_network) * 100
+        if indep_comp in workflow_data and workflow_data[indep_comp]['network_transfer_mb_per_event'] > 0:
+            inn = workflow_data[indep_comp]['network_transfer_mb_per_event']
+            reduction = ((inn - best_network) / inn) * 100
             reduction_over_const16.append(reduction)
         else:
             reduction_over_const16.append(0.0)
 
-    bars1 = ax.bar(x - width/2, reduction_over_const1, width, 
-                  label='Over Const 1', color='#d62728', alpha=0.8)
-    bars2 = ax.bar(x + width/2, reduction_over_const16, width,
-                  label='Over Const 16', color='#2ca02c', alpha=0.8)
+    bars1 = ax.bar(
+        x - width / 2, reduction_over_const1, width,
+        label="Over most grouped", color="#d62728", alpha=0.8
+    )
+    bars2 = ax.bar(
+        x + width / 2, reduction_over_const16, width,
+        label="Over most ungrouped", color="#2ca02c", alpha=0.8
+    )
 
     # Add value labels on bars
     # Always show labels, even for zero or very small values
@@ -532,17 +621,22 @@ def generate_summary_table(data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]
 
     table_data = []
 
-    for workflow_type in sorted(data_by_workflow.keys()):
+    for workflow_type in data_by_workflow:
         workflow_data = data_by_workflow[workflow_type]
         
-        # Get Const 1, Const 16, and best hybrid
-        const1_data = workflow_data.get(1)
-        const16_data = workflow_data.get(16)
-        best_hybrid = identify_best_hybrid(workflow_data, verbose=False)
+        g_comp, indep_comp = _extremes(workflow_data)
+        const_g_data = workflow_data.get(g_comp)
+        const_i_data = workflow_data.get(indep_comp)
+        best_hybrid = identify_best_hybrid(
+            workflow_data, g_comp, indep_comp, verbose=False
+        )
         best_hybrid_data = workflow_data.get(best_hybrid) if best_hybrid else None
 
-        for comp_num, metrics in [(1, const1_data), (16, const16_data), 
-                                  (best_hybrid, best_hybrid_data)]:
+        for comp_num, metrics in [
+            (g_comp, const_g_data),
+            (indep_comp, const_i_data),
+            (best_hybrid, best_hybrid_data),
+        ]:
             if metrics is None:
                 continue
 
@@ -584,13 +678,26 @@ def main():
     parser.add_argument('--workflow-types', type=str, nargs='+',
                        default=['case1_real', 'case2_homo', 'case3_hetero'],
                        help='Workflow types to analyze (default: case1_real case2_homo case3_hetero)')
-    parser.add_argument('--output-dir', type=str, default=None,
-                       help='Output directory (default: results/analysis/workflow_type_sensitivity/{target_job_length}/{failure_rate})')
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help=(
+            "Output directory (default: under results/analysis/workflow_type_sensitivity: "
+            ".../sequential/.../ if case1_real is in --workflow-types, else "
+            ".../fork/.../ if fork_real, else .../<target_job_length>/<failure_rate> without "
+            "a family subdir)"
+        ),
+    )
 
     args = parser.parse_args()
 
     if args.output_dir is None:
-        args.output_dir = f"results/analysis/workflow_type_sensitivity/{args.target_job_length}/{args.failure_rate}"
+        args.output_dir = _default_workflow_sensitivity_output_dir(
+            args.target_job_length,
+            args.failure_rate,
+            list(args.workflow_types),
+        )
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
@@ -619,10 +726,15 @@ def main():
     print(f"\nCollected data for {len(data_by_workflow)} workflow types")
 
     print(f"\nIdentifying best hybrid for each workflow type:")
-    for workflow_type in sorted(data_by_workflow.keys()):
-        best_hybrid = identify_best_hybrid(data_by_workflow[workflow_type], verbose=True)
+    for workflow_type in data_by_workflow:
+        wd = data_by_workflow[workflow_type]
+        g0, i0 = _extremes(wd)
+        best_hybrid = identify_best_hybrid(wd, g0, i0, verbose=True)
         if best_hybrid:
-            print(f"  {workflow_type}: Const {best_hybrid}")
+            print(
+                f"  {workflow_type}: extremes (grouped, ungrouped) = ({g0}, {i0}); "
+                f"best hybrid Const {best_hybrid}"
+            )
 
     plot_throughput_comparison(data_by_workflow, args.output_dir)
     plot_improvement_percentage(data_by_workflow, args.output_dir)

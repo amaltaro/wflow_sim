@@ -346,6 +346,21 @@ def plot_score_bars(
     print(f"  => Score bar chart saved to {output_path}")
 
 
+def _ranked_bar_figure_size(n_bars: int) -> Tuple[float, float]:
+    """Figure (width, height) in inches for ranked horizontal bars.
+
+    Minimum (8, 6). Height scales with *n_bars* so many constructions stay legible;
+    capped so figures do not grow without bound. Width increases slightly past ~16 bars
+    to reduce crowding of y-axis labels.
+    """
+    min_w, min_h = 8.0, 6.0
+    max_w, max_h = 12.0, 28.0
+    h_per_bar = 0.21
+    fig_h = min(max_h, max(min_h, h_per_bar * n_bars))
+    fig_w = min(max_w, max(min_w, min_w + 0.04 * max(0, n_bars - 16)))
+    return (fig_w, fig_h)
+
+
 def plot_score_ranked(
     composition_numbers: List[int],
     scores: np.ndarray,
@@ -357,10 +372,26 @@ def plot_score_ranked(
     order = np.argsort(scores)[::-1]
     sorted_scores = scores[order]
     sorted_labels = [f"Const {composition_numbers[i]}" for i in order]
-    fig, ax = plt.subplots(figsize=(8, 6))
-    y_pos = np.arange(len(sorted_labels))
+    n_bars = len(sorted_labels)
+    fig_w, fig_h = _ranked_bar_figure_size(n_bars)
+    # Slightly shorter bars when many rows so gaps read as clear separation
+    if n_bars > 28:
+        bar_height = 0.72
+    elif n_bars > 20:
+        bar_height = 0.76
+    else:
+        bar_height = 0.8
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+    y_pos = np.arange(n_bars)
     colors = plt.cm.RdYlGn(sorted_scores)
-    ax.barh(y_pos, sorted_scores, color=colors, edgecolor='gray', linewidth=0.5)
+    ax.barh(
+        y_pos,
+        sorted_scores,
+        height=bar_height,
+        color=colors,
+        edgecolor="gray",
+        linewidth=0.5,
+    )
     ax.set_yticks(y_pos)
     ax.set_yticklabels(sorted_labels)
     ax.set_xlabel("Weighted score (0–1)")

@@ -9,7 +9,8 @@ cross-dimensional comparisons.
 Analysis: Target Job Length Optimization (Comparison #3)
 - Fixed: workflow_type + failure_rate
 - Variable: target_job_length (15m, 30m, 1h, 2h, 4h, 8h, 12h, 24h)
-- Compare: all 16 constructions across target job lengths
+- Compare: all available constructions across target job lengths; extremes from
+  :mod:`composition_extremes` (``total_groups``)
 - Primary Metric: event_throughput
 - Second Metric: network_transfer_mb_per_event
 """
@@ -25,7 +26,9 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
+
+from composition_extremes import composition_extremes
+from plot_legend_truncate import apply_truncated_legend
 
 
 def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
@@ -197,7 +200,8 @@ def get_target_length_xconfig(
 def get_best_hybrid_colors(best_hybrids: Dict[str, Optional[int]]) -> Dict[int, str]:
     """Get unique colors for each best hybrid construction.
 
-    Uses a color palette that excludes red (#d62728) and green (#2ca02c) used for Const 1 and Const 16.
+    Uses a palette that excludes red (#d62728) and green (#2ca02c) for most grouped
+    and most ungrouped extremes (and purple for the tie case).
 
     Args:
         best_hybrids: Dictionary mapping target_length to best hybrid composition number
@@ -205,8 +209,7 @@ def get_best_hybrid_colors(best_hybrids: Dict[str, Optional[int]]) -> Dict[int, 
     Returns:
         Dictionary mapping composition_number to color hex code
     """
-    # Color palette for best hybrids (distinct from Const 1 red and Const 16 green)
-    # Exclude red (#d62728) and green (#2ca02c) which are reserved for Const 1 and Const 16
+    # Distinct from grouped (red), ungrouped (green), and optional tie (purple)
     hybrid_colors = [
         '#1f77b4',  # Blue
         '#ff7f0e',  # Orange
@@ -236,15 +239,21 @@ def get_best_hybrid_colors(best_hybrids: Dict[str, Optional[int]]) -> Dict[int, 
     return color_map
 
 
-def plot_throughput_vs_target_length(data_by_composition: Dict[int, List[Dict[str, Any]]],
-                                    best_hybrids: Dict[str, Optional[int]],
-                                    output_dir: str) -> None:
+def plot_throughput_vs_target_length(
+    data_by_composition: Dict[int, List[Dict[str, Any]]],
+    best_hybrids: Dict[str, Optional[int]],
+    output_dir: str,
+    grouped_comp: int,
+    independent_comp: int,
+) -> None:
     """Plot event throughput vs. target job length for all constructions.
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
         best_hybrids: Dictionary mapping target_length to best hybrid composition number
         output_dir: Output directory for plots
+        grouped_comp: Most grouped composition
+        independent_comp: Most ungrouped composition
     """
     print(f"\n==> Creating throughput vs. target job length plot")
 
@@ -273,10 +282,15 @@ def plot_throughput_vs_target_length(data_by_composition: Dict[int, List[Dict[st
 
         # Plot line for this construction
         label = f"Const {comp_num}"
-        if comp_num == 1:
+        if grouped_comp == independent_comp == comp_num:
+            ax.plot(
+                x_positions, y_values, "D-", label=label, linewidth=2.5, color="#9467bd",
+                markersize=7, zorder=10
+            )
+        elif comp_num == grouped_comp:
             ax.plot(x_positions, y_values, 'o-', label=label, linewidth=2.5,
                    color='#d62728', markersize=8, zorder=10)
-        elif comp_num == 16:
+        elif comp_num == independent_comp:
             ax.plot(x_positions, y_values, 's-', label=label, linewidth=2.5,
                    color='#2ca02c', markersize=8, zorder=10)
         else:
@@ -293,7 +307,7 @@ def plot_throughput_vs_target_length(data_by_composition: Dict[int, List[Dict[st
     ax.set_xlabel("Target Job Length", fontsize=12)
     ax.set_ylabel("Event Throughput (events/second)", fontsize=12)
     ax.set_title("Event Throughput vs. Target Job Length", fontsize=14)
-    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
+    apply_truncated_legend(ax, grouped_comp, independent_comp, bbox=(1.05, 1), fontsize=9)
     ax.grid(True, alpha=0.3)
     ax.set_xticks(range(len(xtick_labels)))
     ax.set_xticklabels(xtick_labels)
@@ -305,13 +319,19 @@ def plot_throughput_vs_target_length(data_by_composition: Dict[int, List[Dict[st
     print(f"  => Saved: {output_path}")
 
 
-def plot_throughput_improvement(data_by_composition: Dict[int, List[Dict[str, Any]]],
-                                output_dir: str) -> None:
+def plot_throughput_improvement(
+    data_by_composition: Dict[int, List[Dict[str, Any]]],
+    output_dir: str,
+    grouped_comp: int,
+    independent_comp: int,
+) -> None:
     """Plot throughput improvement (relative to shortest target length) vs. target job length.
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
         output_dir: Output directory for plots
+        grouped_comp: Most grouped composition
+        independent_comp: Most ungrouped composition
     """
     print(f"==> Creating throughput improvement plot")
 
@@ -344,10 +364,15 @@ def plot_throughput_improvement(data_by_composition: Dict[int, List[Dict[str, An
         y_values = improvement_values
 
         label = f"Const {comp_num}"
-        if comp_num == 1:
+        if grouped_comp == independent_comp == comp_num:
+            ax.plot(
+                x_positions, y_values, "D-", label=label, linewidth=2.5, color="#9467bd",
+                markersize=7, zorder=10
+            )
+        elif comp_num == grouped_comp:
             ax.plot(x_positions, y_values, 'o-', label=label, linewidth=2.5,
                    color='#d62728', markersize=8, zorder=10)
-        elif comp_num == 16:
+        elif comp_num == independent_comp:
             ax.plot(x_positions, y_values, 's-', label=label, linewidth=2.5,
                    color='#2ca02c', markersize=8, zorder=10)
         else:
@@ -357,8 +382,11 @@ def plot_throughput_improvement(data_by_composition: Dict[int, List[Dict[str, An
     baseline_label = target_lengths[0] if target_lengths else "shortest"
     ax.set_xlabel("Target Job Length", fontsize=12)
     ax.set_ylabel("Throughput Improvement (%)", fontsize=12)
-    ax.set_title(f"Throughput Improvement vs. Target Job Length\n(Relative to {baseline_label})", fontsize=14)
-    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
+    ax.set_title(
+        f"Throughput Improvement vs. Target Job Length\n(Relative to {baseline_label})",
+        fontsize=14,
+    )
+    apply_truncated_legend(ax, grouped_comp, independent_comp, bbox=(1.05, 1), fontsize=9)
     ax.grid(True, alpha=0.3)
     ax.set_xticks(range(len(xtick_labels)))
     ax.set_xticklabels(xtick_labels)
@@ -371,10 +399,14 @@ def plot_throughput_improvement(data_by_composition: Dict[int, List[Dict[str, An
     print(f"  => Saved: {output_path}")
 
 
-def identify_best_hybrid(data_by_composition: Dict[int, List[Dict[str, Any]]],
-                        target_length: str,
-                        verbose: bool = False) -> Optional[int]:
-    """Identify the best hybrid construction (2-15) for a given target job length.
+def identify_best_hybrid(
+    data_by_composition: Dict[int, List[Dict[str, Any]]],
+    target_length: str,
+    grouped_comp: int,
+    independent_comp: int,
+    verbose: bool = False,
+) -> Optional[int]:
+    """Best hybrid (between ``grouped_comp`` and ``independent_comp``) for one length.
 
     Uses event_throughput as the primary metric, with network_transfer_mb_per_event
     as a tiebreaker (lower network transfer is preferred).
@@ -382,15 +414,19 @@ def identify_best_hybrid(data_by_composition: Dict[int, List[Dict[str, Any]]],
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
         target_length: Target job length (e.g., '12h')
+        grouped_comp: Most grouped composition id
+        independent_comp: Most ungrouped composition id
         verbose: If True, print information about ties to stdout
 
     Returns:
         Composition number of best hybrid, or None if not found
     """
-    # Collect all hybrid constructions with their metrics
+    if independent_comp <= grouped_comp + 1:
+        return None
+
     hybrid_candidates = []
 
-    for comp_num in range(2, 16):  # Only hybrid constructions (2-15)
+    for comp_num in range(grouped_comp + 1, independent_comp):
         if comp_num not in data_by_composition:
             continue
 
@@ -436,16 +472,16 @@ def identify_best_hybrid(data_by_composition: Dict[int, List[Dict[str, Any]]],
 
 def identify_best_hybrid_per_target_length(
     data_by_composition: Dict[int, List[Dict[str, Any]]],
+    grouped_comp: int,
+    independent_comp: int,
     verbose: bool = False,
 ) -> Dict[str, Optional[int]]:
-    """Identify the best hybrid construction (2-15) for each target job length.
-
-    Target job lengths are derived from the data. Each target length can have a
-    different best hybrid. Uses identify_best_hybrid per target length (throughput
-    as primary metric, network transfer as tiebreaker).
+    """Best hybrid for each target job length (see :func:`identify_best_hybrid`).
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
+        grouped_comp: Most grouped composition id
+        independent_comp: Most ungrouped composition id
         verbose: If True, print best hybrid per target length and tie details
 
     Returns:
@@ -459,16 +495,26 @@ def identify_best_hybrid_per_target_length(
 
     best_hybrids: Dict[str, Optional[int]] = {}
     for target_length in target_lengths:
-        best_hybrid = identify_best_hybrid(data_by_composition, target_length, verbose=verbose)
+        best_hybrid = identify_best_hybrid(
+            data_by_composition,
+            target_length,
+            grouped_comp,
+            independent_comp,
+            verbose=verbose,
+        )
         best_hybrids[target_length] = best_hybrid
         if verbose and best_hybrid is not None:
             print(f"  Best hybrid for {target_length}: Const {best_hybrid}")
     return best_hybrids
 
 
-def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[Dict[str, Any]]],
-                                           best_hybrids: Dict[str, Optional[int]],
-                                           output_dir: str) -> None:
+def plot_network_activity_vs_target_length(
+    data_by_composition: Dict[int, List[Dict[str, Any]]],
+    best_hybrids: Dict[str, Optional[int]],
+    output_dir: str,
+    grouped_comp: int,
+    independent_comp: int,
+) -> None:
     """Plot network transfer vs. target job length for all constructions.
 
     This visualization shows how network activity (remote I/O) changes with
@@ -479,6 +525,8 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
         data_by_composition: Dictionary mapping composition_number to metrics list
         best_hybrids: Dictionary mapping target_length to best hybrid composition number
         output_dir: Output directory for plots
+        grouped_comp: Most grouped composition
+        independent_comp: Most ungrouped composition
     """
     print(f"==> Creating network activity vs. target job length plot")
 
@@ -500,10 +548,15 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
         x_positions = [tl_to_x[tl] for tl in target_length_values]
 
         label = f"Const {comp_num}"
-        if comp_num == 1:
+        if grouped_comp == independent_comp == comp_num:
+            ax1.plot(
+                x_positions, network_values, "D-", label=label, linewidth=2.5, color="#9467bd",
+                markersize=7, zorder=10
+            )
+        elif comp_num == grouped_comp:
             ax1.plot(x_positions, network_values, 'o-', label=label, linewidth=2.5,
                     color='#d62728', markersize=8, zorder=10)
-        elif comp_num == 16:
+        elif comp_num == independent_comp:
             ax1.plot(x_positions, network_values, 's-', label=label, linewidth=2.5,
                     color='#2ca02c', markersize=8, zorder=10)
         else:
@@ -513,7 +566,9 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
     ax1.set_xlabel("Target Job Length", fontsize=12)
     ax1.set_ylabel("Network Transfer per Event (MB)", fontsize=12)
     ax1.set_title("Network Transfer vs. Target Job Length", fontsize=13)
-    ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
+    apply_truncated_legend(
+        ax1, grouped_comp, independent_comp, bbox=(1.05, 1), fontsize=9
+    )
     ax1.grid(True, alpha=0.3)
     ax1.set_xticks(range(len(xtick_labels)))
     ax1.set_xticklabels(xtick_labels)
@@ -521,8 +576,7 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
     # Plot 2: Remote Read vs. Remote Write breakdown (focus on extremes and best hybrid)
     hybrid_color_map = get_best_hybrid_colors(best_hybrids)
 
-    # Plot only Const 1, Const 16, and best hybrid for each target length
-    constructions_to_plot = {1, 16}
+    constructions_to_plot = {grouped_comp, independent_comp}
     for target_length in target_lengths:
         if best_hybrids[target_length] is not None:
             constructions_to_plot.add(best_hybrids[target_length])
@@ -539,14 +593,25 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
         x_positions = [tl_to_x[tl] for tl in target_length_values]
 
         label = f"Const {comp_num}"
-        if comp_num == 1:
+        if grouped_comp == independent_comp == comp_num:
+            ax2.plot(
+                x_positions, read_remote, "o--", label=f"{label} (Read)", linewidth=2.5,
+                color="#9467bd", markersize=6, zorder=10, alpha=0.85, markerfacecolor="#9467bd",
+                markeredgecolor="#9467bd", markeredgewidth=1.5
+            )
+            ax2.plot(
+                x_positions, write_remote, "s-", label=f"{label} (Write)", linewidth=2.5,
+                color="#9467bd", markersize=6, zorder=10, alpha=0.9, markerfacecolor="#9467bd",
+                markeredgecolor="#9467bd", markeredgewidth=1.5
+            )
+        elif comp_num == grouped_comp:
             ax2.plot(x_positions, read_remote, 'o--', label=f"{label} (Read)", linewidth=2.5,
                     color='#d62728', markersize=7, zorder=10, alpha=0.7, markerfacecolor='#d62728',
                     markeredgecolor='#d62728', markeredgewidth=1.5)
             ax2.plot(x_positions, write_remote, 's-', label=f"{label} (Write)", linewidth=2.5,
                     color='#d62728', markersize=7, zorder=10, alpha=0.9, markerfacecolor='#d62728',
                     markeredgecolor='#d62728', markeredgewidth=1.5)
-        elif comp_num == 16:
+        elif comp_num == independent_comp:
             ax2.plot(x_positions, read_remote, 'o--', label=f"{label} (Read)", linewidth=2.5,
                     color='#2ca02c', markersize=7, zorder=10, alpha=0.9, markerfacecolor='#2ca02c',
                     markeredgecolor='#2ca02c', markeredgewidth=1.5)
@@ -565,7 +630,9 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
     ax2.set_xlabel("Target Job Length", fontsize=12)
     ax2.set_ylabel("Data Volume per Event (MB)", fontsize=12)
     ax2.set_title("Remote I/O Breakdown vs. Target Job Length", fontsize=13)
-    ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=8)
+    apply_truncated_legend(
+        ax2, grouped_comp, independent_comp, bbox=(1.05, 1), fontsize=8
+    )
     ax2.grid(True, alpha=0.3)
     ax2.set_xticks(range(len(xtick_labels)))
     ax2.set_xticklabels(xtick_labels)
@@ -577,15 +644,21 @@ def plot_network_activity_vs_target_length(data_by_composition: Dict[int, List[D
     print(f"  => Saved: {output_path}")
 
 
-def plot_best_hybrid_comparison(data_by_composition: Dict[int, List[Dict[str, Any]]],
-                                best_hybrids: Dict[str, Optional[int]],
-                                output_dir: str) -> None:
-    """Plot comparison of Const 1, Const 16, and best hybrid for each target job length.
+def plot_best_hybrid_comparison(
+    data_by_composition: Dict[int, List[Dict[str, Any]]],
+    best_hybrids: Dict[str, Optional[int]],
+    output_dir: str,
+    grouped_comp: int,
+    independent_comp: int,
+) -> None:
+    """Plot comparison of grouped extreme, ungrouped extreme, and best hybrid per length.
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
         best_hybrids: Dictionary mapping target_length to best hybrid composition number
         output_dir: Output directory for plots
+        grouped_comp: Most grouped composition
+        independent_comp: Most ungrouped composition
     """
     print(f"==> Creating best hybrid comparison plot")
 
@@ -598,27 +671,33 @@ def plot_best_hybrid_comparison(data_by_composition: Dict[int, List[Dict[str, An
     target_hours = [target_length_to_hours(tl) for tl in target_lengths]
 
     # Extract throughput values
-    const1_throughput = []
-    const16_throughput = []
-    best_hybrid_throughput = []
-    best_hybrid_labels = []
+    const_grouped_t: List[float] = []
+    const_indep_t: List[float] = []
+    best_hybrid_throughput: List[float] = []
+    best_hybrid_labels: List[str] = []
 
     for target_length in target_lengths:
-        # Const 1
-        if 1 in data_by_composition:
-            const1_data = next((d for d in data_by_composition[1]
-                              if d['target_job_length'] == target_length), None)
-            const1_throughput.append(const1_data['event_throughput'] if const1_data else 0.0)
+        if grouped_comp in data_by_composition:
+            gd = next(
+                (d for d in data_by_composition[grouped_comp] if d["target_job_length"] == target_length),
+                None
+            )
+            const_grouped_t.append(gd["event_throughput"] if gd else 0.0)
         else:
-            const1_throughput.append(0.0)
+            const_grouped_t.append(0.0)
 
-        # Const 16
-        if 16 in data_by_composition:
-            const16_data = next((d for d in data_by_composition[16]
-                              if d['target_job_length'] == target_length), None)
-            const16_throughput.append(const16_data['event_throughput'] if const16_data else 0.0)
+        if independent_comp in data_by_composition:
+            ind = next(
+                (
+                    d
+                    for d in data_by_composition[independent_comp]
+                    if d["target_job_length"] == target_length
+                ),
+                None,
+            )
+            const_indep_t.append(ind["event_throughput"] if ind else 0.0)
         else:
-            const16_throughput.append(0.0)
+            const_indep_t.append(0.0)
 
         # Best hybrid
         best_comp = best_hybrids[target_length]
@@ -640,39 +719,68 @@ def plot_best_hybrid_comparison(data_by_composition: Dict[int, List[Dict[str, An
     # Determine best hybrid label for legend (show unique best hybrids)
     unique_best_hybrids = sorted(set([best_hybrids[tl] for tl in target_lengths if best_hybrids[tl] is not None]))
     if len(unique_best_hybrids) == 1:
-        best_hybrid_legend = f"Best Hybrid (Const {unique_best_hybrids[0]})"
+        best_hybrid_legend = f"Best hybrid (Const {unique_best_hybrids[0]})"
     elif len(unique_best_hybrids) <= 3:
-        best_hybrid_legend = f"Best Hybrid (Const {', '.join(map(str, unique_best_hybrids))})"
+        best_hybrid_legend = f"Best hybrid (Const {', '.join(map(str, unique_best_hybrids))})"
     else:
-        best_hybrid_legend = f"Best Hybrid (Const {unique_best_hybrids[0]}-{unique_best_hybrids[-1]})"
+        best_hybrid_legend = (
+            f"Best hybrid (Const {unique_best_hybrids[0]}-{unique_best_hybrids[-1]})"
+        )
 
-    bars1 = ax.bar(x - width, const1_throughput, width, label='Const 1 (All Chained)',
-                  color='#d62728', alpha=0.8)
-    bars2 = ax.bar(x, const16_throughput, width, label='Const 16 (All Independent)',
-                  color='#2ca02c', alpha=0.8)
-    bars3 = ax.bar(x + width, best_hybrid_throughput, width, label=best_hybrid_legend,
-                  color='#1f77b4', alpha=0.8)
+    if grouped_comp == independent_comp:
+        w2 = 0.35
+        g_label = f"Const {grouped_comp} (grouped and ungrouped)"
+        bars1 = ax.bar(
+            x - w2 / 2, const_grouped_t, w2, label=g_label, color="#9467bd", alpha=0.8
+        )
+        bars2 = ax.bar(
+            x + w2 / 2, best_hybrid_throughput, w2, label=best_hybrid_legend,
+            color="#1f77b4", alpha=0.8
+        )
+        bar_groups = [bars1, bars2]
+    else:
+        label_g = f"Const {grouped_comp} (most grouped)"
+        label_i = f"Const {independent_comp} (most ungrouped)"
+        bars1 = ax.bar(
+            x - width, const_grouped_t, width, label=label_g, color="#d62728", alpha=0.8
+        )
+        bars2 = ax.bar(
+            x, const_indep_t, width, label=label_i, color="#2ca02c", alpha=0.8
+        )
+        bars3 = ax.bar(
+            x + width, best_hybrid_throughput, width, label=best_hybrid_legend,
+            color="#1f77b4", alpha=0.8
+        )
+        bar_groups = [bars1, bars2, bars3]
 
     # Add value labels on bars
-    for bars in [bars1, bars2, bars3]:
+    for bars in bar_groups:
         for bar in bars:
             height = bar.get_height()
             if height > 0:
-                ax.text(bar.get_x() + bar.get_width()/2., height,
-                       f'{height:.4f}', ha='center', va='bottom', fontsize=8)
+                ax.text(bar.get_x() + bar.get_width() / 2, height, f"{height:.4f}",
+                        ha="center", va="bottom", fontsize=8)
 
     # Add best hybrid construction labels above best hybrid bars
+    if grouped_comp == independent_comp:
+        bh_x_offset = 0.35 / 2.0
+    else:
+        bh_x_offset = width
     for i, (target_length, label) in enumerate(zip(target_lengths, best_hybrid_labels)):
         if best_hybrid_throughput[i] > 0:
-            ax.text(i + width, best_hybrid_throughput[i] + max(best_hybrid_throughput) * 0.02,
-                   label, ha='center', va='bottom', fontsize=8, style='italic')
+            ax.text(
+                i + bh_x_offset, best_hybrid_throughput[i] + max(best_hybrid_throughput) * 0.02,
+                label, ha="center", va="bottom", fontsize=8, style="italic"
+            )
 
     ax.set_xlabel("Target Job Length", fontsize=12)
     ax.set_ylabel("Event Throughput (events/second)", fontsize=12)
     ax.set_title("Best Hybrid vs. Extremes Comparison", fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels(target_lengths)
-    ax.legend(fontsize=11)
+    apply_truncated_legend(
+        ax, grouped_comp, independent_comp, bbox=None, loc="best", fontsize=11
+    )
     ax.grid(True, alpha=0.3, axis='y')
 
     plt.tight_layout()
@@ -682,10 +790,14 @@ def plot_best_hybrid_comparison(data_by_composition: Dict[int, List[Dict[str, An
     print(f"  => Saved: {output_path}")
 
 
-def plot_total_jobs_comparison(data_by_composition: Dict[int, List[Dict[str, Any]]],
-                               best_hybrids: Dict[str, Optional[int]],
-                               output_dir: str) -> None:
-    """Plot total job count for Const 1, Const 16, and best hybrid per target job length.
+def plot_total_jobs_comparison(
+    data_by_composition: Dict[int, List[Dict[str, Any]]],
+    best_hybrids: Dict[str, Optional[int]],
+    output_dir: str,
+    grouped_comp: int,
+    independent_comp: int,
+) -> None:
+    """Plot total job count for extremes and best hybrid per target job length.
 
     Same grouped bar layout as best_hybrid_comparison, but for total_jobs.
 
@@ -693,6 +805,8 @@ def plot_total_jobs_comparison(data_by_composition: Dict[int, List[Dict[str, Any
         data_by_composition: Dictionary mapping composition_number to metrics list
         best_hybrids: Dictionary mapping target_length to best hybrid composition number
         output_dir: Output directory for plots
+        grouped_comp: Most grouped composition
+        independent_comp: Most ungrouped composition
     """
     print(f"==> Creating total jobs comparison plot")
 
@@ -702,25 +816,28 @@ def plot_total_jobs_comparison(data_by_composition: Dict[int, List[Dict[str, Any
             all_target_lengths.add(d['target_job_length'])
     target_lengths = sorted(all_target_lengths, key=target_length_to_hours)
 
-    const1_jobs = []
-    const16_jobs = []
-    best_hybrid_jobs = []
-    best_hybrid_labels = []
+    grouped_jobs: List[int] = []
+    indep_jobs: List[int] = []
+    best_hybrid_jobs: List[int] = []
+    best_hybrid_labels: List[str] = []
 
     for target_length in target_lengths:
-        if 1 in data_by_composition:
-            const1_data = next((d for d in data_by_composition[1]
-                              if d['target_job_length'] == target_length), None)
-            const1_jobs.append(const1_data.get('total_jobs', 0) if const1_data else 0)
+        if grouped_comp in data_by_composition:
+            gdata = next(
+                (d for d in data_by_composition[grouped_comp] if d["target_job_length"] == target_length),
+                None
+            )
+            grouped_jobs.append(gdata.get("total_jobs", 0) if gdata else 0)
         else:
-            const1_jobs.append(0)
-
-        if 16 in data_by_composition:
-            const16_data = next((d for d in data_by_composition[16]
-                              if d['target_job_length'] == target_length), None)
-            const16_jobs.append(const16_data.get('total_jobs', 0) if const16_data else 0)
+            grouped_jobs.append(0)
+        if independent_comp in data_by_composition:
+            idata = next(
+                (d for d in data_by_composition[independent_comp] if d["target_job_length"] == target_length),
+                None
+            )
+            indep_jobs.append(idata.get("total_jobs", 0) if idata else 0)
         else:
-            const16_jobs.append(0)
+            indep_jobs.append(0)
 
         best_comp = best_hybrids[target_length]
         if best_comp and best_comp in data_by_composition:
@@ -739,21 +856,42 @@ def plot_total_jobs_comparison(data_by_composition: Dict[int, List[Dict[str, Any
     unique_best_hybrids = sorted(set([best_hybrids[tl] for tl in target_lengths
                                      if best_hybrids[tl] is not None]))
     if len(unique_best_hybrids) == 1:
-        best_hybrid_legend = f"Best Hybrid (Const {unique_best_hybrids[0]})"
+        best_hybrid_legend = f"Best hybrid (Const {unique_best_hybrids[0]})"
     elif len(unique_best_hybrids) <= 3:
-        best_hybrid_legend = f"Best Hybrid (Const {', '.join(map(str, unique_best_hybrids))})"
+        best_hybrid_legend = f"Best hybrid (Const {', '.join(map(str, unique_best_hybrids))})"
     else:
-        best_hybrid_legend = f"Best Hybrid (Const {unique_best_hybrids[0]}-{unique_best_hybrids[-1]})"
+        best_hybrid_legend = (
+            f"Best hybrid (Const {unique_best_hybrids[0]}-{unique_best_hybrids[-1]})"
+        )
 
-    bars1 = ax.bar(x - width, const1_jobs, width, label='Const 1 (All Chained)',
-                  color='#d62728', alpha=0.8)
-    bars2 = ax.bar(x, const16_jobs, width, label='Const 16 (All Independent)',
-                  color='#2ca02c', alpha=0.8)
-    bars3 = ax.bar(x + width, best_hybrid_jobs, width, label=best_hybrid_legend,
-                  color='#1f77b4', alpha=0.8)
+    if grouped_comp == independent_comp:
+        w2 = 0.35
+        bars1 = ax.bar(
+            x - w2 / 2, grouped_jobs, w2,
+            label=f"Const {grouped_comp} (grouped and ungrouped)", color="#9467bd", alpha=0.8
+        )
+        bars2 = ax.bar(
+            x + w2 / 2, best_hybrid_jobs, w2, label=best_hybrid_legend, color="#1f77b4", alpha=0.8
+        )
+        all_bars = [bars1, bars2]
+        t_bh_off = 0.35 / 2.0
+    else:
+        bars1 = ax.bar(
+            x - width, grouped_jobs, width,
+            label=f"Const {grouped_comp} (most grouped)", color="#d62728", alpha=0.8
+        )
+        bars2 = ax.bar(
+            x, indep_jobs, width,
+            label=f"Const {independent_comp} (most ungrouped)", color="#2ca02c", alpha=0.8
+        )
+        bars3 = ax.bar(
+            x + width, best_hybrid_jobs, width, label=best_hybrid_legend, color="#1f77b4", alpha=0.8
+        )
+        all_bars = [bars1, bars2, bars3]
+        t_bh_off = width
 
-    max_jobs = max(const1_jobs + const16_jobs + best_hybrid_jobs) or 1
-    for bars in [bars1, bars2, bars3]:
+    max_jobs = max(grouped_jobs + indep_jobs + best_hybrid_jobs) or 1
+    for bars in all_bars:
         for bar in bars:
             height = bar.get_height()
             if height > 0:
@@ -762,7 +900,7 @@ def plot_total_jobs_comparison(data_by_composition: Dict[int, List[Dict[str, Any
 
     for i, (target_length, label) in enumerate(zip(target_lengths, best_hybrid_labels)):
         if best_hybrid_jobs[i] > 0:
-            ax.text(i + width, best_hybrid_jobs[i] + max_jobs * 0.02,
+            ax.text(i + t_bh_off, best_hybrid_jobs[i] + max_jobs * 0.02,
                    label, ha='center', va='bottom', fontsize=8, style='italic')
 
     # Total events is common across all constructions and target lengths
@@ -781,7 +919,9 @@ def plot_total_jobs_comparison(data_by_composition: Dict[int, List[Dict[str, Any
     ax.set_title(f"Total Jobs: Best Hybrid vs. Extremes ({events_str} events)", fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels(target_lengths)
-    ax.legend(fontsize=11)
+    apply_truncated_legend(
+        ax, grouped_comp, independent_comp, bbox=None, loc="best", fontsize=11
+    )
     ax.grid(True, alpha=0.3, axis='y')
 
     plt.tight_layout()
@@ -791,10 +931,14 @@ def plot_total_jobs_comparison(data_by_composition: Dict[int, List[Dict[str, Any
     print(f"  => Saved: {output_path}")
 
 
-def plot_turnaround_time_comparison(data_by_composition: Dict[int, List[Dict[str, Any]]],
-                                    best_hybrids: Dict[str, Optional[int]],
-                                    output_dir: str) -> None:
-    """Plot turnaround time for Const 1, Const 16, and best hybrid per target job length.
+def plot_turnaround_time_comparison(
+    data_by_composition: Dict[int, List[Dict[str, Any]]],
+    best_hybrids: Dict[str, Optional[int]],
+    output_dir: str,
+    grouped_comp: int,
+    independent_comp: int,
+) -> None:
+    """Plot turnaround time for extremes and best hybrid per target job length.
 
     Same grouped bar layout as best_hybrid_comparison. Time is converted from seconds
     to hours (or days if max >= 24h) for readability.
@@ -803,6 +947,8 @@ def plot_turnaround_time_comparison(data_by_composition: Dict[int, List[Dict[str
         data_by_composition: Dictionary mapping composition_number to metrics list
         best_hybrids: Dictionary mapping target_length to best hybrid composition number
         output_dir: Output directory for plots
+        grouped_comp: Most grouped composition
+        independent_comp: Most ungrouped composition
     """
     print(f"==> Creating turnaround time comparison plot")
 
@@ -812,27 +958,32 @@ def plot_turnaround_time_comparison(data_by_composition: Dict[int, List[Dict[str
             all_target_lengths.add(d['target_job_length'])
     target_lengths = sorted(all_target_lengths, key=target_length_to_hours)
 
-    const1_turnaround = []
-    const16_turnaround = []
-    best_hybrid_turnaround = []
-    best_hybrid_labels = []
+    grouped_ta: List[float] = []
+    indep_ta: List[float] = []
+    best_hybrid_turnaround: List[float] = []
+    best_hybrid_labels: List[str] = []
 
     for target_length in target_lengths:
-        if 1 in data_by_composition:
-            const1_data = next((d for d in data_by_composition[1]
-                              if d['target_job_length'] == target_length), None)
-            const1_turnaround.append(const1_data.get('total_turnaround_time', 0.0)
-                                    if const1_data else 0.0)
+        if grouped_comp in data_by_composition:
+            gdata = next(
+                (d for d in data_by_composition[grouped_comp] if d["target_job_length"] == target_length),
+                None
+            )
+            grouped_ta.append(
+                gdata.get("total_turnaround_time", 0.0) if gdata else 0.0
+            )
         else:
-            const1_turnaround.append(0.0)
-
-        if 16 in data_by_composition:
-            const16_data = next((d for d in data_by_composition[16]
-                              if d['target_job_length'] == target_length), None)
-            const16_turnaround.append(const16_data.get('total_turnaround_time', 0.0)
-                                     if const16_data else 0.0)
+            grouped_ta.append(0.0)
+        if independent_comp in data_by_composition:
+            idata = next(
+                (d for d in data_by_composition[independent_comp] if d["target_job_length"] == target_length),
+                None
+            )
+            indep_ta.append(
+                idata.get("total_turnaround_time", 0.0) if idata else 0.0
+            )
         else:
-            const16_turnaround.append(0.0)
+            indep_ta.append(0.0)
 
         best_comp = best_hybrids[target_length]
         if best_comp and best_comp in data_by_composition:
@@ -845,15 +996,14 @@ def plot_turnaround_time_comparison(data_by_composition: Dict[int, List[Dict[str
             best_hybrid_turnaround.append(0.0)
             best_hybrid_labels.append("N/A")
 
-    # Convert seconds to hours (or days if max >= 24h)
-    all_turnaround = const1_turnaround + const16_turnaround + best_hybrid_turnaround
+    all_turnaround = grouped_ta + indep_ta + best_hybrid_turnaround
     max_sec = max(all_turnaround) if all_turnaround else 0
-    use_days = max_sec >= 86400  # 24 hours
+    use_days = max_sec >= 86400
     div = 86400.0 if use_days else 3600.0
     unit = "days" if use_days else "hours"
 
-    const1_vals = [v / div for v in const1_turnaround]
-    const16_vals = [v / div for v in const16_turnaround]
+    g_vals = [v / div for v in grouped_ta]
+    i_vals = [v / div for v in indep_ta]
     best_hybrid_vals = [v / div for v in best_hybrid_turnaround]
 
     fig, ax = plt.subplots(figsize=(12, 7))
@@ -863,21 +1013,42 @@ def plot_turnaround_time_comparison(data_by_composition: Dict[int, List[Dict[str
     unique_best_hybrids = sorted(set([best_hybrids[tl] for tl in target_lengths
                                     if best_hybrids[tl] is not None]))
     if len(unique_best_hybrids) == 1:
-        best_hybrid_legend = f"Best Hybrid (Const {unique_best_hybrids[0]})"
+        best_hybrid_legend = f"Best hybrid (Const {unique_best_hybrids[0]})"
     elif len(unique_best_hybrids) <= 3:
-        best_hybrid_legend = f"Best Hybrid (Const {', '.join(map(str, unique_best_hybrids))})"
+        best_hybrid_legend = f"Best hybrid (Const {', '.join(map(str, unique_best_hybrids))})"
     else:
-        best_hybrid_legend = f"Best Hybrid (Const {unique_best_hybrids[0]}-{unique_best_hybrids[-1]})"
+        best_hybrid_legend = (
+            f"Best hybrid (Const {unique_best_hybrids[0]}-{unique_best_hybrids[-1]})"
+        )
 
-    bars1 = ax.bar(x - width, const1_vals, width, label='Const 1 (All Chained)',
-                  color='#d62728', alpha=0.8)
-    bars2 = ax.bar(x, const16_vals, width, label='Const 16 (All Independent)',
-                  color='#2ca02c', alpha=0.8)
-    bars3 = ax.bar(x + width, best_hybrid_vals, width, label=best_hybrid_legend,
-                  color='#1f77b4', alpha=0.8)
+    if grouped_comp == independent_comp:
+        w2 = 0.35
+        bars1 = ax.bar(
+            x - w2 / 2, g_vals, w2,
+            label=f"Const {grouped_comp} (grouped and ungrouped)", color="#9467bd", alpha=0.8
+        )
+        bars2 = ax.bar(
+            x + w2 / 2, best_hybrid_vals, w2, label=best_hybrid_legend, color="#1f77b4", alpha=0.8
+        )
+        all_bars = [bars1, bars2]
+        t_bh_off = 0.35 / 2.0
+    else:
+        bars1 = ax.bar(
+            x - width, g_vals, width,
+            label=f"Const {grouped_comp} (most grouped)", color="#d62728", alpha=0.8
+        )
+        bars2 = ax.bar(
+            x, i_vals, width,
+            label=f"Const {independent_comp} (most ungrouped)", color="#2ca02c", alpha=0.8
+        )
+        bars3 = ax.bar(
+            x + width, best_hybrid_vals, width, label=best_hybrid_legend, color="#1f77b4", alpha=0.8
+        )
+        all_bars = [bars1, bars2, bars3]
+        t_bh_off = width
 
-    max_val = max(const1_vals + const16_vals + best_hybrid_vals) or 1
-    for bars in [bars1, bars2, bars3]:
+    max_val = max(g_vals + i_vals + best_hybrid_vals) or 1
+    for bars in all_bars:
         for bar in bars:
             height = bar.get_height()
             if height > 0:
@@ -887,7 +1058,7 @@ def plot_turnaround_time_comparison(data_by_composition: Dict[int, List[Dict[str
 
     for i, (target_length, label) in enumerate(zip(target_lengths, best_hybrid_labels)):
         if best_hybrid_vals[i] > 0:
-            ax.text(i + width, best_hybrid_vals[i] + max_val * 0.02,
+            ax.text(i + t_bh_off, best_hybrid_vals[i] + max_val * 0.02,
                    label, ha='center', va='bottom', fontsize=8, style='italic')
 
     ax.set_xlabel("Target Job Length", fontsize=12)
@@ -895,7 +1066,9 @@ def plot_turnaround_time_comparison(data_by_composition: Dict[int, List[Dict[str
     ax.set_title("Turnaround Time: Best Hybrid vs. Extremes", fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels(target_lengths)
-    ax.legend(fontsize=11)
+    apply_truncated_legend(
+        ax, grouped_comp, independent_comp, bbox=None, loc="best", fontsize=11
+    )
     ax.grid(True, alpha=0.3, axis='y')
 
     plt.tight_layout()
@@ -905,15 +1078,21 @@ def plot_turnaround_time_comparison(data_by_composition: Dict[int, List[Dict[str
     print(f"  => Saved: {output_path}")
 
 
-def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any]]],
-                               best_hybrids: Dict[str, Optional[int]],
-                               output_dir: str) -> None:
+def plot_failure_cost_analysis(
+    data_by_composition: Dict[int, List[Dict[str, Any]]],
+    best_hybrids: Dict[str, Optional[int]],
+    output_dir: str,
+    grouped_comp: int,
+    independent_comp: int,
+) -> None:
     """Plot failure cost analysis: cost per failure vs target job length.
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
         best_hybrids: Dictionary mapping target_length to best hybrid composition number
         output_dir: Output directory for plots
+        grouped_comp: Most grouped composition
+        independent_comp: Most ungrouped composition
     """
     print(f"==> Creating failure cost analysis plot")
 
@@ -943,7 +1122,7 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
     hybrid_color_map = get_best_hybrid_colors(best_hybrids)
 
     # Plot 1: Average cost per failure (CPU time only - wall time matches target length and is redundant)
-    # First pass: Const 1, Const 16, and non-best-hybrid constructions
+    # First pass: extremes and non-best-hybrid constructions
     best_hybrid_comp_nums = [best_hybrids[tl] for tl in target_lengths if best_hybrids[tl] is not None]
     best_hybrid_comp_nums = sorted(set(best_hybrid_comp_nums))
 
@@ -956,10 +1135,15 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
         avg_cpu_per_failure = [d.get('avg_cpu_per_failure', 0.0) / 3600.0 for d in comp_data_sorted]
         x_positions = [tl_to_x[tl] for tl in target_length_values]
         label = f"Const {comp_num}"
-        if comp_num == 1:
+        if grouped_comp == independent_comp == comp_num:
+            ax1.plot(
+                x_positions, avg_cpu_per_failure, "D-", label=label, linewidth=2.5, color="#9467bd",
+                markersize=8, zorder=10
+            )
+        elif comp_num == grouped_comp:
             ax1.plot(x_positions, avg_cpu_per_failure, 'o-', label=label,
                     linewidth=2.5, color='#d62728', markersize=8, zorder=10)
-        elif comp_num == 16:
+        elif comp_num == independent_comp:
             ax1.plot(x_positions, avg_cpu_per_failure, 's-', label=label,
                     linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
 
@@ -973,19 +1157,21 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
         avg_cpu_per_failure = [d.get('avg_cpu_per_failure', 0.0) / 3600.0 for d in comp_data_sorted]
         x_positions = [tl_to_x[tl] for tl in target_length_values]
         hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
-        ax1.plot(x_positions, avg_cpu_per_failure, '^--', label=f"Best Hybrid (C{comp_num})",
+        ax1.plot(x_positions, avg_cpu_per_failure, '^--', label=f"Best hybrid (C{comp_num})",
                 linewidth=2.5, color=hybrid_color, markersize=8, zorder=15, alpha=1.0)
 
     ax1.set_xlabel("Target Job Length", fontsize=12)
     ax1.set_ylabel("Average CPU Cost per Failure (CPU-hours)", fontsize=12)
     ax1.set_title("Average Cost per Failure vs. Target Job Length", fontsize=13)
-    ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
+    apply_truncated_legend(
+        ax1, grouped_comp, independent_comp, bbox=(1.05, 1), fontsize=9
+    )
     ax1.grid(True, alpha=0.3)
     ax1.set_xticks(range(len(xtick_labels)))
     ax1.set_xticklabels(xtick_labels)
 
     # Plot 2: Risk profile (max single failure cost - CPU time only)
-    # First pass: Const 1, Const 16, and non-best-hybrid constructions
+    # First pass: extremes and non-best-hybrid constructions
     for comp_num in sorted(data_by_composition.keys()):
         if comp_num in best_hybrid_comp_nums:
             continue
@@ -995,10 +1181,15 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
         max_cpu_per_failure = [d.get('max_cpu_per_failure', 0.0) / 3600.0 for d in comp_data_sorted]
         x_positions = [tl_to_x[tl] for tl in target_length_values]
         label = f"Const {comp_num}"
-        if comp_num == 1:
+        if grouped_comp == independent_comp == comp_num:
+            ax2.plot(
+                x_positions, max_cpu_per_failure, "D-", label=label, linewidth=2.5, color="#9467bd",
+                markersize=8, zorder=10
+            )
+        elif comp_num == grouped_comp:
             ax2.plot(x_positions, max_cpu_per_failure, 'o-', label=label,
                     linewidth=2.5, color='#d62728', markersize=8, zorder=10)
-        elif comp_num == 16:
+        elif comp_num == independent_comp:
             ax2.plot(x_positions, max_cpu_per_failure, 's-', label=label,
                     linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
 
@@ -1012,13 +1203,15 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
         max_cpu_per_failure = [d.get('max_cpu_per_failure', 0.0) / 3600.0 for d in comp_data_sorted]
         x_positions = [tl_to_x[tl] for tl in target_length_values]
         hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
-        ax2.plot(x_positions, max_cpu_per_failure, '^--', label=f"Best Hybrid (C{comp_num})",
+        ax2.plot(x_positions, max_cpu_per_failure, '^--', label=f"Best hybrid (C{comp_num})",
                 linewidth=2.5, color=hybrid_color, markersize=8, zorder=15, alpha=1.0)
 
     ax2.set_xlabel("Target Job Length", fontsize=12)
     ax2.set_ylabel("Max Single Failure Cost (CPU-hours)", fontsize=12)
     ax2.set_title("Risk Profile: Max Single Failure Cost vs. Target Job Length", fontsize=13)
-    ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
+    apply_truncated_legend(
+        ax2, grouped_comp, independent_comp, bbox=(1.05, 1), fontsize=9
+    )
     ax2.grid(True, alpha=0.3)
     ax2.set_xticks(range(len(xtick_labels)))
     ax2.set_xticklabels(xtick_labels)
@@ -1030,15 +1223,21 @@ def plot_failure_cost_analysis(data_by_composition: Dict[int, List[Dict[str, Any
     print(f"  => Saved: {output_path}")
 
 
-def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, Any]]],
-                                best_hybrids: Dict[str, Optional[int]],
-                                output_dir: str) -> None:
+def plot_failure_count_analysis(
+    data_by_composition: Dict[int, List[Dict[str, Any]]],
+    best_hybrids: Dict[str, Optional[int]],
+    output_dir: str,
+    grouped_comp: int,
+    independent_comp: int,
+) -> None:
     """Plot failure count distribution vs target job length.
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
         best_hybrids: Dictionary mapping target_length to best hybrid composition number
         output_dir: Output directory for plots
+        grouped_comp: Most grouped composition
+        independent_comp: Most ungrouped composition
     """
     print(f"==> Creating failure count analysis plot")
 
@@ -1078,10 +1277,15 @@ def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, An
         failed_counts = [d.get('total_failed_jobs', 0) for d in comp_data_sorted]
         x_positions = [tl_to_x[tl] for tl in target_length_values]
         label = f"Const {comp_num}"
-        if comp_num == 1:
+        if grouped_comp == independent_comp == comp_num:
+            ax1.plot(
+                x_positions, failed_counts, "D-", label=label, linewidth=2.5, color="#9467bd",
+                markersize=8, zorder=10
+            )
+        elif comp_num == grouped_comp:
             ax1.plot(x_positions, failed_counts, 'o-', label=label,
                     linewidth=2.5, color='#d62728', markersize=8, zorder=10)
-        elif comp_num == 16:
+        elif comp_num == independent_comp:
             ax1.plot(x_positions, failed_counts, 's-', label=label,
                     linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
 
@@ -1094,13 +1298,15 @@ def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, An
         failed_counts = [d.get('total_failed_jobs', 0) for d in comp_data_sorted]
         x_positions = [tl_to_x[tl] for tl in target_length_values]
         hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
-        ax1.plot(x_positions, failed_counts, '^--', label=f"Best Hybrid (C{comp_num})",
+        ax1.plot(x_positions, failed_counts, '^--', label=f"Best hybrid (C{comp_num})",
                 linewidth=2.5, color=hybrid_color, markersize=8, zorder=15, alpha=1.0)
 
     ax1.set_xlabel("Target Job Length", fontsize=12)
     ax1.set_ylabel("Number of Failed Jobs", fontsize=12)
     ax1.set_title("Failure Count vs. Target Job Length", fontsize=13)
-    ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
+    apply_truncated_legend(
+        ax1, grouped_comp, independent_comp, bbox=(1.05, 1), fontsize=9
+    )
     ax1.grid(True, alpha=0.3)
     ax1.set_xticks(range(len(xtick_labels)))
     ax1.set_xticklabels(xtick_labels)
@@ -1115,10 +1321,15 @@ def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, An
         failure_rate_actual = [d.get('failure_rate_actual', 0.0) for d in comp_data_sorted]
         x_positions = [tl_to_x[tl] for tl in target_length_values]
         label = f"Const {comp_num}"
-        if comp_num == 1:
+        if grouped_comp == independent_comp == comp_num:
+            ax2.plot(
+                x_positions, failure_rate_actual, "D-", label=label, linewidth=2.5, color="#9467bd",
+                markersize=8, zorder=10
+            )
+        elif comp_num == grouped_comp:
             ax2.plot(x_positions, failure_rate_actual, 'o-', label=label,
                     linewidth=2.5, color='#d62728', markersize=8, zorder=10)
-        elif comp_num == 16:
+        elif comp_num == independent_comp:
             ax2.plot(x_positions, failure_rate_actual, 's-', label=label,
                     linewidth=2.5, color='#2ca02c', markersize=8, zorder=10)
 
@@ -1131,24 +1342,30 @@ def plot_failure_count_analysis(data_by_composition: Dict[int, List[Dict[str, An
         failure_rate_actual = [d.get('failure_rate_actual', 0.0) for d in comp_data_sorted]
         x_positions = [tl_to_x[tl] for tl in target_length_values]
         hybrid_color = hybrid_color_map.get(comp_num, '#1f77b4')
-        ax2.plot(x_positions, failure_rate_actual, '^--', label=f"Best Hybrid (C{comp_num})",
+        ax2.plot(x_positions, failure_rate_actual, '^--', label=f"Best hybrid (C{comp_num})",
                 linewidth=2.5, color=hybrid_color, markersize=8, zorder=15, alpha=1.0)
 
     ax2.set_xlabel("Target Job Length", fontsize=12)
     ax2.set_ylabel("Actual Failure Rate (%)", fontsize=12)
     ax2.set_title("Actual Failure Rate vs. Target Job Length", fontsize=13)
-    ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
     ax2.grid(True, alpha=0.3)
     ax2.set_xticks(range(len(xtick_labels)))
     ax2.set_xticklabels(xtick_labels)
-    # Add horizontal line at expected failure rate if available
     if data_by_composition:
         first_data = next(iter(data_by_composition.values()))[0]
         expected_fr = first_data.get('failure_rate', 0.0)
         if expected_fr > 0:
-            ax2.axhline(y=expected_fr, color='gray', linestyle='--', linewidth=1, alpha=0.5,
-                       label=f'Expected ({expected_fr:.1f}%)')
-            ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1, fontsize=9)
+            ax2.axhline(
+                y=expected_fr,
+                color="gray",
+                linestyle="--",
+                linewidth=1,
+                alpha=0.5,
+                label=f"Expected ({expected_fr:.1f}%)",
+            )
+    apply_truncated_legend(
+        ax2, grouped_comp, independent_comp, bbox=(1.05, 1), fontsize=9
+    )
 
     plt.tight_layout()
     output_path = os.path.join(output_dir, "failure_count_analysis.png")
@@ -1259,16 +1476,40 @@ def main():
 
     print(f"\nCollected data for {len(data_by_composition)} constructions")
 
-    best_hybrids = identify_best_hybrid_per_target_length(data_by_composition, verbose=True)
+    grouped_comp, independent_comp = composition_extremes(data_by_composition)
+    print(
+        f"Extremes (by total_groups): most grouped = Const {grouped_comp}, "
+        f"most ungrouped = Const {independent_comp}"
+    )
 
-    plot_throughput_vs_target_length(data_by_composition, best_hybrids, args.output_dir)
-    plot_throughput_improvement(data_by_composition, args.output_dir)
-    plot_network_activity_vs_target_length(data_by_composition, best_hybrids, args.output_dir)
-    plot_best_hybrid_comparison(data_by_composition, best_hybrids, args.output_dir)
-    plot_total_jobs_comparison(data_by_composition, best_hybrids, args.output_dir)
-    plot_turnaround_time_comparison(data_by_composition, best_hybrids, args.output_dir)
-    plot_failure_cost_analysis(data_by_composition, best_hybrids, args.output_dir)
-    plot_failure_count_analysis(data_by_composition, best_hybrids, args.output_dir)
+    best_hybrids = identify_best_hybrid_per_target_length(
+        data_by_composition, grouped_comp, independent_comp, verbose=True
+    )
+
+    plot_throughput_vs_target_length(
+        data_by_composition, best_hybrids, args.output_dir, grouped_comp, independent_comp
+    )
+    plot_throughput_improvement(
+        data_by_composition, args.output_dir, grouped_comp, independent_comp
+    )
+    plot_network_activity_vs_target_length(
+        data_by_composition, best_hybrids, args.output_dir, grouped_comp, independent_comp
+    )
+    plot_best_hybrid_comparison(
+        data_by_composition, best_hybrids, args.output_dir, grouped_comp, independent_comp
+    )
+    plot_total_jobs_comparison(
+        data_by_composition, best_hybrids, args.output_dir, grouped_comp, independent_comp
+    )
+    plot_turnaround_time_comparison(
+        data_by_composition, best_hybrids, args.output_dir, grouped_comp, independent_comp
+    )
+    plot_failure_cost_analysis(
+        data_by_composition, best_hybrids, args.output_dir, grouped_comp, independent_comp
+    )
+    plot_failure_count_analysis(
+        data_by_composition, best_hybrids, args.output_dir, grouped_comp, independent_comp
+    )
     generate_summary_table(data_by_composition, args.output_dir)
 
     print("\n" + "="*70)
