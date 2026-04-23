@@ -7,9 +7,10 @@ This script analyzes how different network data transfer rates (10 MB/s, 100 MB/
 separately for each rate with output organized by rate directory.
 
 Analysis: Data Transfer Rate Sensitivity
-- Fixed: 12h target job length, chosen failure rate, all 3 workflow types
+- Fixed: 12h target job length, chosen failure rate, selected workflow types (CLI)
 - Variable: network data transfer rate (10, 100, 1000, 10000 MB/s)
-- Compare: Const 1, Const 16, and best hybrid across data rates
+- Compare: most grouped, most ungrouped, and best hybrid (see
+  :mod:`composition_extremes`) across data rates
 - Primary Metric: event_throughput
 - Job overhead: mean and std from simulation_stats (job_overhead_secs, job_overhead_cpu_time);
   lower data rate increases overhead.
@@ -26,12 +27,36 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from composition_extremes import composition_extremes_from_single_map
+
 # Rate directory names (MBps/GBps = megabytes/gigabytes per second) and MB/s values
 RATE_DIRS = ['10MBps', '100MBps', '1GBps', '10GBps']
 RATE_MBPS = [10, 100, 1000, 10000]
 TARGET_JOB_LENGTH = '12h'
 FAILURE_RATE = 'fr0'
 WORKFLOW_TYPES = ['case1_real', 'case2_homo', 'case3_hetero']
+
+
+def _default_data_transfer_output_dir(
+    failure_rate: str,
+    workflow_types: List[str],
+) -> str:
+    """Default under results/analysis/data_transfer_rate/ (see workflow_type_sensitivity)."""
+    root = "results/analysis/data_transfer_rate"
+    if "case1_real" in workflow_types:
+        return f"{root}/sequential/{failure_rate}"
+    if "fork_real" in workflow_types:
+        return f"{root}/fork/{failure_rate}"
+    return f"{root}/{failure_rate}"
+
+
+def _workflow_types_in_data_order(
+    data_by_rate: Dict[str, Dict[str, Dict[int, Dict[str, Any]]]],
+    requested: List[str],
+) -> List[str]:
+    """*requested* order, keeping only types that appear in *data_by_rate*."""
+    have = {w for r in data_by_rate for w in data_by_rate[r].keys()}
+    return [w for w in requested if w in have]
 
 
 def load_simulation_data(file_path: str) -> Optional[Dict[str, Any]]:
@@ -96,7 +121,8 @@ def collect_data_by_rate(base_path: str,
     (base_path is e.g. results/sim/others)
 
     Returns:
-        Dictionary mapping rate_dir -> workflow_type -> composition_number -> metrics
+        Dictionary mapping rate_dir -> workflow_type -> composition_number -> metrics.
+        Per-rate ``workflow_type`` key order follows *workflow_types* (omitting empty).
     """
     data_by_rate: Dict[str, Dict[str, Dict[int, Dict[str, Any]]]] = {}
     base = Path(base_path)
@@ -132,29 +158,46 @@ def collect_data_by_rate(base_path: str,
     return data_by_rate
 
 
-def identify_best_hybrid(data_by_composition: Dict[int, Dict[str, Any]]) -> Optional[int]:
-    """Identify best hybrid (2-15) by throughput, then lower network transfer."""
+def _extremes(data_by_composition: Dict[int, Dict[str, Any]]) -> tuple:
+    """Fallback (1, 16) when no JSONs for this slice (plot uses zeros)."""
+    if not data_by_composition:
+        return (1, 16)
+    return composition_extremes_from_single_map(data_by_composition)
+
+
+def identify_best_hybrid(
+    data_by_composition: Dict[int, Dict[str, Any]],
+    grouped_comp: int,
+    independent_comp: int,
+) -> Optional[int]:
+    """Best hybrid (between extremes) by throughput, then lower network transfer."""
     hybrid_candidates = []
-    for comp_num in range(2, 16):
+    for comp_num in range(grouped_comp + 1, independent_comp):
         if comp_num not in data_by_composition:
             continue
         m = data_by_composition[comp_num]
-        hybrid_candidates.append({
-            'comp_num': comp_num,
-            'throughput': m['event_throughput'],
-            'network_transfer': m['network_transfer_mb_per_event']
-        })
+        hybrid_candidates.append(
+            {
+                "comp_num": comp_num,
+                "throughput": m["event_throughput"],
+                "network_transfer": m["network_transfer_mb_per_event"],
+            }
+        )
     if not hybrid_candidates:
         return None
-    best = max(hybrid_candidates,
-               key=lambda x: (x['throughput'], -x['network_transfer']))
-    return best['comp_num']
+    best = max(
+        hybrid_candidates, key=lambda x: (x["throughput"], -x["network_transfer"])
+    )
+    return best["comp_num"]
 
 
-def plot_throughput_vs_data_rate(data_by_rate: Dict[str, Dict[str, Dict[int, Dict[str, Any]]]],
-                                output_dir: str,
-                                failure_rate: str = FAILURE_RATE) -> None:
-    """Plot event throughput vs. data transfer rate for Const 1, Const 16, best hybrid."""
+def plot_throughput_vs_data_rate(
+    data_by_rate: Dict[str, Dict[str, Dict[int, Dict[str, Any]]]],
+    output_dir: str,
+    failure_rate: str = FAILURE_RATE,
+    workflow_types: Optional[List[str]] = None,
+) -> None:
+    """Plot event throughput vs. data rate for grouped/ungrouped extremes and best hybrid."""
     print("\n==> Creating throughput vs. data transfer rate plot")
 
     rate_dirs_sorted = sorted(
@@ -165,33 +208,57 @@ def plot_throughput_vs_data_rate(data_by_rate: Dict[str, Dict[str, Dict[int, Dic
         print("  No rate data to plot")
         return
 
+    if not workflow_types:
+        print("  No workflow types to plot")
+        return
+
     x_mbps = [rate_dir_to_mbps(r) for r in rate_dirs_sorted]
     x_labels = [str(rate_dir_to_mbps(r)) for r in rate_dirs_sorted]
 
-    fig, axes = plt.subplots(1, 3, figsize=(16, 6), sharey=True)
-    workflow_types = sorted(WORKFLOW_TYPES)
+    n_wf = len(workflow_types)
+    fig_w = min(18, 5.0 + 4.5 * n_wf)
+    fig, axes = plt.subplots(1, n_wf, figsize=(fig_w, 6), sharey=True)
+    if n_wf == 1:
+        axes = [axes]
 
     for ax, workflow_type in zip(axes, workflow_types):
-        const1_throughput = []
-        const16_throughput = []
-        best_hybrid_throughput = []
-        best_hybrid_nums = []
+        grouped_t: List[float] = []
+        indep_t: List[float] = []
+        best_hybrid_throughput: List[float] = []
+        best_hybrid_nums: List[Optional[int]] = []
+        g_leg, i_leg = 1, 16
+        _legend_comps_set = False
 
         for rate_dir in rate_dirs_sorted:
             wf_data = data_by_rate.get(rate_dir, {}).get(workflow_type, {})
-            const1_throughput.append(wf_data.get(1, {}).get('event_throughput', 0.0))
-            const16_throughput.append(wf_data.get(16, {}).get('event_throughput', 0.0))
-            best_hybrid = identify_best_hybrid(wf_data) if wf_data else None
+            g_comp, indep_comp = _extremes(wf_data)
+            if wf_data and not _legend_comps_set:
+                g_leg, i_leg = g_comp, indep_comp
+                _legend_comps_set = True
+            grouped_t.append(wf_data.get(g_comp, {}).get("event_throughput", 0.0))
+            indep_t.append(wf_data.get(indep_comp, {}).get("event_throughput", 0.0))
+            best_hybrid = (
+                identify_best_hybrid(wf_data, g_comp, indep_comp) if wf_data else None
+            )
             if best_hybrid and best_hybrid in wf_data:
-                best_hybrid_throughput.append(wf_data[best_hybrid]['event_throughput'])
+                best_hybrid_throughput.append(wf_data[best_hybrid]["event_throughput"])
                 best_hybrid_nums.append(best_hybrid)
             else:
                 best_hybrid_throughput.append(0.0)
                 best_hybrid_nums.append(None)
 
-        ax.plot(x_mbps, const1_throughput, 'o-', label='Const 1', color='#d62728', linewidth=2)
-        ax.plot(x_mbps, const16_throughput, 's-', label='Const 16', color='#2ca02c', linewidth=2)
-        ax.plot(x_mbps, best_hybrid_throughput, '^-', label='Best Hybrid', color='#1f77b4', linewidth=2)
+        ax.plot(
+            x_mbps, grouped_t, "o-",
+            label=f"Const {g_leg} (most grouped)", color="#d62728", linewidth=2
+        )
+        ax.plot(
+            x_mbps, indep_t, "s-",
+            label=f"Const {i_leg} (most ungrouped)", color="#2ca02c", linewidth=2
+        )
+        ax.plot(
+            x_mbps, best_hybrid_throughput, "^-",
+            label="Best Hybrid", color="#1f77b4", linewidth=2
+        )
         for i, (xi, yi) in enumerate(zip(x_mbps, best_hybrid_throughput)):
             if best_hybrid_nums[i] and yi > 0:
                 ax.annotate(f"C{best_hybrid_nums[i]}", (xi, yi), textcoords="offset points",
@@ -223,6 +290,7 @@ def _plot_one_job_overhead_bar_chart(
     y_label: str,
     title_metric: str,
     filename: str,
+    workflow_types: List[str],
 ) -> None:
     """Draw one grouped bar chart of job overhead (mean ± std) vs. data transfer rate."""
     rate_dirs_sorted = sorted(
@@ -232,28 +300,42 @@ def _plot_one_job_overhead_bar_chart(
     if not rate_dirs_sorted:
         return
 
+    if not workflow_types:
+        return
+
     n_rates = len(rate_dirs_sorted)
     x_labels = [str(rate_dir_to_mbps(r)) for r in rate_dirs_sorted]
     bar_width = 0.25
     group_width = bar_width * 3 + 0.15
     x_base = np.arange(n_rates) * group_width
 
-    fig, axes = plt.subplots(1, 3, figsize=(16, 6), sharey=True)
+    n_wf = len(workflow_types)
+    fig_w = min(18, 5.0 + 4.5 * n_wf)
+    fig, axes = plt.subplots(1, n_wf, figsize=(fig_w, 6), sharey=True)
+    if n_wf == 1:
+        axes = [axes]
 
-    for ax, workflow_type in zip(axes, sorted(WORKFLOW_TYPES)):
-        const1_mean, const1_std = [], []
-        const16_mean, const16_std = [], []
+    for ax, workflow_type in zip(axes, workflow_types):
+        grouped_mean, grouped_std = [], []
+        indep_mean, indep_std = [], []
         best_mean, best_std = [], []
-
+        g_leg, i_leg = 1, 16
+        _legend_comps_set = False
         for rate_dir in rate_dirs_sorted:
             wf_data = data_by_rate.get(rate_dir, {}).get(workflow_type, {})
-            c1 = wf_data.get(1, {})
-            c16 = wf_data.get(16, {})
-            const1_mean.append(c1.get(mean_key, 0.0))
-            const1_std.append(c1.get(std_key, 0.0))
-            const16_mean.append(c16.get(mean_key, 0.0))
-            const16_std.append(c16.get(std_key, 0.0))
-            best_hybrid = identify_best_hybrid(wf_data) if wf_data else None
+            g_comp, indep_comp = _extremes(wf_data)
+            if wf_data and not _legend_comps_set:
+                g_leg, i_leg = g_comp, indep_comp
+                _legend_comps_set = True
+            cg = wf_data.get(g_comp, {})
+            ci = wf_data.get(indep_comp, {})
+            grouped_mean.append(cg.get(mean_key, 0.0))
+            grouped_std.append(cg.get(std_key, 0.0))
+            indep_mean.append(ci.get(mean_key, 0.0))
+            indep_std.append(ci.get(std_key, 0.0))
+            best_hybrid = (
+                identify_best_hybrid(wf_data, g_comp, indep_comp) if wf_data else None
+            )
             if best_hybrid and best_hybrid in wf_data:
                 b = wf_data[best_hybrid]
                 best_mean.append(b.get(mean_key, 0.0))
@@ -265,10 +347,16 @@ def _plot_one_job_overhead_bar_chart(
         x1 = x_base - bar_width
         x2 = x_base
         x3 = x_base + bar_width
-        ax.bar(x1, const1_mean, bar_width, yerr=const1_std, label='Const 1',
-               color='#d62728', capsize=3, error_kw={'linewidth': 1.5})
-        ax.bar(x2, const16_mean, bar_width, yerr=const16_std, label='Const 16',
-               color='#2ca02c', capsize=3, error_kw={'linewidth': 1.5})
+        ax.bar(
+            x1, grouped_mean, bar_width, yerr=grouped_std,
+            label=f"Const {g_leg} (most grouped)", color="#d62728", capsize=3,
+            error_kw={"linewidth": 1.5},
+        )
+        ax.bar(
+            x2, indep_mean, bar_width, yerr=indep_std,
+            label=f"Const {i_leg} (most ungrouped)", color="#2ca02c", capsize=3,
+            error_kw={"linewidth": 1.5},
+        )
         ax.bar(x3, best_mean, bar_width, yerr=best_std, label='Best Hybrid',
                color='#1f77b4', capsize=3, error_kw={'linewidth': 1.5})
         ax.set_xticks(x_base)
@@ -291,14 +379,19 @@ def _plot_one_job_overhead_bar_chart(
     print(f"  => Saved: {out_path}")
 
 
-def plot_job_overhead_vs_data_rate(data_by_rate: Dict[str, Dict[str, Dict[int, Dict[str, Any]]]],
-                                   output_dir: str,
-                                   failure_rate: str = FAILURE_RATE) -> None:
+def plot_job_overhead_vs_data_rate(
+    data_by_rate: Dict[str, Dict[str, Dict[int, Dict[str, Any]]]],
+    output_dir: str,
+    failure_rate: str = FAILURE_RATE,
+    workflow_types: Optional[List[str]] = None,
+) -> None:
     """Plot mean job overhead vs. data transfer rate: wallclock (secs) and CPU time.
 
     Creates two grouped bar charts: job_overhead_secs and job_overhead_cpu_time.
-    One group per data rate; three bars per group (Const 1, Const 16, Best Hybrid).
+    One group per data rate: grouped extreme, ungrouped extreme, best hybrid.
     """
+    if not workflow_types:
+        return
     print("==> Creating job overhead vs. data transfer rate plots")
     _plot_one_job_overhead_bar_chart(
         data_by_rate, output_dir, failure_rate,
@@ -307,6 +400,7 @@ def plot_job_overhead_vs_data_rate(data_by_rate: Dict[str, Dict[str, Dict[int, D
         y_label="Mean job overhead (seconds, log scale)",
         title_metric="wallclock",
         filename="job_overhead_secs_vs_data_transfer_rate.png",
+        workflow_types=workflow_types,
     )
     _plot_one_job_overhead_bar_chart(
         data_by_rate, output_dir, failure_rate,
@@ -315,20 +409,27 @@ def plot_job_overhead_vs_data_rate(data_by_rate: Dict[str, Dict[str, Dict[int, D
         y_label="Mean job overhead (CPU-seconds, log scale)",
         title_metric="CPU time",
         filename="job_overhead_cpu_time_vs_data_transfer_rate.png",
+        workflow_types=workflow_types,
     )
 
 
-def generate_summary_table(data_by_rate: Dict[str, Dict[str, Dict[int, Dict[str, Any]]]],
-                           output_dir: str) -> pd.DataFrame:
+def generate_summary_table(
+    data_by_rate: Dict[str, Dict[str, Dict[int, Dict[str, Any]]]],
+    output_dir: str,
+    workflow_types_order: List[str],
+) -> pd.DataFrame:
     """Generate CSV summary: rate, workflow_type, composition, throughput, network_per_event, etc."""
     print("==> Generating summary table")
 
     rows = []
     for rate_dir in sorted(data_by_rate.keys(), key=rate_dir_to_mbps):
         rate_mbps = rate_dir_to_mbps(rate_dir)
-        for workflow_type in sorted(data_by_rate[rate_dir].keys()):
-            for comp_num in sorted(data_by_rate[rate_dir][workflow_type].keys()):
-                m = data_by_rate[rate_dir][workflow_type][comp_num]
+        wf_in_rate = data_by_rate[rate_dir]
+        for workflow_type in workflow_types_order:
+            if workflow_type not in wf_in_rate:
+                continue
+            for comp_num in sorted(wf_in_rate[workflow_type].keys()):
+                m = wf_in_rate[workflow_type][comp_num]
                 rows.append({
                     'data_transfer_rate_mbps': rate_mbps,
                     'rate_dir': rate_dir,
@@ -366,15 +467,26 @@ def main():
                         help=f'Rate directory names (default: {" ".join(RATE_DIRS)})')
     parser.add_argument('--workflow-types', type=str, nargs='+', default=WORKFLOW_TYPES,
                         help='Workflow types to analyze')
-    parser.add_argument('--output-dir', type=str, default=None,
-                        help='Output directory (default: results/analysis/data_transfer_rate)')
+    parser.add_argument(
+        '--output-dir',
+        type=str,
+        default=None,
+        help=(
+            'Output directory (default: under results/analysis/data_transfer_rate/: '
+            '.../sequential/<failure_rate>/ if case1_real in --workflow-types, else '
+            '.../fork/<failure_rate>/ if fork_real, else .../<failure_rate>/)'
+        ),
+    )
     parser.add_argument('--failure-rate', type=str, default=FAILURE_RATE,
                         help=f'Failure rate directory, e.g. fr0, fr5 (default: {FAILURE_RATE})')
 
     args = parser.parse_args()
 
     if args.output_dir is None:
-        args.output_dir = "results/analysis/data_transfer_rate"
+        args.output_dir = _default_data_transfer_output_dir(
+            args.failure_rate,
+            list(args.workflow_types),
+        )
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
@@ -400,9 +512,18 @@ def main():
               f"so that base_path/<workflow_type>/12h/{args.failure_rate}/<rate_dir>/*.json exist.")
         return 1
 
-    plot_throughput_vs_data_rate(data_by_rate, args.output_dir, args.failure_rate)
-    plot_job_overhead_vs_data_rate(data_by_rate, args.output_dir, args.failure_rate)
-    generate_summary_table(data_by_rate, args.output_dir)
+    plot_wf = _workflow_types_in_data_order(data_by_rate, list(args.workflow_types))
+    if not plot_wf:
+        print("Error: No workflow data matched --workflow-types in collected data.")
+        return 1
+
+    plot_throughput_vs_data_rate(
+        data_by_rate, args.output_dir, args.failure_rate, plot_wf
+    )
+    plot_job_overhead_vs_data_rate(
+        data_by_rate, args.output_dir, args.failure_rate, plot_wf
+    )
+    generate_summary_table(data_by_rate, args.output_dir, plot_wf)
 
     print("\n" + "=" * 70)
     print("Analysis complete!")
