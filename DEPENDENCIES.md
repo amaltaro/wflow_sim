@@ -1,37 +1,36 @@
 # Dependencies
 
-This project has minimal dependencies and uses only Python standard library modules.
+Core simulation code can use mostly the standard library, but the repository also
+includes analysis scripts and tests that need a small set of third-party packages.
+See `requirements.txt` for exact pins.
 
-## Runtime Dependencies
+## Runtime (batch / examples)
 
-**None required** - The project uses only Python standard library modules:
-- `json` - JSON file handling
-- `logging` - Logging functionality  
-- `typing` - Type hints
-- `dataclasses` - Data classes
-- `pathlib` - Path handling
-- `time` - Time functions
+- **`networkx`** – graph utilities where used
+- **`numpy`**, **`pandas`**, **`matplotlib`** – analysis scripts under `scripts/`
+  (e.g. failure rate and workflow-type sensitivity plots) and any test that imports
+  those modules
 
-## Optional Dependencies
+## Development and testing
 
-For development and testing:
-- `pytest>=7.0.0` - Testing framework
+- **`pytest>=7.0.0`**
 
 ## Installation
 
-### Basic Usage
-No installation required - just run the scripts directly:
-```bash
-python examples/metrics_example.py
-```
-
-### With Testing
-If you want to run the tests:
 ```bash
 pip install -r requirements.txt
+```
+
+### Tests
+
+```bash
 pytest tests/ -v
 ```
 
+**CI** (`.github/workflows/test.yml`) installs `requirements.txt` before `pytest`, so
+everything listed there must cover test imports (including `failure_rate_analysis` →
+`matplotlib`).
+
 ## Python Version
 
-Requires Python 3.8 or higher (for dataclasses and typing features).
+Use **Python 3.10+** in practice; CI uses **3.12** (see the workflow file).
