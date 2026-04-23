@@ -257,7 +257,8 @@ analyze-workflow-type-sensitivity:
 		$(PYTHON) scripts/workflow_type_sensitivity.py \
 			$(RESULTS_DIR) \
 			12h \
-			$$failure_rate || exit 1; \
+			$$failure_rate \
+			--workflow-types $(USE_CASES) || exit 1; \
 		echo ""; \
 	done
 	@echo "Workflow type sensitivity analysis completed!"
@@ -290,20 +291,23 @@ analyze-target-job-length:
 	@echo "All target job length optimization analyses completed!"
 
 # Analyze data transfer rate sensitivity (run after simulate-all or simulate-data-transfer-rate).
-# Reads from unified tree $(RESULTS_DIR)/.../12h/<fr>/<data_rate>/, writes to results/analysis/data_transfer_rate/<fr>/
+# Reads from unified tree $(RESULTS_DIR)/.../12h/<fr>/<data_rate>/
+# Writes under results/analysis/data_transfer_rate/ (default path from script: sequential|fork|<fr>/
+#   when USE_CASES implies case1_real or fork_real, see data_transfer_rate_analysis.py).
 # Runs for failure rates: fr0 (0%), fr5 (5%)
 .PHONY: analyze-data-transfer-rate
 analyze-data-transfer-rate:
 	@echo "Starting data transfer rate sensitivity analysis"
 	@echo "Input: $(RESULTS_DIR) (12h, fr0 & fr5, all data rates)"
-	@echo "Output: results/analysis/data_transfer_rate/<failure_rate>/"
+	@echo "Use cases: $(USE_CASES)"
+	@echo "Output: default from script (e.g. .../sequential/<fr>/ or .../fork/<fr>/)"
 	@echo ""
 	@for failure_rate in fr0 fr5; do \
 		echo "*** Failure rate: $$failure_rate ***"; \
 		$(PYTHON) scripts/data_transfer_rate_analysis.py \
 			$(RESULTS_DIR) \
 			--failure-rate $$failure_rate \
-			--output-dir results/analysis/data_transfer_rate/$$failure_rate || exit 1; \
+			--workflow-types $(USE_CASES) || exit 1; \
 		echo ""; \
 	done
 	@echo "Data transfer rate analysis completed!"
