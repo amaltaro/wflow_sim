@@ -128,7 +128,11 @@ python scripts/analyze_throughput_drivers.py results/sim/others/case1_real/12h/f
 
 ## Output directory schema
 
-Outputs follow the same schema as other analysis scripts:
+Outputs go under a path that mirrors the simulation tree (use case, then time, failure
+rate, data rate). **Unlike** the workflow type sensitivity and data transfer rate
+analyses, there is **no** extra `sequential` or `fork` folder under
+`results/analysis/construction_metrics/`; the first component is always the workflow
+use case (e.g. `case1_real` or `fork_real`).
 
 ```
 results/analysis/construction_metrics/<workflow_type>/<target_job_length>/<failure_rate>/<data_rate>/
