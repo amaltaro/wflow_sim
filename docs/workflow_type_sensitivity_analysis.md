@@ -49,7 +49,11 @@ python scripts/workflow_type_sensitivity.py \
 - `target_job_length`: Target job length (e.g., `12h`, `15m`, `24h`)
 - `failure_rate`: Failure rate directory (e.g., `fr0`, `fr10`)
 - `--workflow-types`: Optional list of workflow types to analyze (default: `case1_real case2_homo case3_hetero`)
-- `--output-dir`: Optional output directory (default: `results/analysis/workflow_type_sensitivity/{target_job_length}/{failure_rate}`)
+- `--output-dir`: Optional. If omitted, output goes under
+  `results/analysis/workflow_type_sensitivity/`: if `case1_real` is among
+  `--workflow-types`, use `sequential/{target_job_length}/{failure_rate}`; else
+  if `fork_real` is present, use `fork/{target_job_length}/{failure_rate}`; else
+  `{target_job_length}/{failure_rate}` with no `sequential`/`fork` segment.
 
 ### Examples
 
@@ -93,10 +97,11 @@ make analyze-workflow-type-sensitivity
 
 ## Output Location
 
-Results are saved to:
-```
-results/analysis/workflow_type_sensitivity/{target_job_length}/{failure_rate}/
-```
+Default root is `results/analysis/workflow_type_sensitivity/`, then a family
+subfolder when the workflow set is unambiguous: `sequential/…` (sequential
+family includes `case1_real`) or `fork/…` (fork family with `fork_real` and not
+`case1_real`); otherwise `…/{target_job_length}/{failure_rate}/` with no
+`sequential` or `fork` in the path.
 
 This structure separates cross-dimensional analysis outputs from standard simulation results (`results/sim/`) and standard visualizations (`results/vis/`).
 

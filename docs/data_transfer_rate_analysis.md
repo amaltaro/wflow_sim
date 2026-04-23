@@ -6,7 +6,7 @@ This document describes the data transfer rate sensitivity analysis, which evalu
 
 **Analysis Type**: Data Transfer Rate Sensitivity
 
-- **Fixed Dimensions**: 12h target job length, 0% failure rate (fr0), all 3 workflow types
+- **Fixed Dimensions**: 12h target job length, chosen failure rate (e.g. fr0), workflow types from CLI
 - **Variable Dimension**: network data transfer rate (10, 100, 1000, 10000 MB/s)
 - **Compare**: Const 1, Const 16, and best hybrid across data rates
 - **Primary Metric**: Event throughput
@@ -67,7 +67,7 @@ The script looks for `base_path/<workflow_type>/12h/fr0/<rate_dir>/*.json` for e
 - `base_path`: Base path to simulation results containing workflow-type subdirs (e.g. `results/sim/others`)
 - `--rate-dirs`: Rate directory names (default: `10MBps 100MBps 1GBps 10GBps`)
 - `--workflow-types`: Workflow types to analyze (default: `case1_real case2_homo case3_hetero`)
-- `--output-dir`: Output directory (default: `results/analysis/data_transfer_rate`)
+- `--output-dir`: Optional. If omitted, output goes under `results/analysis/data_transfer_rate/`: `sequential/<failure_rate>/` if `case1_real` is in `--workflow-types`, else `fork/<failure_rate>/` if `fork_real` is present, else `<failure_rate>/` with no `sequential`/`fork` segment
 - `--failure-rate`: Failure rate directory, e.g. fr0, fr5 (default: fr0)
 
 ### Example
@@ -96,11 +96,10 @@ make analyze-data-transfer-rate   # reads 12h/fr0/<rate_dir> from unified tree
 
 ## Output Location
 
-Results are saved under:
-
-```
-results/analysis/data_transfer_rate/
-```
+Default root is `results/analysis/data_transfer_rate/`, then a family subfolder when the
+workflow set matches: `sequential/<failure_rate>/` (includes `case1_real`) or
+`fork/<failure_rate>/` (`fork_real` and not `case1_real`); otherwise
+`<failure_rate>/` only. Override with `--output-dir`.
 
 ## Output Files
 
@@ -109,7 +108,7 @@ The script generates:
 ### Visualizations
 
 1. **`throughput_vs_data_transfer_rate.png`**
-   - Three panels (one per workflow type): event throughput vs. data transfer rate (log scale)
+   - One panel per requested workflow type (with data): event throughput vs. data transfer rate (log scale)
    - Const 1, Const 16, and best hybrid; best hybrid construction number annotated
    - Shows how throughput changes with network overhead assumption
 
