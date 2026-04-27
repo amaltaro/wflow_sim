@@ -17,8 +17,8 @@ ifeq ($(WORKFLOW_PRESET),fork)
   USE_CASES := fork_real fork_homo fork_hetero
   WALLCLOCK_TIMES := 7200 14400 28800 43200 86400
 else
-  # sequential templates (default): 15m–24h (8 target lengths) — case1/case2/case3
-  USE_CASES := case1_real case2_homo case3_hetero
+  # sequential templates (default): 15m–24h (8 target lengths) — seq_real / seq_homo / seq_hetero
+  USE_CASES := seq_real seq_homo seq_hetero
   WALLCLOCK_TIMES := 900 1800 3600 7200 14400 28800 43200 86400
 endif
 
@@ -76,7 +76,7 @@ help:
 	@echo "Workflow family: WORKFLOW_PRESET=sequential (default) or fork"
 	@echo "Customize by setting variables, e.g.:"
 	@echo "  make all WORKFLOW_PRESET=fork"
-	@echo "  make all USE_CASES='case1_real case2_homo'   # overrides preset"
+	@echo "  make all USE_CASES='seq_real seq_homo'   # overrides preset"
 	@echo "  make simulate-all FAILURE_RATES='0 5 10'"
 
 # Set up the project environment
@@ -118,7 +118,7 @@ build-workflows:
 .PHONY: run
 run:
 	@echo "Running workflow simulation..."
-	$(PYTHON) -m src.workflow_runner --target-wallclock-time $(TARGET_WALLCLOCK_TIME) --input-workflow-path templates/others/case1_real/case1_real_const_001.json
+	$(PYTHON) -m src.workflow_runner --target-wallclock-time $(TARGET_WALLCLOCK_TIME) --input-workflow-path templates/others/seq_real/seq_real_const_001.json
 
 # Run simulations for all configured use cases
 # All simulations include overhead (taskset bootstrap and remote I/O).
@@ -293,7 +293,7 @@ analyze-target-job-length:
 # Analyze data transfer rate sensitivity (run after simulate-all or simulate-data-transfer-rate).
 # Reads from unified tree $(RESULTS_DIR)/.../12h/<fr>/<data_rate>/
 # Writes under results/analysis/data_transfer_rate/ (default path from script: sequential|fork|<fr>/
-#   when USE_CASES implies case1_real or fork_real, see data_transfer_rate_analysis.py).
+#   when USE_CASES implies seq_real or fork_real, see data_transfer_rate_analysis.py).
 # Runs for failure rates: fr0 (0%), fr5 (5%)
 .PHONY: analyze-data-transfer-rate
 analyze-data-transfer-rate:

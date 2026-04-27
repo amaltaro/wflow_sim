@@ -1059,8 +1059,8 @@ def _get_output_path(input_path: str,
 
     # Extract case name and preserve intermediate directories (e.g., "others")
     # Path examples:
-    #   - "others/case1_real/case1_real_const_001.json" -> case_name="case1_real", intermediate="others"
-    #   - "case1_real/case1_real_const_001.json" -> case_name="case1_real", intermediate=None
+    #   - "others/seq_real/seq_real_const_001.json" -> case_name="seq_real", intermediate="others"
+    #   - "seq_real/seq_real_const_001.json" -> case_name="seq_real", intermediate=None
     if len(relative_path.parts) >= 2:
         # Path has at least one parent directory
         case_name = relative_path.parts[-2]  # Get parent directory name (the case name)
