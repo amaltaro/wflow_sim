@@ -8,7 +8,7 @@ types to identify which types benefit most from hybrid compositions.
 
 Analysis: Workflow Type Sensitivity (Comparison #2)
 - Fixed: target_job_length + failure_rate
-- Variable: workflow_type (case1_real, case2_homo, case3_hetero)
+- Variable: workflow_type (seq_real, seq_homo, seq_hetero)
 - Compare: most grouped, most ungrouped, and best hybrid across workflow types
   (see :mod:`composition_extremes`)
 - Primary Metric: event_throughput
@@ -54,12 +54,12 @@ def _default_workflow_sensitivity_output_dir(
 ) -> str:
     """Under results/analysis/workflow_type_sensitivity, use family subdirs when clear.
 
-    If ``case1_real`` is in *workflow_types*, use ``.../sequential/{target}/{fr}``.
+    If ``seq_real`` is in *workflow_types*, use ``.../sequential/{target}/{fr}``.
     Else if ``fork_real`` is in *workflow_types*, use ``.../fork/{target}/{fr}``.
     Otherwise use ``.../{target}/{fr}`` (no extra segment).
     """
     root = "results/analysis/workflow_type_sensitivity"
-    if "case1_real" in workflow_types:
+    if "seq_real" in workflow_types:
         return f"{root}/sequential/{target_job_length}/{failure_rate}"
     if "fork_real" in workflow_types:
         return f"{root}/fork/{target_job_length}/{failure_rate}"
@@ -113,7 +113,7 @@ def collect_data_from_workflow_types(base_path: str,
 
     Args:
         base_path: Base path to results directory (e.g., 'results/sim/others')
-        workflow_types: List of workflow types (e.g., ['case1_real', 'case2_homo', 'case3_hetero'])
+        workflow_types: List of workflow types (e.g., ['seq_real', 'seq_homo', 'seq_hetero'])
         target_job_length: Target job length (e.g., '12h')
         failure_rate: Failure rate directory (e.g., 'fr0')
         data_rate: Data transfer rate directory (e.g., '100MBps')
@@ -676,15 +676,15 @@ def main():
     parser.add_argument('--data-rate', type=str, default='100MBps',
                        help='Data transfer rate directory (default: 100MBps)')
     parser.add_argument('--workflow-types', type=str, nargs='+',
-                       default=['case1_real', 'case2_homo', 'case3_hetero'],
-                       help='Workflow types to analyze (default: case1_real case2_homo case3_hetero)')
+                       default=['seq_real', 'seq_homo', 'seq_hetero'],
+                       help='Workflow types to analyze (default: seq_real seq_homo seq_hetero)')
     parser.add_argument(
         "--output-dir",
         type=str,
         default=None,
         help=(
             "Output directory (default: under results/analysis/workflow_type_sensitivity: "
-            ".../sequential/.../ if case1_real is in --workflow-types, else "
+            ".../sequential/.../ if seq_real is in --workflow-types, else "
             ".../fork/.../ if fork_real, else .../<target_job_length>/<failure_rate> without "
             "a family subdir)"
         ),

@@ -918,7 +918,7 @@ def find_simulation_files(directory_path: str) -> List[str]:
     """Find all JSON simulation files in a directory.
 
     This function recursively searches for JSON files, including in subdirectories
-    with wallclock time suffixes (e.g., case1_real_12h, case1_real_24h).
+    with wallclock time suffixes (e.g., seq_real_12h, seq_real_24h).
     """
     directory = Path(directory_path)
     if not directory.exists():

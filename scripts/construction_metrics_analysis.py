@@ -20,7 +20,7 @@ network_transfer_mb_per_event (lower is better for the last three; normalized so
 Output directory follows the same schema as other analysis scripts: output goes to
 results/analysis/construction_metrics and is suffixed by workflow type, target job
 length, failure rate and data rate (e.g. results/analysis/construction_metrics/
-case1_real/12h/fr5/100MBps). When --output-dir is omitted, this path is derived
+seq_real/12h/fr5/100MBps). When --output-dir is omitted, this path is derived
 from the simulation directory path when it matches the standard sim tree.
 """
 
@@ -135,7 +135,7 @@ def load_scenario_metrics(simulation_dir: str) -> Tuple[List[Dict[str, Any]], Li
         metrics = data.get('metrics', {})
         comp = metrics.get('composition_number')
         if comp is None:
-            # Fallback: case1_real_const_003.json -> 3
+            # Fallback: seq_real_const_003.json -> 3
             stem = fp.stem
             if '_const_' in stem:
                 try:
@@ -451,7 +451,7 @@ def main() -> None:
     parser.add_argument(
         'simulation_dir',
         type=str,
-        help="Path to scenario directory (e.g. results/sim/others/case1_real/1h/fr1/100MBps)",
+        help="Path to scenario directory (e.g. results/sim/others/seq_real/1h/fr1/100MBps)",
     )
     parser.add_argument(
         '--output-dir',
@@ -464,7 +464,7 @@ def main() -> None:
         '--scenario-label',
         type=str,
         default=None,
-        help="Optional label for plot titles (e.g. 'case1_real 1h fr1 100MBps')",
+        help="Optional label for plot titles (e.g. 'seq_real 1h fr1 100MBps')",
     )
     parser.add_argument(
         '--policy',

@@ -103,7 +103,7 @@ def main() -> None:
     parser.add_argument(
         'simulation_dir',
         type=str,
-        help="Scenario directory (e.g. results/sim/others/case1_real/12h/fr5/100MBps)",
+        help="Scenario directory (e.g. results/sim/others/seq_real/12h/fr5/100MBps)",
     )
     args = parser.parse_args()
 

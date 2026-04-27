@@ -250,7 +250,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "-s",
         type=Path,
         required=True,
-        help="Path to the compositions summary JSON (e.g. case1_real_compositions_summary.json)",
+        help="Path to the compositions summary JSON (e.g. seq_real_compositions_summary.json)",
     )
     parser.add_argument(
         "--output-dir",

@@ -92,7 +92,7 @@ def collect_data_from_directories(
 
     Args:
         base_path: Base path to results directory (e.g., 'results/sim/others')
-        workflow_type: Workflow type (e.g., 'case1_real')
+        workflow_type: Workflow type (e.g., 'seq_real')
         target_job_length: Target job length (e.g., '12h')
         data_rate: Data transfer rate directory (e.g., '100MBps')
 
@@ -686,7 +686,7 @@ def main():
     parser.add_argument('base_path', type=str,
                        help='Base path to results directory (e.g., results/sim/others)')
     parser.add_argument('workflow_type', type=str,
-                       help='Workflow type (e.g., case1_real)')
+                       help='Workflow type (e.g., seq_real)')
     parser.add_argument('target_job_length', type=str,
                        help='Target job length (e.g., 12h)')
     parser.add_argument('--data-rate', type=str, default='100MBps',

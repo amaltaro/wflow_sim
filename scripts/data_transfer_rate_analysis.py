@@ -34,7 +34,7 @@ RATE_DIRS = ['10MBps', '100MBps', '1GBps', '10GBps']
 RATE_MBPS = [10, 100, 1000, 10000]
 TARGET_JOB_LENGTH = '12h'
 FAILURE_RATE = 'fr0'
-WORKFLOW_TYPES = ['case1_real', 'case2_homo', 'case3_hetero']
+WORKFLOW_TYPES = ['seq_real', 'seq_homo', 'seq_hetero']
 
 
 def _default_data_transfer_output_dir(
@@ -43,7 +43,7 @@ def _default_data_transfer_output_dir(
 ) -> str:
     """Default under results/analysis/data_transfer_rate/ (see workflow_type_sensitivity)."""
     root = "results/analysis/data_transfer_rate"
-    if "case1_real" in workflow_types:
+    if "seq_real" in workflow_types:
         return f"{root}/sequential/{failure_rate}"
     if "fork_real" in workflow_types:
         return f"{root}/fork/{failure_rate}"
@@ -473,7 +473,7 @@ def main():
         default=None,
         help=(
             'Output directory (default: under results/analysis/data_transfer_rate/: '
-            '.../sequential/<failure_rate>/ if case1_real in --workflow-types, else '
+            '.../sequential/<failure_rate>/ if seq_real in --workflow-types, else '
             '.../fork/<failure_rate>/ if fork_real, else .../<failure_rate>/)'
         ),
     )
