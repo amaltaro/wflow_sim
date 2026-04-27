@@ -12,7 +12,7 @@ from plot_construction_groups_overview import build_group_id_matrix
 
 def test_build_group_id_matrix_happy_path() -> None:
     summary = {
-        "template_name": "case1_real",
+        "template_name": "seq_real",
         "total_compositions": 2,
         "compositions": [
             {
@@ -32,7 +32,7 @@ def test_build_group_id_matrix_happy_path() -> None:
     }
 
     matrix = build_group_id_matrix(summary)
-    assert matrix.template_name == "case1_real"
+    assert matrix.template_name == "seq_real"
     assert matrix.composition_numbers == [1, 2]
     assert matrix.taskset_names == ["Taskset1", "Taskset2"]
     assert matrix.group_id_matrix == [["group_0", "group_0"], ["group_0", "group_1"]]
