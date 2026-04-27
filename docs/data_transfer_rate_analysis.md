@@ -27,7 +27,7 @@ Simulations use the **unified** results structure (data transfer rate is a dimen
 
 - **Target job length**: 12h
 - **Failure rate**: 0% (fr0)
-- **Workflow types**: case1_real, case2_homo, case3_hetero
+- **Workflow types**: seq_real, seq_homo, seq_hetero
 - **Data transfer rates**: 10 MB/s, 100 MB/s, 1 GB/s, 10 GB/s
 - **Output organization**: `results/sim/others/<workflow_type>/12h/fr0/<rate_dir>/*.json`  
   (`rate_dir` is one of `10MBps`, `100MBps`, `1GBps`, `10GBps`)
@@ -38,7 +38,7 @@ Rate directory names use uppercase B (MBps/GBps = bytes per second) to avoid con
 
 Either run the full suite (all times, failure rates, and data rates) or only the 12h+fr0+4 rates subset:
 
-- **Full suite**: `make simulate-all` — writes to `results/sim/others/<case>/<time>/fr<fr>/<data_rate>/`. Which cases and which target job lengths are simulated is controlled by **`WORKFLOW_PRESET`**: `sequential` (default, `case1_real` / `case2_homo` / `case3_hetero` and eight wall times) or `fork` (`fork_real` / `fork_homo` / `fork_hetero` and five wall times). See the main [README](../README.md#batch-processing-with-makefile) (section *Workflow preset*).
+- **Full suite**: `make simulate-all` — writes to `results/sim/others/<case>/<time>/fr<fr>/<data_rate>/`. Which cases and which target job lengths are simulated is controlled by **`WORKFLOW_PRESET`**: `sequential` (default, `seq_real` / `seq_homo` / `seq_hetero` and eight wall times) or `fork` (`fork_real` / `fork_homo` / `fork_hetero` and five wall times). See the main [README](../README.md#batch-processing-with-makefile) (section *Workflow preset*).
 - **Data transfer rate subset only (12h, fr0, 4 rates)**: `make simulate-data-transfer-rate` — same structure, fewer combinations
 
 Example single run (10 MB/s):
@@ -48,8 +48,8 @@ python -m src.workflow_runner \
   --target-wallclock-time 43200 \
   --failure-rate 0 \
   --data-transfer-rate 10 \
-  --input-workflow-path templates/others/case1_real/case1_real_const_001.json
-# Result: results/sim/others/case1_real/12h/fr0/10MBps/case1_real_const_001.json
+  --input-workflow-path templates/others/seq_real/seq_real_const_001.json
+# Result: results/sim/others/seq_real/12h/fr0/10MBps/seq_real_const_001.json
 ```
 
 ## Running the Analysis
@@ -66,8 +66,8 @@ The script looks for `base_path/<workflow_type>/12h/fr0/<rate_dir>/*.json` for e
 
 - `base_path`: Base path to simulation results containing workflow-type subdirs (e.g. `results/sim/others`)
 - `--rate-dirs`: Rate directory names (default: `10MBps 100MBps 1GBps 10GBps`)
-- `--workflow-types`: Workflow types to analyze (default: `case1_real case2_homo case3_hetero`)
-- `--output-dir`: Optional. If omitted, output goes under `results/analysis/data_transfer_rate/`: `sequential/<failure_rate>/` if `case1_real` is in `--workflow-types`, else `fork/<failure_rate>/` if `fork_real` is present, else `<failure_rate>/` with no `sequential`/`fork` segment
+- `--workflow-types`: Workflow types to analyze (default: `seq_real seq_homo seq_hetero`)
+- `--output-dir`: Optional. If omitted, output goes under `results/analysis/data_transfer_rate/`: `sequential/<failure_rate>/` if `seq_real` is in `--workflow-types`, else `fork/<failure_rate>/` if `fork_real` is present, else `<failure_rate>/` with no `sequential`/`fork` segment
 - `--failure-rate`: Failure rate directory, e.g. fr0, fr5 (default: fr0)
 
 ### Example
@@ -97,8 +97,8 @@ make analyze-data-transfer-rate   # reads 12h/fr0/<rate_dir> from unified tree
 ## Output Location
 
 Default root is `results/analysis/data_transfer_rate/`, then a family subfolder when the
-workflow set matches: `sequential/<failure_rate>/` (includes `case1_real`) or
-`fork/<failure_rate>/` (`fork_real` and not `case1_real`); otherwise
+workflow set matches: `sequential/<failure_rate>/` (includes `seq_real`) or
+`fork/<failure_rate>/` (`fork_real` and not `seq_real`); otherwise
 `<failure_rate>/` only. Override with `--output-dir`.
 
 ## Output Files
@@ -131,13 +131,13 @@ The script generates:
 - Simulation result JSON files in the **unified** structure (`base_path` = e.g. `results/sim/others`):
   ```
   {base_path}/
-    case1_real/12h/fr0/10MBps/*.json
-    case1_real/12h/fr0/100MBps/*.json
-    case1_real/12h/fr0/1GBps/*.json
-    case1_real/12h/fr0/10GBps/*.json
-    case2_homo/12h/fr0/10MBps/
+    seq_real/12h/fr0/10MBps/*.json
+    seq_real/12h/fr0/100MBps/*.json
+    seq_real/12h/fr0/1GBps/*.json
+    seq_real/12h/fr0/10GBps/*.json
+    seq_homo/12h/fr0/10MBps/
     ...
-    case3_hetero/12h/fr0/10GBps/
+    seq_hetero/12h/fr0/10GBps/
   ```
 
 ## Notes

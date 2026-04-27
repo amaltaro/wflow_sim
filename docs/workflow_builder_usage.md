@@ -24,10 +24,10 @@ Additionally, all dependency paths between tasks in a group must stay within the
 
 ```bash
 # Basic usage
-python -m src.workflow_builder --input templates/generic/case1_real.json --output templates/others/case1_real
+python -m src.workflow_builder --input templates/generic/seq_real.json --output templates/others/seq_real
 
 # Short options
-python -m src.workflow_builder -i templates/generic/case2_homo.json -o templates/others/case2_homo
+python -m src.workflow_builder -i templates/generic/seq_homo.json -o templates/others/seq_homo
 
 # Show help
 python -m src.workflow_builder --help
@@ -42,10 +42,10 @@ python -m src.workflow_builder --help
 
 ## Output Files
 
-For input `templates/generic/case1_real.json` and output `templates/others/case1_real`:
+For input `templates/generic/seq_real.json` and output `templates/others/seq_real`:
 
-- **`case1_real_compositions_summary.json`** — Summary of all constructions (composition_number, num_groups, groups, group_details)
-- **`case1_real_const_001.json`**, **`case1_real_const_002.json`**, … — Individual workflow compositions with `GroupName` assigned per taskset
+- **`seq_real_compositions_summary.json`** — Summary of all constructions (composition_number, num_groups, groups, group_details)
+- **`seq_real_const_001.json`**, **`seq_real_const_002.json`**, … — Individual workflow compositions with `GroupName` assigned per taskset
 
 Each composition file is a full workflow JSON that can be used directly by the workflow simulator.
 
@@ -57,7 +57,7 @@ Build generic workflows in one command:
 make build-workflows
 ```
 
-`USE_CASES` is set from **`WORKFLOW_PRESET`** in the `Makefile` (default **`sequential`**): `case1_real`, `case2_homo`, and `case3_hetero`. For the fork templates, run `make build-workflows WORKFLOW_PRESET=fork` (uses `fork_real`, `fork_homo`, `fork_hetero`). You can still pass `USE_CASES='...'` to override the list.
+`USE_CASES` is set from **`WORKFLOW_PRESET`** in the `Makefile` (default **`sequential`**): `seq_real`, `seq_homo`, and `seq_hetero`. For the fork templates, run `make build-workflows WORKFLOW_PRESET=fork` (uses `fork_real`, `fork_homo`, `fork_hetero`). You can still pass `USE_CASES='...'` to override the list.
 
 ## Input Format
 

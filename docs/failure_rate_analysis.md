@@ -34,7 +34,7 @@ python scripts/failure_rate_analysis.py \
 ### Arguments
 
 - `base_path`: Base path to results directory (e.g., `results/sim/others`)
-- `workflow_type`: Workflow type (e.g., `case1_real`, `case2_homo`, `case3_hetero`)
+- `workflow_type`: Workflow type (e.g., `seq_real`, `seq_homo`, `seq_hetero`)
 - `target_job_length`: Target job length (e.g., `12h`, `15m`, `24h`)
 - `--output-dir`: Optional output directory (default: `results/analysis/failure_rate/{workflow_type}/{target_job_length}`)
 
@@ -43,10 +43,10 @@ python scripts/failure_rate_analysis.py \
 #### Single Analysis
 
 ```bash
-# Analyze case1_real at 12h
+# Analyze seq_real at 12h
 python scripts/failure_rate_analysis.py \
     results/sim/others \
-    case1_real \
+    seq_real \
     12h
 ```
 

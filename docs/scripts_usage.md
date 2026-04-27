@@ -91,7 +91,7 @@ Generates comparison plots from simulation results.
 
 **Usage**:
 ```bash
-python scripts/workflow_visualization.py results/sim/others/case1_real/ [--output-dir results/vis/others/case1_real]
+python scripts/workflow_visualization.py results/sim/others/seq_real/ [--output-dir results/vis/others/seq_real]
 ```
 
 **Output**: PNG plots for I/O patterns, resource utilization, and performance metrics comparison.
@@ -108,8 +108,8 @@ column is a taskset index, and contiguous blocks are colored and labeled by `gro
 **Usage**:
 ```bash
 python scripts/plot_construction_groups_overview.py \
-  --summary-json templates/others/case1_real/case1_real_compositions_summary.json \
-  --output-dir results/vis/others/case1_real/
+  --summary-json templates/others/seq_real/seq_real_compositions_summary.json \
+  --output-dir results/vis/others/seq_real/
 ```
 
 **Output**: Writes `<output-dir>/<template_name>_construction_groups_overview.png`.
@@ -162,5 +162,5 @@ Typical workflow for analyzing real vs simulated data:
 
 4. **Compare with simulated data**:
    ```bash
-   python scripts/workflow_visualization.py results/sim/others/case1_real/
+   python scripts/workflow_visualization.py results/sim/others/seq_real/
    ```

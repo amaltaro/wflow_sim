@@ -7,7 +7,7 @@ This document describes the workflow type sensitivity analysis script, which eva
 **Analysis Type**: Workflow Type Sensitivity (Comparison #2)
 
 - **Fixed Dimensions**: target_job_length + failure_rate
-- **Variable Dimension**: workflow_type (case1_real, case2_homo, case3_hetero)
+- **Variable Dimension**: workflow_type (seq_real, seq_homo, seq_hetero)
 - **Comparison**: Const 1, Const 16, and best hybrid across workflow types
 - **Primary Metric**: Event throughput
 - **Second Metric**: Network transfer per event (as tiebreaker)
@@ -16,15 +16,15 @@ This document describes the workflow type sensitivity analysis script, which eva
 
 The three workflow types differ in their resource characteristics:
 
-- **case1_real**: Mixed/realistic resource requirements
+- **seq_real**: Mixed/realistic resource requirements
   - Varied memory: 3000MB, 7000MB, 8000MB, 4000MB, 4000MB
   - Varied cores: 8, 4, 4, 2, 4
 
-- **case2_homo**: Homogeneous resource requirements
+- **seq_homo**: Homogeneous resource requirements
   - Uniform memory: 8000MB for all tasksets
   - Uniform cores: 8 for all tasksets
 
-- **case3_hetero**: Highly heterogeneous resource requirements
+- **seq_hetero**: Highly heterogeneous resource requirements
   - Extreme memory variation: 2000MB, 16000MB, 64000MB, 10000MB, 8000MB
   - Extreme core variation: 1, 8, 64, 4, 4
 
@@ -48,9 +48,9 @@ python scripts/workflow_type_sensitivity.py \
 - `base_path`: Base path to results directory (e.g., `results/sim/others`)
 - `target_job_length`: Target job length (e.g., `12h`, `15m`, `24h`)
 - `failure_rate`: Failure rate directory (e.g., `fr0`, `fr10`)
-- `--workflow-types`: Optional list of workflow types to analyze (default: `case1_real case2_homo case3_hetero`)
+- `--workflow-types`: Optional list of workflow types to analyze (default: `seq_real seq_homo seq_hetero`)
 - `--output-dir`: Optional. If omitted, output goes under
-  `results/analysis/workflow_type_sensitivity/`: if `case1_real` is among
+  `results/analysis/workflow_type_sensitivity/`: if `seq_real` is among
   `--workflow-types`, use `sequential/{target_job_length}/{failure_rate}`; else
   if `fork_real` is present, use `fork/{target_job_length}/{failure_rate}`; else
   `{target_job_length}/{failure_rate}` with no `sequential`/`fork` segment.
@@ -75,7 +75,7 @@ python scripts/workflow_type_sensitivity.py \
     results/sim/others \
     12h \
     fr0 \
-    --workflow-types case1_real case2_homo
+    --workflow-types seq_real seq_homo
 ```
 
 #### Different Failure Rates
@@ -99,8 +99,8 @@ make analyze-workflow-type-sensitivity
 
 Default root is `results/analysis/workflow_type_sensitivity/`, then a family
 subfolder when the workflow set is unambiguous: `sequential/…` (sequential
-family includes `case1_real`) or `fork/…` (fork family with `fork_real` and not
-`case1_real`); otherwise `…/{target_job_length}/{failure_rate}/` with no
+family includes `seq_real`) or `fork/…` (fork family with `fork_real` and not
+`seq_real`); otherwise `…/{target_job_length}/{failure_rate}/` with no
 `sequential` or `fork` in the path.
 
 This structure separates cross-dimensional analysis outputs from standard simulation results (`results/sim/`) and standard visualizations (`results/vis/`).
@@ -197,8 +197,8 @@ The script generates the following outputs in the specified output directory:
 
 1. **Generalizability**: Do hybrid constructions show benefits across all workflow types?
 2. **Workflow Type Sensitivity**: Which workflow types benefit most from hybrids?
-   - Heterogeneous workflows (case3_hetero) may benefit more due to resource diversity
-   - Homogeneous workflows (case2_homo) may show different patterns
+   - Heterogeneous workflows (seq_hetero) may benefit more due to resource diversity
+   - Homogeneous workflows (seq_homo) may show different patterns
 3. **Consistency**: Is the same hybrid construction best across all workflow types, or does it vary?
 4. **Improvement Magnitude**: How much better are hybrids compared to extremes for each workflow type?
 5. **Network Patterns**: How do network efficiency patterns differ across workflow types?

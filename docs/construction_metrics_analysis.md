@@ -20,7 +20,7 @@ resource utilization by letting you prioritize metrics via weights.
 ## Input
 
 - **Scenario directory**: Path to a directory containing exactly the 16 simulation
-  result JSONs (e.g. `case1_real_const_001.json` … `case1_real_const_016.json`).
+  result JSONs (e.g. `seq_real_const_001.json` … `seq_real_const_016.json`).
 - Typical path pattern:  
   `results/sim/others/<workflow_type>/<target_job_length>/<failure_rate>/<data_rate>/`
 
@@ -123,7 +123,7 @@ in the default score formula.
 **Usage:**
 
 ```bash
-python scripts/analyze_throughput_drivers.py results/sim/others/case1_real/12h/fr5/100MBps
+python scripts/analyze_throughput_drivers.py results/sim/others/seq_real/12h/fr5/100MBps
 ```
 
 ## Output directory schema
@@ -132,15 +132,15 @@ Outputs go under a path that mirrors the simulation tree (use case, then time, f
 rate, data rate). **Unlike** the workflow type sensitivity and data transfer rate
 analyses, there is **no** extra `sequential` or `fork` folder under
 `results/analysis/construction_metrics/`; the first component is always the workflow
-use case (e.g. `case1_real` or `fork_real`).
+use case (e.g. `seq_real` or `fork_real`).
 
 ```
 results/analysis/construction_metrics/<workflow_type>/<target_job_length>/<failure_rate>/<data_rate>/
 ```
 
 If you run the script with a scenario path under `results/sim/others/...`, the
-default output directory is derived automatically (e.g. from `.../case1_real/12h/fr5/100MBps`
-to `results/analysis/construction_metrics/case1_real/12h/fr5/100MBps`). You can
+default output directory is derived automatically (e.g. from `.../seq_real/12h/fr5/100MBps`
+to `results/analysis/construction_metrics/seq_real/12h/fr5/100MBps`). You can
 override with `--output-dir`.
 
 ## Output files
@@ -164,12 +164,12 @@ Examples:
 
 ```bash
 # Default output dir derived from scenario path
-python scripts/construction_metrics_analysis.py results/sim/others/case1_real/12h/fr5/100MBps
+python scripts/construction_metrics_analysis.py results/sim/others/seq_real/12h/fr5/100MBps
 
 # Explicit output dir and title label
-python scripts/construction_metrics_analysis.py results/sim/others/case1_real/12h/fr5/100MBps \
-  --output-dir results/analysis/construction_metrics/case1_real/12h/fr5/100MBps \
-  --scenario-label "case1_real 12h fr5 100MBps"
+python scripts/construction_metrics_analysis.py results/sim/others/seq_real/12h/fr5/100MBps \
+  --output-dir results/analysis/construction_metrics/seq_real/12h/fr5/100MBps \
+  --scenario-label "seq_real 12h fr5 100MBps"
 ```
 
 Options:

@@ -56,19 +56,19 @@ python scripts/target_job_length_analysis.py \
 ### Arguments
 
 - `base_path`: Base path to results directory (e.g., `results/sim/others`)
-- `workflow_type`: Workflow type (e.g., `case1_real`)
+- `workflow_type`: Workflow type (e.g., `seq_real`)
 - `failure_rate`: Failure rate directory (e.g., `fr0`)
 - `--output-dir`: Optional output directory (default: `results/analysis/target_job_length/{workflow_type}/{failure_rate}`)
 
 ### Examples
 
-#### Single Analysis (Recommended: case1_real, fr0)
+#### Single Analysis (Recommended: seq_real, fr0)
 
 ```bash
-# Analyze case1_real at fr0
+# Analyze seq_real at fr0
 python scripts/target_job_length_analysis.py \
     results/sim/others \
-    case1_real \
+    seq_real \
     fr0
 ```
 
@@ -78,12 +78,12 @@ python scripts/target_job_length_analysis.py \
 # Analyze different workflow types
 python scripts/target_job_length_analysis.py \
     results/sim/others \
-    case2_homo \
+    seq_homo \
     fr0
 
 python scripts/target_job_length_analysis.py \
     results/sim/others \
-    case3_hetero \
+    seq_hetero \
     fr0
 ```
 
@@ -93,7 +93,7 @@ python scripts/target_job_length_analysis.py \
 # Analyze with 25% failure rate (fr25) to see impact of failures on target job length optimization
 python scripts/target_job_length_analysis.py \
     results/sim/others \
-    case1_real \
+    seq_real \
     fr25
 
 # Compare fr0 vs fr25 to understand how failures affect time-dependent patterns
@@ -103,7 +103,7 @@ python scripts/target_job_length_analysis.py \
 
 ```bash
 # Run analysis for every use case in USE_CASES (from Makefile: default WORKFLOW_PRESET=sequential
-# → case1_real, case2_homo, case3_hetero; use WORKFLOW_PRESET=fork for fork_* after sims exist)
+# → seq_real, seq_homo, seq_hetero; use WORKFLOW_PRESET=fork for fork_* after sims exist)
 # at fr0, fr5, and fr25
 make analyze-target-job-length
 ```
@@ -283,7 +283,7 @@ The script generates the following outputs in the specified output directory:
 ## Recommended Configuration
 
 For comprehensive analysis, use:
-- **Workflow Types**: All use cases in `USE_CASES` (default **`WORKFLOW_PRESET=sequential`**: `case1_real`, `case2_homo`, `case3_hetero`; or **`WORKFLOW_PRESET=fork`**: `fork_real`, `fork_homo`, `fork_hetero`). The Makefile target loops over that list when results exist.
+- **Workflow Types**: All use cases in `USE_CASES` (default **`WORKFLOW_PRESET=sequential`**: `seq_real`, `seq_homo`, `seq_hetero`; or **`WORKFLOW_PRESET=fork`**: `fork_real`, `fork_homo`, `fork_hetero`). The Makefile target loops over that list when results exist.
 - **Failure Rates**: The Makefile runs `fr0`, `fr5`, and `fr25` (not only fr0 and fr25).
 
 **Baseline Analysis (fr0)**:
