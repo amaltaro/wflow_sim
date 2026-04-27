@@ -23,9 +23,9 @@ DAGFlowSim provides a powerful workflow simulation engine that:
 ├── docs/             # Detailed documentation
 ├── templates/        # JSON workflow templates
 │   ├── generic/      # Generic workflow descriptions (input for workflow_builder)
-│   │   └── case1_real.json, case2_homo.json, case3_hetero.json
+│   │   └── seq_real.json, seq_homo.json, seq_hetero.json
 │   ├── others/       # Group-based compositions (output of workflow_builder; input for simulator)
-│   │   └── case1_real/, case2_homo/, case3_hetero/, 3tasks_fullsim/, 5tasks_fullsim/
+│   │   └── seq_real/, seq_homo/, seq_hetero/, 3tasks_fullsim/, 5tasks_fullsim/
 │   ├── fork/         # Fork workflow patterns (3tasks)
 │   └── sequential/   # Sequential workflow patterns (3tasks)
 ├── results/          # Simulation, visualization, and analysis outputs
@@ -186,7 +186,7 @@ python src/workflow_runner.py --help
 
 ### Output Structure
 
-Single-run: results follow the input path under `results/sim/` (e.g. `templates/others/case1_real/...` → `results/sim/others/case1_real/...`). Batch runs use the unified structure described under Batch Processing.
+Single-run: results follow the input path under `results/sim/` (e.g. `templates/others/seq_real/...` → `results/sim/others/seq_real/...`). Batch runs use the unified structure described under Batch Processing.
 
 ## Batch Processing with Makefile
 
@@ -201,7 +201,7 @@ make all
 ```
 
 This will:
-1. Simulate all workflows in the configured use cases (see **Workflow preset** below; default is the sequential `case1_real` / `case2_homo` / `case3_hetero` set)
+1. Simulate all workflows in the configured use cases (see **Workflow preset** below; default is the sequential `seq_real` / `seq_homo` / `seq_hetero` set)
 2. Generate visualization diagrams for all simulation results
 
 ### Available Makefile Targets
@@ -214,7 +214,7 @@ make build-workflows         # Build all workflow constructions from generic tem
 make simulate-all            # All use cases × times × failure rates × data rates
 make visualize-all           # Visualizations for existing sim results
 make all                     # simulate-all + visualize-all
-make run                     # Single workflow (case1_real const_001, 12h)
+make run                     # Single workflow (seq_real const_001, 12h)
 
 # Analysis (run after simulate-all; writes to results/analysis/)
 make analyze-failure-rate
@@ -234,7 +234,7 @@ Batch targets (`build-workflows`, `simulate-all`, `visualize-all`, `all`, and se
 
 | `WORKFLOW_PRESET` | Use cases | Wallclock times (seconds) |
 |-------------------|-----------|---------------------------|
-| `sequential` (**default**) | `case1_real` `case2_homo` `case3_hetero` | `900 1800 3600 7200 14400 28800 43200 86400` (15m–24h) |
+| `sequential` (**default**) | `seq_real` `seq_homo` `seq_hetero` | `900 1800 3600 7200 14400 28800 43200 86400` (15m–24h) |
 | `fork` | `fork_real` `fork_homo` `fork_hetero` | `7200 14400 28800 43200 86400` (2h–24h) |
 
 Examples:
@@ -252,10 +252,10 @@ You can override the preset by setting `USE_CASES` (and optionally `WALLCLOCK_TI
 
 ```bash
 # Run only specific use cases
-make all USE_CASES='case1_real case2_homo'
+make all USE_CASES='seq_real seq_homo'
 
 # Run a single use case
-make all USE_CASES='case1_real'
+make all USE_CASES='seq_real'
 ```
 
 ### Configuration
