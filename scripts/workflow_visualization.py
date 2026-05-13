@@ -1,7 +1,7 @@
 import argparse
 import json
 import os
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 from collections import defaultdict
 from math import ceil
 from pprint import pformat
@@ -82,13 +82,8 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     # Create figure with 2x2 subplots for I/O patterns
     fig = plt.figure(figsize=(16, 12))
     gs = fig.add_gridspec(2, 2, height_ratios=[1, 1])
-
-    # Use custom labels if provided, otherwise default to Const 1, Const 2, ...
-    construction_labels = (
-        custom_labels
-        if custom_labels and len(custom_labels) >= len(all_simulation_data)
-        else [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
-    )
+    n_plot = len(all_simulation_data)
+    wc_xticks = [str(i + 1) for i in range(n_plot)]
 
     # Define consistent colors for each metric type
     colors = {
@@ -110,7 +105,7 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     ax1.set_ylabel("Data Volume per Event (MB)")
     ax1.set_title("Data Volume Analysis Per Event (including local read)")
     ax1.set_xticks(x)
-    ax1.set_xticklabels(construction_labels, rotation=45)
+    ax1.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax1.legend()
     ax1.grid(True)
 
@@ -125,7 +120,7 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     ax2.set_ylabel("Data Volume per Event (MB)")
     ax2.set_title("Data Volume Analysis Per Event")
     ax2.set_xticks(x)
-    ax2.set_xticklabels(construction_labels, rotation=45)
+    ax2.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax2.legend()
     ax2.grid(True)
 
@@ -162,7 +157,7 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     ax3.set_ylabel("Total Data Volume (GB)")
     ax3.set_title("Total Workflow Data Volume Analysis (including local read)")
     ax3.set_xticks(x)
-    ax3.set_xticklabels(construction_labels, rotation=45)
+    ax3.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax3.legend()
     ax3.grid(True)
 
@@ -195,7 +190,7 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     ax4.set_ylabel("Total Data Volume (GB)")
     ax4.set_title("Total Workflow Data Volume Analysis")
     ax4.set_xticks(x)
-    ax4.set_xticklabels(construction_labels, rotation=45)
+    ax4.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax4.legend()
     ax4.grid(True)
 
@@ -285,13 +280,8 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     # Create figure with 2x2 subplots for resource utilization
     fig = plt.figure(figsize=(16, 12))
     gs = fig.add_gridspec(2, 2, height_ratios=[1, 1])
-
-    # Use custom labels if provided, otherwise default to Const 1, Const 2, ...
-    construction_labels = (
-        custom_labels
-        if custom_labels and len(custom_labels) >= len(all_simulation_data)
-        else [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
-    )
+    n_plot = len(all_simulation_data)
+    wc_xticks = [str(i + 1) for i in range(n_plot)]
 
     # 1. Network Transfer Analysis
     ax1 = fig.add_subplot(gs[0, 0])
@@ -301,7 +291,7 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     ax1.set_ylabel("Network Transfer per Event (MB)")
     ax1.set_title("Network Transfer Analysis")
     ax1.set_xticks(x)
-    ax1.set_xticklabels(construction_labels, rotation=45)
+    ax1.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax1.grid(True)
 
     # 2. CPU Utilization Analysis
@@ -312,7 +302,7 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     ax2.set_ylabel("CPU Utilization Ratio")
     ax2.set_title("CPU Utilization Analysis")
     ax2.set_xticks(x)
-    ax2.set_xticklabels(construction_labels, rotation=45)
+    ax2.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax2.set_ylim(bottom=0)
     ax2.grid(True)
 
@@ -324,7 +314,7 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     ax3.set_ylabel("Memory Utilization Ratio")
     ax3.set_title("Memory Utilization Analysis")
     ax3.set_xticks(x)
-    ax3.set_xticklabels(construction_labels, rotation=45)
+    ax3.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax3.grid(True)
 
     # 4. Resource Cost Analysis
@@ -353,7 +343,7 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
 
     ax4.set_title("Overall Resource Cost Analysis")
     ax4.set_xticks(x)
-    ax4.set_xticklabels(construction_labels, rotation=45)
+    ax4.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax4.grid(True, alpha=0.3)
 
     # Combine legends from both axes
@@ -378,6 +368,10 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
     Plots:
     1. Performance vs Remote Write Efficiency
     2. Processing Efficiency Analysis (CPU Time per Event + CPU Utilization)
+
+    The right panel uses a shorter figure height. CPU time per event uses **tight,
+    zero-suppressed** y-limits (padding around min/max, floor at 0 when all values are
+    non-negative) so small bar differences are visible. X ticks are **1 … n** in plot order.
     """
     print(f"==> Creating performance metrics analysis for {len(all_simulation_data)} workflows")
 
@@ -415,16 +409,11 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
     cpu_time_per_event = np.array(cpu_time_per_event)
     cpu_utilization = np.array(cpu_utilization)
 
-    # Create figure with 1x2 subplots for performance metrics
-    fig = plt.figure(figsize=(16, 6))
+    # Create figure: half previous height for a compact two-panel row
+    fig = plt.figure(figsize=(16, 3))
     gs = fig.add_gridspec(1, 2, width_ratios=[1, 1])
-
-    # Use custom labels if provided, otherwise default to Const 1, Const 2, ...
-    construction_labels = (
-        custom_labels
-        if custom_labels and len(custom_labels) >= len(all_simulation_data)
-        else [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
-    )
+    n_plot = len(all_simulation_data)
+    wc_xticks = [str(i + 1) for i in range(n_plot)]
 
     # 1. Performance vs Remote Write Efficiency
     ax1 = fig.add_subplot(gs[0, 0])
@@ -460,14 +449,31 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
 
     # Plot CPU Utilization (line plot overlay)
     line = ax2_twin.plot(x, cpu_utilization, 'o-', color='#d62728',
-                         linewidth=2, markersize=6, label='CPU Utilization')
+                         linewidth=1.5, markersize=4, label='CPU Utilization')
     ax2_twin.set_ylabel("CPU Utilization Ratio", color='#d62728')
     ax2_twin.tick_params(axis='y', labelcolor='#d62728')
     ax2_twin.set_ylim(0, 1)  # Utilization is a ratio 0-1
 
+    # Tight y-limits on CPU time (not forced from 0) so similar bar heights separate visually
+    _cpu = np.asarray(cpu_time_per_event, dtype=float)
+    _cpu = _cpu[np.isfinite(_cpu)]
+    if _cpu.size > 0:
+        lo = float(np.min(_cpu))
+        hi = float(np.max(_cpu))
+        span = hi - lo
+        if span <= 0.0 or not np.isfinite(span):
+            mag = abs(hi) if hi != 0.0 else 1.0
+            span = max(mag * 0.05, 1e-12)
+        pad = max(span * 0.10, hi * 0.02, 1e-12)
+        bottom = max(0.0, lo - pad) if lo >= 0.0 else lo - pad
+        top = hi + pad
+        if bottom >= top:
+            top = bottom + max(span, 1e-9)
+        ax2.set_ylim(bottom, top)
+
     ax2.set_title("Processing Efficiency Analysis")
     ax2.set_xticks(x)
-    ax2.set_xticklabels(construction_labels, rotation=45)
+    ax2.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax2.grid(True, alpha=0.3)
 
     # Combine legends
@@ -506,14 +512,7 @@ def plot_turnaround_time_comparison(all_simulation_data: List[Dict],
     rows.sort(key=lambda r: r[0])
     turnaround_hours = np.array([r[1] / 3600.0 for r in rows])
     x = np.arange(len(rows))
-
-    construction_labels: List[str] = []
-    for r in rows:
-        _comp, _tt, orig_idx = r
-        if custom_labels and orig_idx < len(custom_labels):
-            construction_labels.append(custom_labels[orig_idx])
-        else:
-            construction_labels.append(f"Const {r[0]}")
+    wc_xticks = [str(i + 1) for i in range(len(rows))]
 
     fig, ax = plt.subplots(figsize=(14, 6))
     width = 0.65
@@ -522,7 +521,7 @@ def plot_turnaround_time_comparison(all_simulation_data: List[Dict],
     ax.set_ylabel("Turnaround Time (hours)")
     ax.set_title("Workflow Turnaround Time by Composition")
     ax.set_xticks(x)
-    ax.set_xticklabels(construction_labels, rotation=45, ha="right")
+    ax.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax.grid(True, axis="y", alpha=0.3)
     ax.set_ylim(bottom=0)
 
@@ -663,13 +662,8 @@ def plot_workflow_comparison(all_simulation_data: List[Dict],
     else:
         fig = plt.figure(figsize=(20, 20))
     gs = fig.add_gridspec(4, 2, height_ratios=[1, 1, 1, 1])  # Equal height ratios for all rows
-
-    # Use custom labels if provided, otherwise default to Const 1, Const 2, ...
-    construction_labels = (
-        custom_labels
-        if custom_labels and len(custom_labels) >= len(all_simulation_data)
-        else [f"Const {i+1}" for i, _ in enumerate(all_simulation_data)]
-    )
+    n_plot = len(all_simulation_data)
+    wc_xticks = [str(i + 1) for i in range(n_plot)]
 
     # Define consistent colors for each metric type
     colors = {
@@ -691,7 +685,7 @@ def plot_workflow_comparison(all_simulation_data: List[Dict],
     ax3.set_ylabel("Data Volume per Event (MB)")
     ax3.set_title("Data Volume Analysis Per Event")
     ax3.set_xticks(x)
-    ax3.set_xticklabels(construction_labels, rotation=45)
+    ax3.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax3.legend()
     ax3.grid(True)
 
@@ -706,7 +700,7 @@ def plot_workflow_comparison(all_simulation_data: List[Dict],
     ax2.set_ylabel("Data Volume per Event (MB)")
     ax2.set_title("Data Volume Analysis Per Event")
     ax2.set_xticks(x)
-    ax2.set_xticklabels(construction_labels, rotation=45)
+    ax2.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax2.legend()
     ax2.grid(True)
 
@@ -739,7 +733,7 @@ def plot_workflow_comparison(all_simulation_data: List[Dict],
     ax10.set_ylabel("Total Data Volume (GB)")
     ax10.set_title("Total Workflow Data Volume Analysis")
     ax10.set_xticks(x)
-    ax10.set_xticklabels(construction_labels, rotation=45)
+    ax10.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax10.legend()
     ax10.grid(True)
 
@@ -791,7 +785,7 @@ def plot_workflow_comparison(all_simulation_data: List[Dict],
     ax7.set_ylabel("Network Transfer per Event (MB)")
     ax7.set_title("Network Transfer Analysis")
     ax7.set_xticks(range(len(all_simulation_data)))
-    ax7.set_xticklabels(construction_labels, rotation=45)
+    ax7.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax7.grid(True)
 
     # 6. CPU Utilization Analysis
@@ -816,7 +810,7 @@ def plot_workflow_comparison(all_simulation_data: List[Dict],
     ax4.set_ylabel("CPU Utilization Ratio")
     ax4.set_title("CPU Utilization Analysis\n(Average CPU Usage / Allocated CPU ± Std Dev)")
     ax4.set_xticks(x)
-    ax4.set_xticklabels(construction_labels, rotation=45)
+    ax4.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax4.set_ylim(bottom=0)  # Set Y-axis to start at 0
     ax4.grid(True)
 
@@ -842,7 +836,7 @@ def plot_workflow_comparison(all_simulation_data: List[Dict],
     ax6.set_ylabel("Memory Utilization Ratio")
     ax6.set_title("Memory Utilization Analysis\n(Average Memory Occupancy ± Std Dev)")
     ax6.set_xticks(x)
-    ax6.set_xticklabels(construction_labels, rotation=45)
+    ax6.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax6.grid(True)
 
     # 8. Event Processing Analysis
@@ -855,11 +849,11 @@ def plot_workflow_comparison(all_simulation_data: List[Dict],
         events = [g.get('group_input_events', 0) * g.get('group_job_count', 1) for g in sim_groups]
         events_per_group.append(events)
 
-    ax5.boxplot(events_per_group, tick_labels=construction_labels)
+    ax5.boxplot(events_per_group, tick_labels=wc_xticks)
     ax5.set_xlabel("Workflow Construction")
     ax5.set_ylabel("Events per Group")
     ax5.set_title("Event Processing Distribution")
-    ax5.set_xticklabels(construction_labels, rotation=45)
+    ax5.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax5.grid(True)
 
     plt.tight_layout()
