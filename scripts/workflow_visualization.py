@@ -14,19 +14,63 @@ import pandas as pd
 import seaborn as sns
 from pathlib import Path
 
+from matplotlib.ticker import AutoMinorLocator
+
+
+def _legend_kwargs(**overrides: Any) -> Dict[str, Any]:
+    """Defaults for legends drawn over bars/points: light frame so data stays visible."""
+    kw: Dict[str, Any] = {"frameon": True, "fancybox": True, "framealpha": 0.38}
+    kw.update(overrides)
+    return kw
+
+
+def _style_stacked_total_data_volume_axis(ax: plt.Axes) -> None:
+    """Denser y-axis grid for stacked total-volume bars (no numeric labels on bars)."""
+    ax.set_axisbelow(True)
+    ax.yaxis.set_minor_locator(AutoMinorLocator(4))
+    ax.grid(True, axis="y", which="major", alpha=0.42)
+    ax.grid(True, axis="y", which="minor", alpha=0.24, linestyle=":")
+
+
+def _stacked_total_volume_scale_and_unit_from_max_mb(max_total_mb: float) -> tuple[float, str]:
+    """Scale stacked totals from MB into display units (binary 1024 steps).
+
+    Chooses among MB, GB, TB, PB so the largest full-stack height maps to a readable
+    magnitude. ``max_total_mb`` is the maximum over constructions of the sum of
+    stacked segment sizes in megabytes.
+
+    Returns
+    -------
+    scale
+        Multiply segment values in **MB** by this to get the plotted number.
+    unit
+        One of ``MB``, ``GB``, ``TB``, ``PB``.
+    """
+    labels = ("MB", "GB", "TB", "PB")
+    if not np.isfinite(max_total_mb) or max_total_mb <= 0:
+        return 1.0, "MB"
+    exp = 0
+    while exp < len(labels) - 1 and max_total_mb >= 1024.0 ** (exp + 1):
+        exp += 1
+    return 1.0 / (1024.0**exp), labels[exp]
+
 
 def plot_io_patterns(all_simulation_data: List[Dict],
                      sim_groups: List[Dict],
                      jobs: List[Dict],
                      output_dir: str = "plots",
                      custom_labels: List[str] = None):
-    """Create I/O pattern analysis plots for workflow comparison.
+    """Create I/O pattern analysis as two figures (2×1 stacked subplots).
 
-    Plots:
-    1. Data Volume Analysis Per Event (with Local Read)
-    2. Data Flow Analysis (Remote Read, Local Write, Remote Write)
-    3. Total Data Volume Analysis (Including Local Read)
-    4. Total Data Volume Analysis (Original version)
+    Saves:
+
+    1. **io_patterns_comparison_local.png**: per-event (4 metrics) above stacked totals
+       including local read.
+    2. **io_patterns_comparison_nonlocal.png**: per-event (3 metrics) above stacked totals
+       without local read.
+
+    Stacked **total** panels sum workflow totals in **MB** and pick **MB / GB / TB / PB**
+    on the y-axis using binary **1024** steps from the tallest stack.
     """
     print(f"==> Creating I/O pattern analysis for {len(all_simulation_data)} workflows")
 
@@ -79,126 +123,164 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     write_local_pevt = np.array(write_local_pevt)
     read_local_pevt = np.array(read_local_pevt)
 
-    # Create figure with 2x2 subplots for I/O patterns
-    fig = plt.figure(figsize=(16, 12))
-    gs = fig.add_gridspec(2, 2, height_ratios=[1, 1])
+    fig_w = 9.0
+    fig_h = 6.0
     n_plot = len(all_simulation_data)
     wc_xticks = [str(i + 1) for i in range(n_plot)]
+    x = np.arange(n_plot)
 
-    # Define consistent colors for each metric type
     colors = {
-        'Local Read': '#1f77b4',    # Blue
-        'Remote Read': '#ff7f0e',   # Orange
-        'Local Write': '#2ca02c',   # Green
-        'Remote Write': '#d62728'   # Red
+        "Local Read": "#1f77b4",
+        "Remote Read": "#ff7f0e",
+        "Local Write": "#2ca02c",
+        "Remote Write": "#d62728",
     }
 
-    # 1. Data Volume Analysis Per Event (with Local Read)
-    ax1 = fig.add_subplot(gs[0, 0])
-    x = np.arange(len(all_simulation_data))
+    # --- Figure 1: local read included (per-event on top, stacked totals below) ---
+    fig1, (ax1, ax3) = plt.subplots(2, 1, figsize=(fig_w, fig_h), layout="constrained", sharex=True)
+
     width = 0.2
-    ax1.bar(x - 1.5*width, read_local_pevt, width, label='Local Read', color=colors['Local Read'])
-    ax1.bar(x - 0.5*width, read_remote_pevt, width, label='Remote Read', color=colors['Remote Read'])
-    ax1.bar(x + 0.5*width, write_local_pevt, width, label='Local Write', color=colors['Local Write'])
-    ax1.bar(x + 1.5*width, write_remote_pevt, width, label='Remote Write', color=colors['Remote Write'])
+    ax1.bar(x - 1.5 * width, read_local_pevt, width, label="Local Read", color=colors["Local Read"])
+    ax1.bar(x - 0.5 * width, read_remote_pevt, width, label="Remote Read", color=colors["Remote Read"])
+    ax1.bar(x + 0.5 * width, write_local_pevt, width, label="Local Write", color=colors["Local Write"])
+    ax1.bar(x + 1.5 * width, write_remote_pevt, width, label="Remote Write", color=colors["Remote Write"])
     ax1.set_xlabel("Workflow Construction")
     ax1.set_ylabel("Data Volume per Event (MB)")
     ax1.set_title("Data Volume Analysis Per Event (including local read)")
     ax1.set_xticks(x)
     ax1.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax1.legend()
+    ax1.legend(**_legend_kwargs())
     ax1.grid(True)
 
-    # 2. Data Flow Analysis (Updated to use per-event metrics)
-    ax2 = fig.add_subplot(gs[0, 1])
-    x = np.arange(len(all_simulation_data))
-    width = 0.25
-    ax2.bar(x - width, read_remote_pevt, width, label='Remote Read', color=colors['Remote Read'])
-    ax2.bar(x, write_local_pevt, width, label='Local Write', color=colors['Local Write'])
-    ax2.bar(x + width, write_remote_pevt, width, label='Remote Write', color=colors['Remote Write'])
+    width_stack = 0.6
+    bottom = np.zeros(n_plot)
+    local_read_mb = np.array([m["total_read_local_mb"] for m in construction_metrics])
+    remote_read_mb = np.array([m["total_read_remote_mb"] for m in construction_metrics])
+    local_write_mb = np.array([m["total_write_local_mb"] for m in construction_metrics])
+    remote_write_mb = np.array([m["total_write_remote_mb"] for m in construction_metrics])
+
+    max_stack_mb = (
+        float(np.max(local_read_mb + remote_read_mb + local_write_mb + remote_write_mb))
+        if n_plot > 0
+        else 0.0
+    )
+    vol_scale, vol_unit = _stacked_total_volume_scale_and_unit_from_max_mb(max_stack_mb)
+
+    ax3.bar(
+        x,
+        local_read_mb * vol_scale,
+        width_stack,
+        label="Local Read",
+        bottom=bottom,
+        color=colors["Local Read"],
+    )
+    bottom = bottom + local_read_mb * vol_scale
+    ax3.bar(
+        x,
+        remote_read_mb * vol_scale,
+        width_stack,
+        label="Remote Read",
+        bottom=bottom,
+        color=colors["Remote Read"],
+    )
+    bottom = bottom + remote_read_mb * vol_scale
+    ax3.bar(
+        x,
+        local_write_mb * vol_scale,
+        width_stack,
+        label="Local Write",
+        bottom=bottom,
+        color=colors["Local Write"],
+    )
+    bottom = bottom + local_write_mb * vol_scale
+    ax3.bar(
+        x,
+        remote_write_mb * vol_scale,
+        width_stack,
+        label="Remote Write",
+        bottom=bottom,
+        color=colors["Remote Write"],
+    )
+
+    ax3.set_xlabel("Workflow Construction")
+    ax3.set_ylabel(f"Total Data Volume ({vol_unit})")
+    ax3.set_title("Total Workflow Data Volume Analysis (including local read)")
+    ax3.set_xticks(x)
+    ax3.set_xticklabels(wc_xticks, rotation=0, ha="center")
+    ax3.legend(**_legend_kwargs())
+    _style_stacked_total_data_volume_axis(ax3)
+
+    fname_inc = "io_patterns_comparison_local.png"
+    fig1.savefig(os.path.join(output_dir, fname_inc))
+    plt.close(fig1)
+    print(f"  => I/O patterns (local) saved to {output_dir}/{fname_inc}")
+
+    # --- Figure 2: non-local only (per-event on top, stacked totals below) ---
+    fig2, (ax2, ax4) = plt.subplots(2, 1, figsize=(fig_w, fig_h), layout="constrained", sharex=True)
+
+    width3 = 0.25
+    ax2.bar(x - width3, read_remote_pevt, width3, label="Remote Read", color=colors["Remote Read"])
+    ax2.bar(x, write_local_pevt, width3, label="Local Write", color=colors["Local Write"])
+    ax2.bar(x + width3, write_remote_pevt, width3, label="Remote Write", color=colors["Remote Write"])
     ax2.set_xlabel("Workflow Construction")
     ax2.set_ylabel("Data Volume per Event (MB)")
     ax2.set_title("Data Volume Analysis Per Event")
     ax2.set_xticks(x)
     ax2.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax2.legend()
+    ax2.legend(**_legend_kwargs())
     ax2.grid(True)
 
-    # 3. Total Data Volume Analysis (Stacked Bar) - Including Local Read
-    ax3 = fig.add_subplot(gs[1, 0])
-    x = np.arange(len(all_simulation_data))
-    width = 0.6
-    bottom = np.zeros(len(all_simulation_data))
+    bottom = np.zeros(n_plot)
+    remote_read_mb2 = np.array([m["total_read_remote_mb"] for m in construction_metrics])
+    local_write_mb2 = np.array([m["total_write_local_mb"] for m in construction_metrics])
+    remote_write_mb2 = np.array([m["total_write_remote_mb"] for m in construction_metrics])
 
-    # Convert MB to GB for better readability
-    local_read_gb = [m["total_read_local_mb"] / 1024.0 for m in construction_metrics]
-    remote_read_gb = [m["total_read_remote_mb"] / 1024.0 for m in construction_metrics]
-    local_write_gb = [m["total_write_local_mb"] / 1024.0 for m in construction_metrics]
-    remote_write_gb = [m["total_write_remote_mb"] / 1024.0 for m in construction_metrics]
+    max_stack_mb_nl = (
+        float(np.max(remote_read_mb2 + local_write_mb2 + remote_write_mb2))
+        if n_plot > 0
+        else 0.0
+    )
+    vol_scale_nl, vol_unit_nl = _stacked_total_volume_scale_and_unit_from_max_mb(max_stack_mb_nl)
 
-    # Plot each data type as a layer in the stack
-    ax3.bar(x, local_read_gb, width, label='Local Read', bottom=bottom, color=colors['Local Read'])
-    bottom += local_read_gb
-
-    ax3.bar(x, remote_read_gb, width, label='Remote Read', bottom=bottom, color=colors['Remote Read'])
-    bottom += remote_read_gb
-
-    ax3.bar(x, local_write_gb, width, label='Local Write', bottom=bottom, color=colors['Local Write'])
-    bottom += local_write_gb
-
-    ax3.bar(x, remote_write_gb, width, label='Remote Write', bottom=bottom, color=colors['Remote Write'])
-
-    # Add total value labels on top of each bar
-    totals_gb = [int(lr + rr + lw + rw) for lr, rr, lw, rw in zip(local_read_gb, remote_read_gb, local_write_gb, remote_write_gb)]
-    for i, total in enumerate(totals_gb):
-        ax3.text(i, total, f'{total}', ha='center', va='bottom')
-
-    ax3.set_xlabel("Workflow Construction")
-    ax3.set_ylabel("Total Data Volume (GB)")
-    ax3.set_title("Total Workflow Data Volume Analysis (including local read)")
-    ax3.set_xticks(x)
-    ax3.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax3.legend()
-    ax3.grid(True)
-
-    # 4. Total Data Volume Analysis (Stacked Bar) - Original version
-    ax4 = fig.add_subplot(gs[1, 1])
-    x = np.arange(len(all_simulation_data))
-    width = 0.6
-    bottom = np.zeros(len(all_simulation_data))
-
-    # Convert MB to GB for better readability
-    remote_read_gb = [m["total_read_remote_mb"] / 1024.0 for m in construction_metrics]
-    local_write_gb = [m["total_write_local_mb"] / 1024.0 for m in construction_metrics]
-    remote_write_gb = [m["total_write_remote_mb"] / 1024.0 for m in construction_metrics]
-
-    # Plot each data type as a layer in the stack
-    ax4.bar(x, remote_read_gb, width, label='Remote Read', bottom=bottom, color=colors['Remote Read'])
-    bottom += remote_read_gb
-
-    ax4.bar(x, local_write_gb, width, label='Local Write', bottom=bottom, color=colors['Local Write'])
-    bottom += local_write_gb
-
-    ax4.bar(x, remote_write_gb, width, label='Remote Write', bottom=bottom, color=colors['Remote Write'])
-
-    # Add total value labels on top of each bar
-    totals_gb = [int(rr + lw + rw) for rr, lw, rw in zip(remote_read_gb, local_write_gb, remote_write_gb)]
-    for i, total in enumerate(totals_gb):
-        ax4.text(i, total, f'{total}', ha='center', va='bottom')
+    ax4.bar(
+        x,
+        remote_read_mb2 * vol_scale_nl,
+        width_stack,
+        label="Remote Read",
+        bottom=bottom,
+        color=colors["Remote Read"],
+    )
+    bottom = bottom + remote_read_mb2 * vol_scale_nl
+    ax4.bar(
+        x,
+        local_write_mb2 * vol_scale_nl,
+        width_stack,
+        label="Local Write",
+        bottom=bottom,
+        color=colors["Local Write"],
+    )
+    bottom = bottom + local_write_mb2 * vol_scale_nl
+    ax4.bar(
+        x,
+        remote_write_mb2 * vol_scale_nl,
+        width_stack,
+        label="Remote Write",
+        bottom=bottom,
+        color=colors["Remote Write"],
+    )
 
     ax4.set_xlabel("Workflow Construction")
-    ax4.set_ylabel("Total Data Volume (GB)")
+    ax4.set_ylabel(f"Total Data Volume ({vol_unit_nl})")
     ax4.set_title("Total Workflow Data Volume Analysis")
     ax4.set_xticks(x)
     ax4.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax4.legend()
-    ax4.grid(True)
+    ax4.legend(**_legend_kwargs())
+    _style_stacked_total_data_volume_axis(ax4)
 
-    plt.tight_layout()
-    filename = "io_patterns_comparison.png"
-    plt.savefig(os.path.join(output_dir, filename))
-    plt.close()
-    print(f"  => I/O patterns comparison saved to {output_dir}/{filename}")
+    fname_exc = "io_patterns_comparison_nonlocal.png"
+    fig2.savefig(os.path.join(output_dir, fname_exc))
+    plt.close(fig2)
+    print(f"  => I/O patterns (non-local) saved to {output_dir}/{fname_exc}")
 
 
 def plot_resource_utilization(all_simulation_data: List[Dict],
@@ -349,7 +431,7 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     # Combine legends from both axes
     lines1, labels1 = ax4.get_legend_handles_labels()
     lines2, labels2 = ax4_twin.get_legend_handles_labels()
-    ax4.legend(lines1 + lines2, labels1 + labels2)
+    ax4.legend(lines1 + lines2, labels1 + labels2, **_legend_kwargs())
 
     plt.tight_layout()
     filename = "resource_utilization_comparison.png"
@@ -479,7 +561,7 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
     # Combine legends
     lines1, labels1 = ax2.get_legend_handles_labels()
     lines2, labels2 = ax2_twin.get_legend_handles_labels()
-    ax2.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+    ax2.legend(lines1 + lines2, labels1 + labels2, **_legend_kwargs(loc="upper left"))
 
     plt.tight_layout()
     filename = "performance_metrics_comparison.png"
@@ -686,7 +768,7 @@ def plot_workflow_comparison(all_simulation_data: List[Dict],
     ax3.set_title("Data Volume Analysis Per Event")
     ax3.set_xticks(x)
     ax3.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax3.legend()
+    ax3.legend(**_legend_kwargs())
     ax3.grid(True)
 
     # 2. Data Flow Analysis (Updated to use per-event metrics)
@@ -701,7 +783,7 @@ def plot_workflow_comparison(all_simulation_data: List[Dict],
     ax2.set_title("Data Volume Analysis Per Event")
     ax2.set_xticks(x)
     ax2.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax2.legend()
+    ax2.legend(**_legend_kwargs())
     ax2.grid(True)
 
     # 3. Total Data Volume Analysis (Stacked Bar)
@@ -734,7 +816,7 @@ def plot_workflow_comparison(all_simulation_data: List[Dict],
     ax10.set_title("Total Workflow Data Volume Analysis")
     ax10.set_xticks(x)
     ax10.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax10.legend()
+    ax10.legend(**_legend_kwargs())
     ax10.grid(True)
 
     # 4. Performance vs Remote Write Efficiency (simplified scatter plot)
