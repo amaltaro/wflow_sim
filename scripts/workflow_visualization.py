@@ -50,6 +50,28 @@ def _legend_kwargs(**overrides: Any) -> Dict[str, Any]:
     return kw
 
 
+def _resource_util_panel_center_banner(ax: plt.Axes, text: str, accent: str) -> None:
+    """Centered ribbon label in axes coordinates (replaces a separate subplot title)."""
+    ax.text(
+        0.5,
+        0.5,
+        text,
+        transform=ax.transAxes,
+        ha="center",
+        va="center",
+        fontsize=13,
+        fontweight="bold",
+        color="#242424",
+        bbox={
+            "boxstyle": "round,pad=0.42",
+            "facecolor": (1.0, 1.0, 1.0, 0.82),
+            "edgecolor": accent,
+            "linewidth": 1.9,
+        },
+        zorder=10,
+    )
+
+
 # Stacked 2×1 figure size for ``plot_io_patterns`` only
 STACKED_COMPARISON_FIG_W_IN = 7.0
 STACKED_COMPARISON_FIG_H_IN = 6.0
@@ -60,6 +82,7 @@ PERF_SCATTER_FIG_H_IN = 3.0
 # Resource utilization: 3×1 stack vs standalone cost figure
 RESOURCE_UTIL_STACK_FIG_H_IN = STACKED_COMPARISON_FIG_H_IN * 1.5
 RESOURCE_COST_FIG_H_IN = 4.0
+TURNAROUND_TIME_FIG_H_IN = 4.0
 
 
 def _style_stacked_total_data_volume_axis(ax: plt.Axes) -> None:
@@ -182,7 +205,6 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     ax1.bar(x - 0.5 * width, read_remote_pevt, width, label="Remote Read", color=colors["Remote Read"])
     ax1.bar(x + 0.5 * width, write_local_pevt, width, label="Local Write", color=colors["Local Write"])
     ax1.bar(x + 1.5 * width, write_remote_pevt, width, label="Remote Write", color=colors["Remote Write"])
-    ax1.set_xlabel("Workflow Construction")
     ax1.set_ylabel("Data Volume per Event (MB)")
     ax1.set_title("Data Volume Analysis Per Event (including local read)")
     ax1.set_xticks(x)
@@ -260,7 +282,6 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     ax2.bar(x - width3, read_remote_pevt, width3, label="Remote Read", color=colors["Remote Read"])
     ax2.bar(x, write_local_pevt, width3, label="Local Write", color=colors["Local Write"])
     ax2.bar(x + width3, write_remote_pevt, width3, label="Remote Write", color=colors["Remote Write"])
-    ax2.set_xlabel("Workflow Construction")
     ax2.set_ylabel("Data Volume per Event (MB)")
     ax2.set_title("Data Volume Analysis Per Event")
     ax2.set_xticks(x)
@@ -332,7 +353,8 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
 
     1. ``resource_utilization_comparison.png`` — network, memory, and CPU utilization
        bar charts in one column (top → bottom), shared x-axis, same width as I/O comparison
-       plots.
+       plots; each panel uses a **center banner** (``Network`` / ``Memory`` / ``CPU``) instead
+       of a matplotlib title.
     2. ``resource_cost_comparison.png`` — total CPU cores and total memory (GB), dual y-axis.
     """
     print(f"==> Creating resource utilization analysis for {len(all_simulation_data)} workflows")
@@ -413,25 +435,25 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
 
     ax_n.bar(x, network_transfer, color="#9467bd", alpha=0.7)
     ax_n.set_ylabel("Network Transfer per Event (MB)")
-    ax_n.set_title("Network Transfer Analysis")
     ax_n.grid(True, alpha=0.3)
     ax_n.tick_params(axis="x", labelbottom=False)
+    _resource_util_panel_center_banner(ax_n, "Network", "#9467bd")
 
     ax_m.bar(x, memory_utilization, color="#ff7f0e", alpha=0.7)
     ax_m.set_ylabel("Memory Utilization Ratio")
-    ax_m.set_title("Memory Utilization Analysis")
     ax_m.set_ylim(bottom=0.0)
     ax_m.grid(True, alpha=0.3)
     ax_m.tick_params(axis="x", labelbottom=False)
+    _resource_util_panel_center_banner(ax_m, "Memory", "#ff7f0e")
 
     ax_c.bar(x, cpu_utilization, color="#8c564b", alpha=0.7)
     ax_c.set_xlabel("Workflow Construction")
     ax_c.set_ylabel("CPU Utilization Ratio")
-    ax_c.set_title("CPU Utilization Analysis")
     ax_c.set_xticks(x)
     ax_c.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax_c.set_ylim(bottom=0.0)
     ax_c.grid(True, alpha=0.3)
+    _resource_util_panel_center_banner(ax_c, "CPU", "#8c564b")
 
     fname_u = "resource_utilization_comparison.png"
     fig_u.savefig(os.path.join(output_dir, fname_u))
@@ -619,7 +641,10 @@ def plot_turnaround_time_comparison(all_simulation_data: List[Dict],
 
     Uses ``total_turnaround_time`` from simulation metrics (seconds) and plots
     values in hours on the y-axis. Compositions are ordered by
-    ``composition_number``.
+    ``composition_number``. The y-axis uses **tight padded limits** around the data
+    (zero-suppressed when values are clustered away from zero); the lower limit is
+    still clamped at 0 h if padding would go negative. Figure height is
+    ``TURNAROUND_TIME_FIG_H_IN`` (4 in); width matches other comparison plots.
     """
     print(f"==> Creating turnaround time comparison for {len(all_simulation_data)} workflows")
 
@@ -636,7 +661,10 @@ def plot_turnaround_time_comparison(all_simulation_data: List[Dict],
     x = np.arange(len(rows))
     wc_xticks = [str(i + 1) for i in range(len(rows))]
 
-    fig, ax = plt.subplots(figsize=(14, 6))
+    fig, ax = plt.subplots(
+        figsize=(STACKED_COMPARISON_FIG_W_IN, TURNAROUND_TIME_FIG_H_IN),
+        layout="constrained",
+    )
     width = 0.65
     ax.bar(x, turnaround_hours, width, color="#17becf", alpha=0.85)
     ax.set_xlabel("Workflow Construction")
@@ -645,17 +673,14 @@ def plot_turnaround_time_comparison(all_simulation_data: List[Dict],
     ax.set_xticks(x)
     ax.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax.grid(True, axis="y", alpha=0.3)
-    ax.set_ylim(bottom=0)
 
-    ymax = float(np.max(turnaround_hours)) if len(turnaround_hours) else 0.0
-    if ymax > 0:
-        pad = ymax * 0.05
-        ax.set_ylim(top=ymax + pad)
+    y_lo, y_hi = _tight_axis_limits(turnaround_hours, clamp_non_negative=False)
+    y_lo = max(0.0, y_lo)
+    ax.set_ylim(y_lo, y_hi)
 
-    plt.tight_layout()
     filename = "turnaround_time_comparison.png"
-    plt.savefig(os.path.join(output_dir, filename))
-    plt.close()
+    fig.savefig(os.path.join(output_dir, filename))
+    plt.close(fig)
     print(f"  => Turnaround time comparison saved to {output_dir}/{filename}")
 
 
