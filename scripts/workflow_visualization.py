@@ -17,11 +17,49 @@ from pathlib import Path
 from matplotlib.ticker import AutoMinorLocator
 
 
+def _tight_axis_limits(
+    values: np.ndarray,
+    *,
+    pad_rel: float = 0.12,
+    clamp_non_negative: bool = False,
+) -> tuple[float, float]:
+    """Axis limits with padding around finite data (optionally floor at 0 for non-negative series)."""
+    v = np.asarray(values, dtype=float)
+    v = v[np.isfinite(v)]
+    if v.size == 0:
+        return 0.0, 1.0
+    lo, hi = float(np.min(v)), float(np.max(v))
+    span = hi - lo
+    if span <= 0.0 or not np.isfinite(span):
+        mag = abs(hi) if hi != 0.0 else 1.0
+        span = max(mag * 0.05, 1e-12)
+    pad = max(span * pad_rel, max(abs(lo), abs(hi)) * 0.02, 1e-15)
+    bottom = lo - pad
+    top = hi + pad
+    if clamp_non_negative and lo >= 0.0:
+        bottom = max(0.0, bottom)
+    if bottom >= top:
+        top = bottom + max(span, 1e-9)
+    return bottom, top
+
+
 def _legend_kwargs(**overrides: Any) -> Dict[str, Any]:
     """Defaults for legends drawn over bars/points: light frame so data stays visible."""
     kw: Dict[str, Any] = {"frameon": True, "fancybox": True, "framealpha": 0.38}
     kw.update(overrides)
     return kw
+
+
+# Stacked 2×1 figure size for ``plot_io_patterns`` only
+STACKED_COMPARISON_FIG_W_IN = 7.0
+STACKED_COMPARISON_FIG_H_IN = 6.0
+# Split performance outputs: wide processing panel, narrow scatter (tight axes)
+PROCESSING_EFFICIENCY_FIG_H_IN = STACKED_COMPARISON_FIG_H_IN / 2.0
+PERF_SCATTER_FIG_W_IN = 4.0
+PERF_SCATTER_FIG_H_IN = 3.0
+# Resource utilization: 3×1 stack vs standalone cost figure
+RESOURCE_UTIL_STACK_FIG_H_IN = STACKED_COMPARISON_FIG_H_IN * 1.5
+RESOURCE_COST_FIG_H_IN = 4.0
 
 
 def _style_stacked_total_data_volume_axis(ax: plt.Axes) -> None:
@@ -123,8 +161,8 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     write_local_pevt = np.array(write_local_pevt)
     read_local_pevt = np.array(read_local_pevt)
 
-    fig_w = 9.0
-    fig_h = 6.0
+    fig_w = STACKED_COMPARISON_FIG_W_IN
+    fig_h = STACKED_COMPARISON_FIG_H_IN
     n_plot = len(all_simulation_data)
     wc_xticks = [str(i + 1) for i in range(n_plot)]
     x = np.arange(n_plot)
@@ -290,11 +328,12 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
                               custom_labels: List[str] = None):
     """Create resource utilization analysis plots for workflow comparison.
 
-    Plots:
-    1. Network Transfer Analysis
-    2. CPU Utilization Analysis
-    3. Memory Utilization Analysis
-    4. Resource Cost Analysis (CPU cores, Memory in GB)
+    Writes two PNGs:
+
+    1. ``resource_utilization_comparison.png`` — network, memory, and CPU utilization
+       bar charts in one column (top → bottom), shared x-axis, same width as I/O comparison
+       plots.
+    2. ``resource_cost_comparison.png`` — total CPU cores and total memory (GB), dual y-axis.
     """
     print(f"==> Creating resource utilization analysis for {len(all_simulation_data)} workflows")
 
@@ -359,85 +398,81 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     total_memory_mb = np.array(total_memory_mb)
     events_per_cpu_core = np.array(events_per_cpu_core)
 
-    # Create figure with 2x2 subplots for resource utilization
-    fig = plt.figure(figsize=(16, 12))
-    gs = fig.add_gridspec(2, 2, height_ratios=[1, 1])
     n_plot = len(all_simulation_data)
     wc_xticks = [str(i + 1) for i in range(n_plot)]
+    x = np.arange(n_plot)
 
-    # 1. Network Transfer Analysis
-    ax1 = fig.add_subplot(gs[0, 0])
-    x = np.arange(len(all_simulation_data))
-    ax1.bar(x, network_transfer, color='#9467bd', alpha=0.7)
-    ax1.set_xlabel("Workflow Construction")
-    ax1.set_ylabel("Network Transfer per Event (MB)")
-    ax1.set_title("Network Transfer Analysis")
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax1.grid(True)
+    # --- 1) Network, memory, CPU utilization (3×1, shared x) ---
+    fig_u, (ax_n, ax_m, ax_c) = plt.subplots(
+        3,
+        1,
+        figsize=(STACKED_COMPARISON_FIG_W_IN, RESOURCE_UTIL_STACK_FIG_H_IN),
+        layout="constrained",
+        sharex=True,
+    )
 
-    # 2. CPU Utilization Analysis
-    ax2 = fig.add_subplot(gs[0, 1])
-    x = np.arange(len(all_simulation_data))
-    ax2.bar(x, cpu_utilization, color='#8c564b', alpha=0.7)
-    ax2.set_xlabel("Workflow Construction")
-    ax2.set_ylabel("CPU Utilization Ratio")
-    ax2.set_title("CPU Utilization Analysis")
-    ax2.set_xticks(x)
-    ax2.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax2.set_ylim(bottom=0)
-    ax2.grid(True)
+    ax_n.bar(x, network_transfer, color="#9467bd", alpha=0.7)
+    ax_n.set_ylabel("Network Transfer per Event (MB)")
+    ax_n.set_title("Network Transfer Analysis")
+    ax_n.grid(True, alpha=0.3)
+    ax_n.tick_params(axis="x", labelbottom=False)
 
-    # 3. Memory Utilization Analysis
-    ax3 = fig.add_subplot(gs[1, 0])
-    x = np.arange(len(all_simulation_data))
-    ax3.bar(x, memory_utilization, color='#ff7f0e', alpha=0.7)
-    ax3.set_xlabel("Workflow Construction")
-    ax3.set_ylabel("Memory Utilization Ratio")
-    ax3.set_title("Memory Utilization Analysis")
-    ax3.set_xticks(x)
-    ax3.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax3.grid(True)
+    ax_m.bar(x, memory_utilization, color="#ff7f0e", alpha=0.7)
+    ax_m.set_ylabel("Memory Utilization Ratio")
+    ax_m.set_title("Memory Utilization Analysis")
+    ax_m.set_ylim(bottom=0.0)
+    ax_m.grid(True, alpha=0.3)
+    ax_m.tick_params(axis="x", labelbottom=False)
 
-    # 4. Resource Cost Analysis
-    ax4 = fig.add_subplot(gs[1, 1])
-    x = np.arange(len(all_simulation_data))
+    ax_c.bar(x, cpu_utilization, color="#8c564b", alpha=0.7)
+    ax_c.set_xlabel("Workflow Construction")
+    ax_c.set_ylabel("CPU Utilization Ratio")
+    ax_c.set_title("CPU Utilization Analysis")
+    ax_c.set_xticks(x)
+    ax_c.set_xticklabels(wc_xticks, rotation=0, ha="center")
+    ax_c.set_ylim(bottom=0.0)
+    ax_c.grid(True, alpha=0.3)
+
+    fname_u = "resource_utilization_comparison.png"
+    fig_u.savefig(os.path.join(output_dir, fname_u))
+    plt.close(fig_u)
+    print(f"  => Resource utilization comparison saved to {output_dir}/{fname_u}")
+
+    # --- 2) Resource cost (CPU cores + memory GB) ---
+    fig_cost, ax_cost = plt.subplots(
+        1,
+        1,
+        figsize=(STACKED_COMPARISON_FIG_W_IN, RESOURCE_COST_FIG_H_IN),
+        layout="constrained",
+    )
     width = 0.35
-
-    # Convert memory to GB
     total_memory_gb = total_memory_mb / 1024.0
+    ax_cost_twin = ax_cost.twinx()
 
-    # Create dual y-axis plot
-    ax4_twin = ax4.twinx()
+    ax_cost.bar(x - width / 2, total_cpu_cores, width, label="Total CPU Cores",
+                color="#8c564b", alpha=0.7)
+    ax_cost.set_xlabel("Workflow Construction")
+    ax_cost.set_ylabel("Total CPU Cores Used", color="#8c564b")
+    ax_cost.tick_params(axis="y", labelcolor="#8c564b")
 
-    # Plot CPU cores (left axis)
-    bars1 = ax4.bar(x - width/2, total_cpu_cores, width, label='Total CPU Cores',
-                    color='#8c564b', alpha=0.7)
-    ax4.set_xlabel("Workflow Construction")
-    ax4.set_ylabel("Total CPU Cores Used", color='#8c564b')
-    ax4.tick_params(axis='y', labelcolor='#8c564b')
+    ax_cost_twin.bar(x + width / 2, total_memory_gb, width, label="Total Memory (GB)",
+                     color="#ff7f0e", alpha=0.7)
+    ax_cost_twin.set_ylabel("Total Memory Used (GB)", color="#ff7f0e")
+    ax_cost_twin.tick_params(axis="y", labelcolor="#ff7f0e")
 
-    # Plot Memory (right axis)
-    bars2 = ax4_twin.bar(x + width/2, total_memory_gb, width, label='Total Memory (GB)',
-                         color='#ff7f0e', alpha=0.7)
-    ax4_twin.set_ylabel("Total Memory Used (GB)", color='#ff7f0e')
-    ax4_twin.tick_params(axis='y', labelcolor='#ff7f0e')
+    ax_cost.set_title("Overall Resource Cost Analysis")
+    ax_cost.set_xticks(x)
+    ax_cost.set_xticklabels(wc_xticks, rotation=0, ha="center")
+    ax_cost.grid(True, alpha=0.3)
 
-    ax4.set_title("Overall Resource Cost Analysis")
-    ax4.set_xticks(x)
-    ax4.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax4.grid(True, alpha=0.3)
+    lines1, labels1 = ax_cost.get_legend_handles_labels()
+    lines2, labels2 = ax_cost_twin.get_legend_handles_labels()
+    ax_cost.legend(lines1 + lines2, labels1 + labels2, **_legend_kwargs())
 
-    # Combine legends from both axes
-    lines1, labels1 = ax4.get_legend_handles_labels()
-    lines2, labels2 = ax4_twin.get_legend_handles_labels()
-    ax4.legend(lines1 + lines2, labels1 + labels2, **_legend_kwargs())
-
-    plt.tight_layout()
-    filename = "resource_utilization_comparison.png"
-    plt.savefig(os.path.join(output_dir, filename))
-    plt.close()
-    print(f"  => Resource utilization comparison saved to {output_dir}/{filename}")
+    fname_cost = "resource_cost_comparison.png"
+    fig_cost.savefig(os.path.join(output_dir, fname_cost))
+    plt.close(fig_cost)
+    print(f"  => Resource cost comparison saved to {output_dir}/{fname_cost}")
 
 
 def plot_performance_metrics(all_simulation_data: List[Dict],
@@ -445,15 +480,15 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
                              jobs: List[Dict],
                              output_dir: str = "plots",
                              custom_labels: List[str] = None):
-    """Create performance metrics analysis plots for workflow comparison.
+    """Write two performance figures: processing efficiency (wide) and scatter (narrow, tight axes).
 
-    Plots:
-    1. Performance vs Remote Write Efficiency
-    2. Processing Efficiency Analysis (CPU Time per Event + CPU Utilization)
+    Outputs:
 
-    The right panel uses a shorter figure height. CPU time per event uses **tight,
-    zero-suppressed** y-limits (padding around min/max, floor at 0 when all values are
-    non-negative) so small bar differences are visible. X ticks are **1 … n** in plot order.
+    1. ``processing_efficiency_comparison.png`` — CPU time per event + utilization
+       (same width as I/O comparison plots, half stacked height).
+    2. ``performance_vs_remote_write_comparison.png`` — scatter with **one point per workflow
+       construction** (workflow-level ``event_throughput`` vs ``total_write_remote_mb_per_event``;
+       not per-group). **Narrow** figure with **tight** x/y limits around the data.
     """
     print(f"==> Creating performance metrics analysis for {len(all_simulation_data)} workflows")
 
@@ -491,52 +526,29 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
     cpu_time_per_event = np.array(cpu_time_per_event)
     cpu_utilization = np.array(cpu_utilization)
 
-    # Create figure: half previous height for a compact two-panel row
-    fig = plt.figure(figsize=(16, 3))
-    gs = fig.add_gridspec(1, 2, width_ratios=[1, 1])
     n_plot = len(all_simulation_data)
     wc_xticks = [str(i + 1) for i in range(n_plot)]
 
-    # 1. Performance vs Remote Write Efficiency
-    ax1 = fig.add_subplot(gs[0, 0])
-    scatter = ax1.scatter(event_throughputs, write_remote_pevt, c=range(len(all_simulation_data)),
-                         cmap='viridis', s=100, alpha=0.7)
-    ax1.set_xlabel("Event Throughput (events/second)")
-    ax1.set_ylabel("Remote Write Data per Event (MB)")
-    ax1.set_title("Performance vs Remote Write Efficiency")
-    ax1.grid(True, alpha=0.3)
-
-    # Set x-axis limits with proper handling for identical values
-    max_throughput = np.max(event_throughputs)
-    if max_throughput > 0:
-        ax1.set_xlim(left=0, right=max_throughput * 1.1)
-    else:
-        ax1.set_xlim(left=0, right=1.0)
-    ax1.set_ylim(bottom=0)
-
-    # 2. Processing Efficiency Analysis
-    ax2 = fig.add_subplot(gs[0, 1])
-    x = np.arange(len(all_simulation_data))
+    # --- 1) Processing efficiency (wide single panel) ---
+    fig_p, ax_p = plt.subplots(
+        1,
+        1,
+        figsize=(STACKED_COMPARISON_FIG_W_IN, PROCESSING_EFFICIENCY_FIG_H_IN),
+        layout="constrained",
+    )
+    x = np.arange(n_plot)
     width = 0.6
+    ax_p_twin = ax_p.twinx()
+    ax_p.bar(x, cpu_time_per_event, width, label="CPU Time per Event", color="#2ca02c", alpha=0.7)
+    ax_p.set_xlabel("Workflow Construction")
+    ax_p.set_ylabel("CPU Time per Event (seconds)", color="#2ca02c")
+    ax_p.tick_params(axis="y", labelcolor="#2ca02c")
+    ax_p_twin.plot(x, cpu_utilization, "o-", color="#d62728", linewidth=1.5, markersize=4,
+                   label="CPU Utilization")
+    ax_p_twin.set_ylabel("CPU Utilization Ratio", color="#d62728")
+    ax_p_twin.tick_params(axis="y", labelcolor="#d62728")
+    ax_p_twin.set_ylim(0, 1)
 
-    # Create dual y-axis plot
-    ax2_twin = ax2.twinx()
-
-    # Plot CPU Time per Event (bar chart)
-    bars = ax2.bar(x, cpu_time_per_event, width, label='CPU Time per Event',
-                   color='#2ca02c', alpha=0.7)
-    ax2.set_xlabel("Workflow Construction")
-    ax2.set_ylabel("CPU Time per Event (seconds)", color='#2ca02c')
-    ax2.tick_params(axis='y', labelcolor='#2ca02c')
-
-    # Plot CPU Utilization (line plot overlay)
-    line = ax2_twin.plot(x, cpu_utilization, 'o-', color='#d62728',
-                         linewidth=1.5, markersize=4, label='CPU Utilization')
-    ax2_twin.set_ylabel("CPU Utilization Ratio", color='#d62728')
-    ax2_twin.tick_params(axis='y', labelcolor='#d62728')
-    ax2_twin.set_ylim(0, 1)  # Utilization is a ratio 0-1
-
-    # Tight y-limits on CPU time (not forced from 0) so similar bar heights separate visually
     _cpu = np.asarray(cpu_time_per_event, dtype=float)
     _cpu = _cpu[np.isfinite(_cpu)]
     if _cpu.size > 0:
@@ -551,23 +563,51 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
         top = hi + pad
         if bottom >= top:
             top = bottom + max(span, 1e-9)
-        ax2.set_ylim(bottom, top)
+        ax_p.set_ylim(bottom, top)
 
-    ax2.set_title("Processing Efficiency Analysis")
-    ax2.set_xticks(x)
-    ax2.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax2.grid(True, alpha=0.3)
+    ax_p.set_title("Processing Efficiency Analysis")
+    ax_p.set_xticks(x)
+    ax_p.set_xticklabels(wc_xticks, rotation=0, ha="center")
+    ax_p.grid(True, alpha=0.3)
+    lines1, labels1 = ax_p.get_legend_handles_labels()
+    lines2, labels2 = ax_p_twin.get_legend_handles_labels()
+    ax_p.legend(lines1 + lines2, labels1 + labels2, **_legend_kwargs(loc="upper left"))
 
-    # Combine legends
-    lines1, labels1 = ax2.get_legend_handles_labels()
-    lines2, labels2 = ax2_twin.get_legend_handles_labels()
-    ax2.legend(lines1 + lines2, labels1 + labels2, **_legend_kwargs(loc="upper left"))
+    fname_p = "processing_efficiency_comparison.png"
+    fig_p.savefig(os.path.join(output_dir, fname_p))
+    plt.close(fig_p)
+    print(f"  => Processing efficiency plot saved to {output_dir}/{fname_p}")
 
-    plt.tight_layout()
-    filename = "performance_metrics_comparison.png"
-    plt.savefig(os.path.join(output_dir, filename))
-    plt.close()
-    print(f"  => Performance metrics comparison saved to {output_dir}/{filename}")
+    # --- 2) Throughput vs remote write (narrow, tight axis limits) ---
+    fig_s, ax_s = plt.subplots(
+        1,
+        1,
+        figsize=(PERF_SCATTER_FIG_W_IN, PERF_SCATTER_FIG_H_IN),
+        layout="constrained",
+    )
+    ax_s.scatter(
+        event_throughputs,
+        write_remote_pevt,
+        c=range(len(all_simulation_data)),
+        cmap="viridis",
+        s=100,
+        alpha=0.7,
+    )
+    ax_s.set_xlabel("Event Throughput (events/second)")
+    ax_s.set_ylabel("Remote Write Data per Event (MB)")
+    ax_s.set_title("Performance vs Remote Write Efficiency\n", fontsize=10,
+    )
+    ax_s.grid(True, alpha=0.3)
+
+    x_lo, x_hi = _tight_axis_limits(event_throughputs, clamp_non_negative=False)
+    y_lo, y_hi = _tight_axis_limits(write_remote_pevt, clamp_non_negative=True)
+    ax_s.set_xlim(x_lo, x_hi)
+    ax_s.set_ylim(y_lo, y_hi)
+
+    fname_s = "performance_vs_remote_write_comparison.png"
+    fig_s.savefig(os.path.join(output_dir, fname_s))
+    plt.close(fig_s)
+    print(f"  => Performance vs remote write plot saved to {output_dir}/{fname_s}")
 
 
 def plot_turnaround_time_comparison(all_simulation_data: List[Dict],
