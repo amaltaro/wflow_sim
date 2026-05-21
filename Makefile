@@ -46,6 +46,9 @@ CONSTRUCTION_METRICS_FR_LIST := fr0 fr5 fr25
 CONSTRUCTION_METRICS_RATE := 100MBps
 CONSTRUCTION_METRICS_OUTPUT := results/analysis/construction_metrics
 
+# All six workflow templates (sequential + fork); used by plot-groups-overview-all
+ALL_USE_CASES := seq_real seq_homo seq_hetero fork_real fork_homo fork_hetero
+
 # Default target
 .PHONY: help
 help:
@@ -56,6 +59,7 @@ help:
 	@echo "  run            - Run single workflow simulation"
 	@echo "  simulate-all   - Run simulations (all times, failure rates, data rates)"
 	@echo "  visualize-all  - Generate visualizations (all times, failure rates, data rates)"
+	@echo "  plot-groups-overview-all - Plot construction groupings (6 use cases -> $(VIZ_OUTPUT_DIR)/<case>/)"
 	@echo "  all            - Run simulations and visualizations for all combinations"
 	@echo ""
 	@echo "Analysis targets:"
@@ -211,6 +215,26 @@ visualize-all:
 		echo ""; \
 	done
 	@echo "All visualizations completed!"
+
+# Plot construction groupings from compositions_summary.json (all six workflow templates).
+# Output: $(VIZ_OUTPUT_DIR)/<use_case>/<template>_construction_groups_overview.png
+.PHONY: plot-groups-overview-all
+plot-groups-overview-all:
+	@echo "Plotting construction groupings for use cases: $(ALL_USE_CASES)"
+	@for use_case in $(ALL_USE_CASES); do \
+		summary_json="$(TEMPLATES_DIR)/$$use_case/$${use_case}_compositions_summary.json"; \
+		output_dir="$(VIZ_OUTPUT_DIR)/$$use_case"; \
+		if [ -f "$$summary_json" ]; then \
+			echo "" && echo "====> $$use_case -> $$output_dir"; \
+			mkdir -p "$$output_dir"; \
+			$(PYTHON) scripts/plot_construction_groups_overview.py \
+				--summary-json "$$summary_json" \
+				--output-dir "$$output_dir" || exit 1; \
+		else \
+			echo "" && echo "====> WARNING: $$summary_json not found. Skipping $$use_case."; \
+		fi; \
+	done
+	@echo "Construction groups overview plots completed!"
 
 # Generate failure rate impact analysis (cross-dimensional comparison)
 # Analyzes how all 16 constructions perform across different failure rates
