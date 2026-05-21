@@ -1,7 +1,7 @@
 import argparse
 import json
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from collections import defaultdict
 from math import ceil
 from pprint import pformat
@@ -14,7 +14,7 @@ import pandas as pd
 import seaborn as sns
 from pathlib import Path
 
-from matplotlib.ticker import AutoMinorLocator
+from matplotlib.ticker import AutoMinorLocator, FormatStrFormatter
 
 
 def _tight_axis_limits(
@@ -50,6 +50,70 @@ def _legend_kwargs(**overrides: Any) -> Dict[str, Any]:
     return kw
 
 
+def _comparison_xtick_labels(n_plot: int, custom_labels: Optional[List[str]] = None) -> List[str]:
+    """X tick labels for construction comparison plots (1…n or caller-supplied names)."""
+    if custom_labels is not None and len(custom_labels) >= n_plot:
+        return list(custom_labels[:n_plot])
+    if custom_labels is not None and len(custom_labels) > 0:
+        return list(custom_labels) + [str(i + 1) for i in range(len(custom_labels), n_plot)]
+    return [str(i + 1) for i in range(n_plot)]
+
+
+def _annotate_construction_scatter_labels(
+    ax: plt.Axes,
+    xs: np.ndarray,
+    ys: np.ndarray,
+    *,
+    label_start: int = 1,
+) -> None:
+    """Label scatter points with construction indices; cycle offsets to reduce overlap."""
+    offsets_pt = (
+        (6, 6),
+        (6, -8),
+        (-10, 6),
+        (-10, -8),
+        (0, 10),
+        (0, -12),
+        (12, 0),
+        (-14, 0),
+    )
+    for i, (xv, yv) in enumerate(zip(xs, ys)):
+        if not (np.isfinite(xv) and np.isfinite(yv)):
+            continue
+        ox, oy = offsets_pt[i % len(offsets_pt)]
+        ax.annotate(
+            str(label_start + i),
+            (xv, yv),
+            textcoords="offset points",
+            xytext=(ox, oy),
+            fontsize=7,
+            ha="center",
+            va="center",
+            bbox={
+                "boxstyle": "round,pad=0.15",
+                "facecolor": "white",
+                "edgecolor": "#666666",
+                "linewidth": 0.6,
+                "alpha": 0.9,
+            },
+            zorder=5,
+        )
+
+
+def _io_patterns_horizontal_legend_below(fig: plt.Figure, ax_bottom: plt.Axes, ncol: int) -> None:
+    """Place one horizontal legend under the bottom panel (no overlay on bar data)."""
+    handles, labels = ax_bottom.get_legend_handles_labels()
+    fig.legend(
+        handles,
+        labels,
+        loc="outside lower center",
+        ncol=ncol,
+        frameon=True,
+        fancybox=True,
+        framealpha=0.95,
+    )
+
+
 def _resource_util_panel_center_banner(ax: plt.Axes, text: str, accent: str) -> None:
     """Centered ribbon label in axes coordinates (replaces a separate subplot title)."""
     ax.text(
@@ -73,16 +137,16 @@ def _resource_util_panel_center_banner(ax: plt.Axes, text: str, accent: str) -> 
 
 
 # Stacked 2×1 figure size for ``plot_io_patterns`` only
-STACKED_COMPARISON_FIG_W_IN = 7.0
+STACKED_COMPARISON_FIG_W_IN = 6.0
 STACKED_COMPARISON_FIG_H_IN = 6.0
 # Split performance outputs: wide processing panel, narrow scatter (tight axes)
 PROCESSING_EFFICIENCY_FIG_H_IN = STACKED_COMPARISON_FIG_H_IN / 2.0
-PERF_SCATTER_FIG_W_IN = 4.0
+PERF_SCATTER_FIG_W_IN = STACKED_COMPARISON_FIG_W_IN
 PERF_SCATTER_FIG_H_IN = 3.0
 # Resource utilization: 3×1 stack vs standalone cost figure
-RESOURCE_UTIL_STACK_FIG_H_IN = STACKED_COMPARISON_FIG_H_IN * 1.5
-RESOURCE_COST_FIG_H_IN = 4.0
-TURNAROUND_TIME_FIG_H_IN = 4.0
+RESOURCE_UTIL_STACK_FIG_H_IN = STACKED_COMPARISON_FIG_H_IN * 1.0
+RESOURCE_COST_FIG_H_IN = 3.0
+TURNAROUND_TIME_FIG_H_IN = 3.0
 
 
 def _style_stacked_total_data_volume_axis(ax: plt.Axes) -> None:
@@ -131,7 +195,8 @@ def plot_io_patterns(all_simulation_data: List[Dict],
        without local read.
 
     Stacked **total** panels sum workflow totals in **MB** and pick **MB / GB / TB / PB**
-    on the y-axis using binary **1024** steps from the tallest stack.
+    on the y-axis using binary **1024** steps from the tallest stack. A single horizontal
+    legend sits below the bottom panel (not overlaid on the bars).
     """
     print(f"==> Creating I/O pattern analysis for {len(all_simulation_data)} workflows")
 
@@ -187,7 +252,7 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     fig_w = STACKED_COMPARISON_FIG_W_IN
     fig_h = STACKED_COMPARISON_FIG_H_IN
     n_plot = len(all_simulation_data)
-    wc_xticks = [str(i + 1) for i in range(n_plot)]
+    wc_xticks = _comparison_xtick_labels(n_plot, custom_labels)
     x = np.arange(n_plot)
 
     colors = {
@@ -209,7 +274,6 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     ax1.set_title("Data Volume Analysis Per Event (including local read)")
     ax1.set_xticks(x)
     ax1.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax1.legend(**_legend_kwargs())
     ax1.grid(True)
 
     width_stack = 0.6
@@ -267,8 +331,8 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     ax3.set_title("Total Workflow Data Volume Analysis (including local read)")
     ax3.set_xticks(x)
     ax3.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax3.legend(**_legend_kwargs())
     _style_stacked_total_data_volume_axis(ax3)
+    _io_patterns_horizontal_legend_below(fig1, ax3, ncol=4)
 
     fname_inc = "io_patterns_comparison_local.png"
     fig1.savefig(os.path.join(output_dir, fname_inc))
@@ -286,7 +350,6 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     ax2.set_title("Data Volume Analysis Per Event")
     ax2.set_xticks(x)
     ax2.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax2.legend(**_legend_kwargs())
     ax2.grid(True)
 
     bottom = np.zeros(n_plot)
@@ -333,8 +396,8 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     ax4.set_title("Total Workflow Data Volume Analysis")
     ax4.set_xticks(x)
     ax4.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax4.legend(**_legend_kwargs())
     _style_stacked_total_data_volume_axis(ax4)
+    _io_patterns_horizontal_legend_below(fig2, ax4, ncol=3)
 
     fname_exc = "io_patterns_comparison_nonlocal.png"
     fig2.savefig(os.path.join(output_dir, fname_exc))
@@ -354,7 +417,8 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     1. ``resource_utilization_comparison.png`` — network, memory, and CPU utilization
        bar charts in one column (top → bottom), shared x-axis, same width as I/O comparison
        plots; each panel uses a **center banner** (``Network`` / ``Memory`` / ``CPU``) instead
-       of a matplotlib title.
+       of a matplotlib title. Y tick labels use one decimal place on all three panels;
+       y-axis titles are aligned with ``fig.align_ylabels``.
     2. ``resource_cost_comparison.png`` — total CPU cores and total memory (GB), dual y-axis.
     """
     print(f"==> Creating resource utilization analysis for {len(all_simulation_data)} workflows")
@@ -421,7 +485,7 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     events_per_cpu_core = np.array(events_per_cpu_core)
 
     n_plot = len(all_simulation_data)
-    wc_xticks = [str(i + 1) for i in range(n_plot)]
+    wc_xticks = _comparison_xtick_labels(n_plot, custom_labels)
     x = np.arange(n_plot)
 
     # --- 1) Network, memory, CPU utilization (3×1, shared x) ---
@@ -433,8 +497,11 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
         sharex=True,
     )
 
+    util_tick_fmt = FormatStrFormatter("%.1f")
+
     ax_n.bar(x, network_transfer, color="#9467bd", alpha=0.7)
-    ax_n.set_ylabel("Network Transfer per Event (MB)")
+    ax_n.set_ylabel("Network per Event (MB)")
+    ax_n.yaxis.set_major_formatter(util_tick_fmt)
     ax_n.grid(True, alpha=0.3)
     ax_n.tick_params(axis="x", labelbottom=False)
     _resource_util_panel_center_banner(ax_n, "Network", "#9467bd")
@@ -442,6 +509,7 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     ax_m.bar(x, memory_utilization, color="#ff7f0e", alpha=0.7)
     ax_m.set_ylabel("Memory Utilization Ratio")
     ax_m.set_ylim(bottom=0.0)
+    ax_m.yaxis.set_major_formatter(util_tick_fmt)
     ax_m.grid(True, alpha=0.3)
     ax_m.tick_params(axis="x", labelbottom=False)
     _resource_util_panel_center_banner(ax_m, "Memory", "#ff7f0e")
@@ -452,8 +520,11 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     ax_c.set_xticks(x)
     ax_c.set_xticklabels(wc_xticks, rotation=0, ha="center")
     ax_c.set_ylim(bottom=0.0)
+    ax_c.yaxis.set_major_formatter(util_tick_fmt)
     ax_c.grid(True, alpha=0.3)
     _resource_util_panel_center_banner(ax_c, "CPU", "#8c564b")
+
+    fig_u.align_ylabels([ax_n, ax_m, ax_c])
 
     fname_u = "resource_utilization_comparison.png"
     fig_u.savefig(os.path.join(output_dir, fname_u))
@@ -510,7 +581,8 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
        (same width as I/O comparison plots, half stacked height).
     2. ``performance_vs_remote_write_comparison.png`` — scatter with **one point per workflow
        construction** (workflow-level ``event_throughput`` vs ``total_write_remote_mb_per_event``;
-       not per-group). **Narrow** figure with **tight** x/y limits around the data.
+       not per-group). Points are labeled **1 … n** (construction order, same as bar charts).
+       **Narrow** figure with **tight** x/y limits around the data.
     """
     print(f"==> Creating performance metrics analysis for {len(all_simulation_data)} workflows")
 
@@ -549,7 +621,7 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
     cpu_utilization = np.array(cpu_utilization)
 
     n_plot = len(all_simulation_data)
-    wc_xticks = [str(i + 1) for i in range(n_plot)]
+    wc_xticks = _comparison_xtick_labels(n_plot, custom_labels)
 
     # --- 1) Processing efficiency (wide single panel) ---
     fig_p, ax_p = plt.subplots(
@@ -610,19 +682,21 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
     ax_s.scatter(
         event_throughputs,
         write_remote_pevt,
-        c=range(len(all_simulation_data)),
-        cmap="viridis",
-        s=100,
-        alpha=0.7,
+        s=72,
+        c="#4c72b0",
+        edgecolors="white",
+        linewidths=1.0,
+        alpha=0.88,
+        zorder=3,
     )
-    ax_s.set_xlabel("Event Throughput (events/second)")
-    ax_s.set_ylabel("Remote Write Data per Event (MB)")
-    ax_s.set_title("Performance vs Remote Write Efficiency\n", fontsize=10,
-    )
+    _annotate_construction_scatter_labels(ax_s, event_throughputs, write_remote_pevt)
+    ax_s.set_xlabel("Throughput (events/second)")
+    ax_s.set_ylabel("Remote Write per Event (MB)")
+    ax_s.set_title("Performance vs Remote Write Efficiency", fontsize=10)
     ax_s.grid(True, alpha=0.3)
 
-    x_lo, x_hi = _tight_axis_limits(event_throughputs, clamp_non_negative=False)
-    y_lo, y_hi = _tight_axis_limits(write_remote_pevt, clamp_non_negative=True)
+    x_lo, x_hi = _tight_axis_limits(event_throughputs, clamp_non_negative=False, pad_rel=0.16)
+    y_lo, y_hi = _tight_axis_limits(write_remote_pevt, clamp_non_negative=True, pad_rel=0.16)
     ax_s.set_xlim(x_lo, x_hi)
     ax_s.set_ylim(y_lo, y_hi)
 
@@ -659,7 +733,16 @@ def plot_turnaround_time_comparison(all_simulation_data: List[Dict],
     rows.sort(key=lambda r: r[0])
     turnaround_hours = np.array([r[1] / 3600.0 for r in rows])
     x = np.arange(len(rows))
-    wc_xticks = [str(i + 1) for i in range(len(rows))]
+    if custom_labels and len(custom_labels) == len(all_simulation_data):
+        comp_to_label = {
+            sim_data.get("composition_number", i + 1): custom_labels[i]
+            for i, sim_data in enumerate(all_simulation_data)
+        }
+        wc_xticks = [
+            comp_to_label.get(comp, str(comp)) for comp, _, _ in rows
+        ]
+    else:
+        wc_xticks = _comparison_xtick_labels(len(rows), custom_labels)
 
     fig, ax = plt.subplots(
         figsize=(STACKED_COMPARISON_FIG_W_IN, TURNAROUND_TIME_FIG_H_IN),
