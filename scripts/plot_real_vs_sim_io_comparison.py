@@ -37,8 +37,21 @@ REAL_VS_SIM_COMPOSITIONS: Tuple[Tuple[int, str], ...] = (
     (16, "TaskChain"),
 )
 
-# Extra height vs standard I/O stacked plots to fit two legend rows below the figure.
-REAL_VS_SIM_FIG_H_EXTRA_IN = 1.25
+# Layout tuning (figure fractions): axes bottom edge, gap between panels, legend tops.
+REAL_VS_SIM_SUBPLOT_BOTTOM = 0.21
+REAL_VS_SIM_HSPACE = 0.18
+# ``upper center`` anchors: y is the top of each legend box (stack upward from the margin).
+# Net downward shift from nominal anchors (raised 0.2 in total vs original 0.15 in downward).
+REAL_VS_SIM_LEGEND_SHIFT_DOWN_IN = -0.05
+REAL_VS_SIM_LEGEND_SOURCE_TOP_Y = (
+    0.09 - REAL_VS_SIM_LEGEND_SHIFT_DOWN_IN / STACKED_COMPARISON_FIG_H_IN
+)
+# I/O row ~0.15 in below 6 in baseline to clear the x-axis title; also shifted down with source row.
+REAL_VS_SIM_LEGEND_IO_TOP_Y = (
+    0.16
+    - (0.15 / STACKED_COMPARISON_FIG_H_IN)
+    - REAL_VS_SIM_LEGEND_SHIFT_DOWN_IN / STACKED_COMPARISON_FIG_H_IN
+)
 
 # Real/sim pair: shared center spacing and stacked bar width on both panels.
 REAL_SIM_CLUSTER_SEP = 0.30
@@ -184,13 +197,25 @@ def _io_legend_patch(name: str) -> Patch:
     return Patch(facecolor=IO_PATTERN_COLORS[name], label=name)
 
 
+def _reserve_bottom_margin_for_legends(fig: plt.Figure) -> None:
+    """Lift the 2×1 axes; reserve the lower band for x-axis labels and two legend rows."""
+    fig.subplots_adjust(
+        left=0.14,
+        right=0.96,
+        top=0.94,
+        bottom=REAL_VS_SIM_SUBPLOT_BOTTOM,
+        hspace=REAL_VS_SIM_HSPACE,
+    )
+
+
 def _real_vs_sim_io_legend_below(fig: plt.Figure, *, include_local_read: bool) -> None:
-    """Two legend rows below the bottom panel (matplotlib ncol fills by column, not row)."""
+    """Two legend rows in the reserved bottom margin (below Workflow Construction)."""
     legend_kw: Dict[str, Any] = {
         "frameon": True,
         "fancybox": True,
         "framealpha": 0.95,
-        "loc": "outside lower center",
+        "loc": "upper center",
+        "bbox_transform": fig.transFigure,
     }
     real_patch = Patch(
         facecolor="#bbbbbb",
@@ -219,15 +244,25 @@ def _real_vs_sim_io_legend_below(fig: plt.Figure, *, include_local_read: bool) -
 
     source_handles = [real_patch, sim_patch]
 
-    # Anchors in figure coordinates (below bottom axes); tight spacing between rows.
-    leg_io = fig.legend(handles=io_handles, ncol=io_ncol, bbox_to_anchor=(0.5, -0.05), **legend_kw)
-    fig.add_artist(leg_io)
-    fig.legend(handles=source_handles, ncol=2, bbox_to_anchor=(0.5, -0.085), **legend_kw)
+    # Row 2 (Real / Simulated) lower; row 1 (I/O) directly above it; both below the x-axis.
+    leg_src = fig.legend(
+        handles=source_handles,
+        ncol=2,
+        bbox_to_anchor=(0.5, REAL_VS_SIM_LEGEND_SOURCE_TOP_Y),
+        **legend_kw,
+    )
+    fig.add_artist(leg_src)
+    fig.legend(
+        handles=io_handles,
+        ncol=io_ncol,
+        bbox_to_anchor=(0.5, REAL_VS_SIM_LEGEND_IO_TOP_Y),
+        **legend_kw,
+    )
 
 
 def _save_real_vs_sim_figure(fig: plt.Figure, path: str) -> None:
-    """Save figure including outside legends (second row is below the axes box)."""
-    fig.savefig(path, bbox_inches="tight", pad_inches=0.12)
+    """Save at fixed figsize; bottom margin already reserved for legends."""
+    fig.savefig(path)
 
 
 def plot_real_vs_sim_io_comparison(
@@ -260,7 +295,7 @@ def plot_real_vs_sim_io_comparison(
     bar_w_nonlocal = _per_event_bar_width(3)
 
     fig_w = STACKED_COMPARISON_FIG_W_IN
-    fig_h = STACKED_COMPARISON_FIG_H_IN + REAL_VS_SIM_FIG_H_EXTRA_IN
+    fig_h = STACKED_COMPARISON_FIG_H_IN
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -270,7 +305,7 @@ def plot_real_vs_sim_io_comparison(
     ]
     vol_scale_l, vol_unit_l = _stacked_total_volume_scale_and_unit_from_max_mb(max(all_totals_local))
 
-    fig1, (ax1, ax3) = plt.subplots(2, 1, figsize=(fig_w, fig_h), layout="constrained", sharex=True)
+    fig1, (ax1, ax3) = plt.subplots(2, 1, figsize=(fig_w, fig_h), sharex=True)
     for i, comp in enumerate(comps):
         _clustered_per_event_bars(
             ax1, i, real_io[comp], sim_io[comp], include_local_read=True,
@@ -292,6 +327,7 @@ def plot_real_vs_sim_io_comparison(
     ax3.set_xticks(x)
     ax3.set_xticklabels(labels, rotation=0, ha="center")
     _style_stacked_total_data_volume_axis(ax3)
+    _reserve_bottom_margin_for_legends(fig1)
     _real_vs_sim_io_legend_below(fig1, include_local_read=True)
 
     path_local = os.path.join(output_dir, "io_patterns_real_vs_sim_local.png")
@@ -305,7 +341,7 @@ def plot_real_vs_sim_io_comparison(
     ]
     vol_scale_nl, vol_unit_nl = _stacked_total_volume_scale_and_unit_from_max_mb(max(all_totals_nl))
 
-    fig2, (ax2, ax4) = plt.subplots(2, 1, figsize=(fig_w, fig_h), layout="constrained", sharex=True)
+    fig2, (ax2, ax4) = plt.subplots(2, 1, figsize=(fig_w, fig_h), sharex=True)
     for i, comp in enumerate(comps):
         _clustered_per_event_bars(
             ax2, i, real_io[comp], sim_io[comp], include_local_read=False,
@@ -327,6 +363,7 @@ def plot_real_vs_sim_io_comparison(
     ax4.set_xticks(x)
     ax4.set_xticklabels(labels, rotation=0, ha="center")
     _style_stacked_total_data_volume_axis(ax4)
+    _reserve_bottom_margin_for_legends(fig2)
     _real_vs_sim_io_legend_below(fig2, include_local_read=False)
 
     path_nl = os.path.join(output_dir, "io_patterns_real_vs_sim_nonlocal.png")
