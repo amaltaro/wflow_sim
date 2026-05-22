@@ -3,7 +3,7 @@ import json
 import os
 import re
 import sys
-from typing import List, Dict, Any
+from typing import Any, Dict, List, Tuple
 from pathlib import Path
 import matplotlib
 # Set non-interactive backend to avoid display issues
@@ -28,7 +28,7 @@ from workflow_visualization import (
 
 
 def extract_construction_number(file_name: str) -> int:
-    """Extract construction number from filename like 'summary_const001_1M.json'."""
+    """Extract construction number from filename like 'summary_const001.json'."""
     match = re.search(r'const(\d+)', file_name, re.IGNORECASE)
     if match:
         return int(match.group(1))
@@ -242,6 +242,23 @@ def process_real_data_directory(directory_path: str) -> tuple:
 REAL_WORKFLOW_LABELS = {1: "StepChain", 16: "TaskChain"}
 
 
+def _sort_workflows_by_composition(
+    all_simulation_data: List[Dict],
+    sim_groups: List[Dict],
+) -> Tuple[List[Dict], List[Dict]]:
+    """Order workflows by composition_number so plots match StepChain → TaskChain."""
+    order = sorted(
+        range(len(all_simulation_data)),
+        key=lambda i: all_simulation_data[i].get("composition_number", 0),
+    )
+    sorted_data = [all_simulation_data[i] for i in order]
+    sorted_groups: List[Dict] = []
+    for i in order:
+        file_name = all_simulation_data[i].get("_file_name", "")
+        sorted_groups.extend(g for g in sim_groups if g.get("file_name") == file_name)
+    return sorted_data, sorted_groups
+
+
 def _build_display_labels(all_simulation_data: List[Dict]) -> List[str]:
     """Build X-axis labels for real workflow plots (StepChain/TaskChain or Const N)."""
     labels = []
@@ -267,6 +284,9 @@ def generate_workflow_visualizations(all_simulation_data: List[Dict],
         print("\nNo real data files found, skipping visualizations")
         return
     
+    all_simulation_data, sim_groups = _sort_workflows_by_composition(
+        all_simulation_data, sim_groups
+    )
     print(f"\nGenerating workflow comparison for {len(all_simulation_data)} real data workflow(s)...")
     display_labels = _build_display_labels(all_simulation_data)
     try:
@@ -319,41 +339,55 @@ def generate_workflow_visualizations(all_simulation_data: List[Dict],
         traceback.print_exc()
 
 
-if __name__ == "__main__":
-    # Set up argument parser
-    parser = argparse.ArgumentParser(
-        description='Create visualizations for real workflow data analysis results'
+def _run_visualization_pass(input_dir: str, output_dir: str) -> None:
+    """Load summaries from ``input_dir`` and write comparison plots to ``output_dir``."""
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    print(f"Processing real data from directory: {input_dir}")
+    print(f"Output directory: {output_dir}")
+    groups, jobs, all_simulation_data = process_real_data_directory(input_dir)
+    generate_workflow_visualizations(
+        all_simulation_data=all_simulation_data,
+        sim_groups=groups,
+        jobs=jobs,
+        output_dir=output_dir,
     )
-    parser.add_argument('--input-dir', type=str, default='results/real',
-                       help='Path to directory containing real data summary JSON files (default: results/real)')
-    parser.add_argument('--output-dir', type=str, default='results/real',
-                       help='Output directory for visualization files (default: results/real)')
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Create visualizations for real workflow data analysis results",
+    )
+    parser.add_argument(
+        "--input-dir",
+        type=str,
+        default="results/real",
+        help="Directory with summary_*.json files (default: results/real)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Output directory for PNGs (default: same as --input-dir)",
+    )
+    parser.add_argument(
+        "--also-normalized",
+        action="store_true",
+        help="Also run for results/real_norm (raw pass still uses --input-dir/--output-dir)",
+    )
     args = parser.parse_args()
-    
-    # Create output directory
-    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    
-    print(f"Processing real data from directory: {args.input_dir}")
-    print(f"Output directory: {args.output_dir}")
-    
+
+    output_dir = args.output_dir or args.input_dir
+    passes = [(args.input_dir, output_dir)]
+    if args.also_normalized:
+        passes.append(("results/real_norm", "results/real_norm"))
+
     try:
-        # Process real data files
-        groups, jobs, all_simulation_data = process_real_data_directory(
-            args.input_dir
-        )
-        
-        # Generate visualizations
-        generate_workflow_visualizations(
-            all_simulation_data=all_simulation_data,
-            sim_groups=groups,
-            jobs=jobs,
-            output_dir=args.output_dir
-        )
-        
-        print("\n" + "="*60)
+        for in_dir, out_dir in passes:
+            print("\n" + "=" * 60)
+            _run_visualization_pass(in_dir, out_dir)
+        print("\n" + "=" * 60)
         print("Visualization complete!")
-        print("="*60)
-        
+        print("=" * 60)
     except Exception as e:
         print(f"Error processing real data: {e}")
         import traceback
