@@ -54,21 +54,31 @@ The script generates the following files:
 
 ### Visualization Plots (PNG)
 
-- **io_patterns_comparison.png**:
-  - Data volume per event: Local Read, Remote Read, Local Write, Remote Write
-  - Data flow per event: Remote Read, Local Write, Remote Write
-  - Total data volumes (GB): Local/Remote Read/Write (stacked)
-  - Total data volumes (GB): Remote Read, Local Write, Remote Write (stacked)
+- **io_patterns_comparison_local.png** (2×1 stacked, width ≈ 2/3 of legacy 16 in):
+  - Top: data volume per event — Local Read, Remote Read, Local Write, Remote Write
+  - Bottom: total data volumes (stacked); y-axis **MB / GB / TB / PB** (binary 1024) from max stack
+  - Legend: one horizontal row below the bottom x-axis (4 series), not overlaid on bars
 
-- **resource_utilization_comparison.png**:
-  - Network transfer per event (MB)
-  - CPU utilization ratio
-  - Memory utilization ratio
-  - Resource cost: total CPU cores (left axis) and total memory GB (right axis)
+- **io_patterns_comparison_nonlocal.png** (2×1 stacked, same width):
+  - Top: data volume per event — Remote Read, Local Write, Remote Write
+  - Bottom: total data volumes (stacked); same dynamic **MB / GB / TB / PB** y-axis
+  - Legend: horizontal below the bottom panel (3 series)
 
-- **performance_metrics_comparison.png**:
-  - Event throughput vs remote write per event (scatter)
-  - CPU time per event (bars) overlaid with CPU utilization (line)
+- **resource_utilization_comparison.png** (3×1 stacked, same width as I/O comparison plots):
+  - Top → bottom: network transfer per event (MB), memory utilization ratio, CPU utilization
+    ratio; shared **Workflow Construction** x-axis (ticks **1 … n** on the bottom panel only)
+
+- **resource_cost_comparison.png** (single panel, same width):
+  - Total CPU cores used (left axis) and total memory used in GB (right axis)
+
+- **processing_efficiency_comparison.png** (wide, same width as I/O comparison plots):
+  - CPU time per event (bars) overlaid with CPU utilization (line); x ticks **1 … n**
+
+- **performance_vs_remote_write_comparison.png** (narrower figure):
+  - **One point per workflow construction** (each simulation / construction on the x–y axes is
+    a single workflow-wide aggregate, not one point per taskset group). Scatter: event throughput
+    vs remote write per event; each point is labeled **1 … n** (same order as other comparison
+    plots). Axes use **tight limits** around the data (no large empty margins).
 
 ### Text Report
 

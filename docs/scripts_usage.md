@@ -13,11 +13,12 @@ Normalizes real workflow execution metrics to a target event count (default: 1M 
 **Usage**:
 ```bash
 python scripts/normalize_real_metrics.py input_file.json output_file.json
-python scripts/normalize_real_metrics.py results/real/summary_const001_1M.json results/real/summary_const001_1M_norm.json
+python scripts/normalize_real_metrics.py results/real/summary_const001.json results/real_norm/summary_const001.json
 ```
 
 **What it does**:
 - Scales total metrics (wallclock time, CPU time, memory, I/O volumes) by `target_events / actual_events`
+- Sets ``event_metrics.total_events`` to the target count
 - Preserves event-normalized metrics (per-event values, ratios, utilization) unchanged
 - Preserves workflow turnaround time unchanged (reflects real-world execution)
 
@@ -125,15 +126,27 @@ Generates comparison plots from real workflow execution data.
 
 **Usage**:
 ```bash
-python scripts/real_workflow_visualization.py results/real/ [--output-dir results/real/]
+# Raw execution summaries (default: results/real)
+python scripts/real_workflow_visualization.py --input-dir results/real
+
+# Normalized to requested events (results/real_norm)
+python scripts/real_workflow_visualization.py --input-dir results/real_norm
+
+# Both raw and normalized in one run
+python scripts/real_workflow_visualization.py --input-dir results/real --also-normalized
 ```
 
 **What it does**:
-- Reads real data summary JSON files (from `condor_data_metrics.py`)
+- Reads real data summary JSON files (`summary_*.json` from `condor_data_metrics.py`)
 - Transforms metrics to simulation format
-- Generates comparison plots using the same visualization functions as `workflow_visualization.py`
+- Generates comparison plots via `workflow_visualization.py` (same layout as simulated comparisons)
+- Sorts workflows by composition number; x-axis labels use **StepChain** / **TaskChain** for const 1 / 16
 
-**Output**: PNG plots comparing real workflow execution metrics (I/O patterns, resource utilization, performance).
+**Output** (when at least two workflows are present), per output directory:
+- `io_patterns_comparison_local.png`, `io_patterns_comparison_nonlocal.png` (2×1 stacked; legend below x-axis)
+- `resource_utilization_comparison.png` (3×1 network / memory / CPU), `resource_cost_comparison.png`
+- `processing_efficiency_comparison.png`, `performance_vs_remote_write_comparison.png`, `turnaround_time_comparison.png`
+- `workflow_summary_table.csv` / `.txt`
 
 ### `construction_metrics_analysis.py`
 
@@ -147,12 +160,12 @@ Typical workflow for analyzing real vs simulated data:
 
 1. **Extract real data metrics**:
    ```bash
-   python scripts/condor_data_metrics.py real_data.json summary_const001_1M.json
+   python scripts/condor_data_metrics.py data/const001.json results/real/summary_const001.json
    ```
 
 2. **Normalize to 1M events** (optional, for comparison):
    ```bash
-   python scripts/normalize_real_metrics.py summary_const001_1M.json summary_const001_1M_norm.json
+   python scripts/normalize_real_metrics.py results/real/summary_const001.json results/real_norm/summary_const001.json
    ```
 
 3. **Visualize real data**:
