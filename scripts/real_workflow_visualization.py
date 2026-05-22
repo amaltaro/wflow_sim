@@ -28,8 +28,8 @@ from workflow_visualization import (
 
 
 def extract_construction_number(file_name: str) -> int:
-    """Extract construction number from filename like 'summary_const001.json'."""
-    match = re.search(r'const(\d+)', file_name, re.IGNORECASE)
+    """Extract construction number from filenames like summary_const001 or seq_real_const_001."""
+    match = re.search(r"const[_]?(\d+)", file_name, re.IGNORECASE)
     if match:
         return int(match.group(1))
     return 0
