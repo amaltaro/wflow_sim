@@ -48,6 +48,28 @@ python scripts/workflow_visualization.py results/sim/others/5tasks_fullsim/ --ou
 
 The current script always produces the full set of supported plots (no `--plots` selector).
 
+### Real vs simulated I/O (StepChain / TaskChain)
+
+Compare normalized CMS data (`results/real_norm`) against one simulated scenario (e.g.
+`seq_real` at 12h, fr0, 100MBps) for **const 1 (StepChain)** and **const 16 (TaskChain)**:
+
+```bash
+python scripts/plot_real_vs_sim_io_comparison.py \
+  --real-dir results/real_norm \
+  --sim-dir results/sim/others/seq_real/12h/fr0/100MBps \
+  --output-dir results/vis/comparison/real_vs_seq_real_12h_fr0_100MBps
+```
+
+Outputs (same metrics as `plot_io_patterns`):
+
+- **io_patterns_real_vs_sim_local.png** — per-event + stacked totals (includes local read)
+- **io_patterns_real_vs_sim_nonlocal.png** — per-event + stacked totals (remote read, local/remote write)
+
+At each x position (StepChain, TaskChain), **Real (normalized)** and **Simulated** bar groups are
+shown side by side; simulated bars use a hatch pattern. All comparison logic lives in
+`plot_real_vs_sim_io_comparison.py` (it only reuses figure sizing and volume-axis helpers from
+`workflow_visualization.py`).
+
 ## Generated Output
 
 The script generates the following files:
