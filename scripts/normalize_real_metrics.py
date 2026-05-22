@@ -2,13 +2,13 @@
 """
 Normalize Real Workflow Metrics to 1M Events
 
-This script scales whole-workflow total metrics from real data to 1,000,000 events
-for fair comparison with simulated data. Event-normalized metrics and ratios are
-preserved unchanged.
+This script scales whole-workflow total metrics from real data to a target event count
+(default 1,000,000) for fair comparison with simulated data. ``event_metrics.total_events``
+is set to that target. Per-event metrics and utilization ratios are preserved unchanged.
 
 Usage:
     python scripts/normalize_real_metrics.py input_file.json output_file.json
-    python scripts/normalize_real_metrics.py results/real/summary_const001_1M.json results/real/summary_const001_1M_normalized.json
+    python scripts/normalize_real_metrics.py results/real/summary_const001.json results/real_norm/summary_const001.json
 """
 
 import argparse
@@ -96,14 +96,18 @@ def normalize_real_data_file(
     print(f"  Target events: {target_events:,}")
     print(f"  Scaling factor: {scaling_factor:.6f}")
     
-    # Scale metrics in place
+    # Scale whole-workflow totals in place
     for category, metric_list in METRICS_TO_SCALE.items():
         if category in data:
             for metric_name in metric_list:
                 if metric_name in data[category]:
                     original_value = data[category][metric_name]
                     data[category][metric_name] = original_value * scaling_factor
-    
+
+    if 'event_metrics' not in data:
+        data['event_metrics'] = {}
+    data['event_metrics']['total_events'] = target_events
+
     # Save output file
     print(f"Saving normalized metrics to: {output_file}")
     with open(output_file, 'w') as f:
@@ -121,8 +125,8 @@ def main():
 Examples:
   # Normalize a single file
   python scripts/normalize_real_metrics.py \\
-      results/real/summary_const001_1M.json \\
-      results/real/summary_const001_1M_normalized.json
+      results/real/summary_const001.json \\
+      results/real_norm/summary_const001.json
         """
     )
     
