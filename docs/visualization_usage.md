@@ -66,8 +66,9 @@ Outputs (same metrics as `plot_io_patterns`):
 - **io_patterns_real_vs_sim_nonlocal.png** — per-event + stacked totals (remote read, local/remote write)
 
 At each x position (StepChain, TaskChain), **Real (normalized)** and **Simulated** bar groups are
-shown side by side; simulated bars use a hatch pattern. All comparison logic lives in
-`plot_real_vs_sim_io_comparison.py` (it only reuses figure sizing and volume-axis helpers from
+shown side by side. Figure size matches ``plot_io_patterns`` (**6×6 in**). Two legend rows sit in the
+reserved bottom margin below the axes. All comparison logic lives in
+`plot_real_vs_sim_io_comparison.py` (reuses stacked figure constants and volume-axis helpers from
 `workflow_visualization.py`).
 
 ## Generated Output
