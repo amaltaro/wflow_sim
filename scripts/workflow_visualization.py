@@ -139,6 +139,21 @@ def _resource_util_panel_center_banner(ax: plt.Axes, text: str, accent: str) -> 
 # Stacked 2×1 figure size for ``plot_io_patterns`` only
 STACKED_COMPARISON_FIG_W_IN = 6.0
 STACKED_COMPARISON_FIG_H_IN = 6.0
+# Comparison bar-plot width from bar geometry (see ``_comparison_figure_width_inches``).
+COMPARISON_FIG_MIN_WIDTH_IN = 4.0
+COMPARISON_FIG_HORIZONTAL_MARGIN_IN = 1.25
+COMPARISON_BAR_CLUSTER_WIDTH_IN = 0.28
+COMPARISON_BAR_CENTER_SPACING = 1.0
+COMPARISON_XLIM_PAD = 0.12
+# Bar-cluster spans in x data units (must match ``ax.bar`` widths/offsets in each plot).
+IO_PATTERNS_LOCAL_CLUSTER_DATA_W = 0.8
+IO_PATTERNS_NONLOCAL_CLUSTER_DATA_W = 0.75
+IO_PATTERNS_STACK_BAR_DATA_W = 0.6
+RESOURCE_UTIL_BAR_DATA_W = 0.8
+RESOURCE_COST_SINGLE_BAR_DATA_W = 0.35
+RESOURCE_COST_CLUSTER_DATA_W = 2.0 * RESOURCE_COST_SINGLE_BAR_DATA_W
+PROCESSING_EFFICIENCY_BAR_DATA_W = 0.6
+TURNAROUND_BAR_DATA_W = 0.65
 # Split performance outputs: wide processing panel, narrow scatter (tight axes)
 PROCESSING_EFFICIENCY_FIG_H_IN = STACKED_COMPARISON_FIG_H_IN / 2.0
 PERF_SCATTER_FIG_W_IN = STACKED_COMPARISON_FIG_W_IN
@@ -147,6 +162,54 @@ PERF_SCATTER_FIG_H_IN = 3.0
 RESOURCE_UTIL_STACK_FIG_H_IN = STACKED_COMPARISON_FIG_H_IN * 1.0
 RESOURCE_COST_FIG_H_IN = 3.0
 TURNAROUND_TIME_FIG_H_IN = 3.0
+
+
+def _comparison_x_data_span(
+    n_bars: int,
+    bar_width: float,
+    bar_spacing: float = COMPARISON_BAR_CENTER_SPACING,
+) -> float:
+    """X-axis data span for ``n_bars`` clusters of width ``bar_width`` and center spacing."""
+    if n_bars <= 0:
+        return bar_width
+    return (n_bars - 1) * bar_spacing + bar_width
+
+
+def _comparison_figure_width_inches(
+    n_bars: int,
+    *,
+    bar_width: float,
+    bar_spacing: float = COMPARISON_BAR_CENTER_SPACING,
+    horizontal_margin_in: float = COMPARISON_FIG_HORIZONTAL_MARGIN_IN,
+    cluster_width_in: float = COMPARISON_BAR_CLUSTER_WIDTH_IN,
+    min_width_in: float = COMPARISON_FIG_MIN_WIDTH_IN,
+) -> float:
+    """Figure width from bar count, cluster width, and center spacing.
+
+    Maps ``bar_width`` / ``bar_spacing`` (data units) to inches so each cluster renders at
+    ``cluster_width_in`` and adjacent centers are ``bar_spacing * scale`` inches apart.
+    """
+    if n_bars <= 0:
+        return min_width_in
+    inches_per_data = cluster_width_in / bar_width
+    content_in = _comparison_x_data_span(n_bars, bar_width, bar_spacing) * inches_per_data
+    return max(min_width_in, horizontal_margin_in + content_in)
+
+
+def _set_comparison_xlim(
+    ax: plt.Axes,
+    n_bars: int,
+    bar_width: float,
+    bar_spacing: float = COMPARISON_BAR_CENTER_SPACING,
+    *,
+    pad: float = COMPARISON_XLIM_PAD,
+) -> None:
+    """Trim x-axis to bar extent so constrained layouts do not leave trailing blank space."""
+    if n_bars <= 0:
+        ax.set_xlim(-0.5, 0.5)
+        return
+    half = bar_width / 2.0
+    ax.set_xlim(-half - pad, (n_bars - 1) + half + pad)
 
 
 def _style_stacked_total_data_volume_axis(ax: plt.Axes) -> None:
@@ -249,9 +312,9 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     write_local_pevt = np.array(write_local_pevt)
     read_local_pevt = np.array(read_local_pevt)
 
-    fig_w = STACKED_COMPARISON_FIG_W_IN
-    fig_h = STACKED_COMPARISON_FIG_H_IN
     n_plot = len(all_simulation_data)
+    fig_w = _comparison_figure_width_inches(n_plot, bar_width=IO_PATTERNS_LOCAL_CLUSTER_DATA_W)
+    fig_h = STACKED_COMPARISON_FIG_H_IN
     wc_xticks = _comparison_xtick_labels(n_plot, custom_labels)
     x = np.arange(n_plot)
 
@@ -332,6 +395,7 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     ax3.set_xticks(x)
     ax3.set_xticklabels(wc_xticks, rotation=0, ha="center")
     _style_stacked_total_data_volume_axis(ax3)
+    _set_comparison_xlim(ax3, n_plot, IO_PATTERNS_LOCAL_CLUSTER_DATA_W)
     _io_patterns_horizontal_legend_below(fig1, ax3, ncol=4)
 
     fname_inc = "io_patterns_comparison_local.png"
@@ -340,7 +404,8 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     print(f"  => I/O patterns (local) saved to {output_dir}/{fname_inc}")
 
     # --- Figure 2: non-local only (per-event on top, stacked totals below) ---
-    fig2, (ax2, ax4) = plt.subplots(2, 1, figsize=(fig_w, fig_h), layout="constrained", sharex=True)
+    fig_w_nl = _comparison_figure_width_inches(n_plot, bar_width=IO_PATTERNS_NONLOCAL_CLUSTER_DATA_W)
+    fig2, (ax2, ax4) = plt.subplots(2, 1, figsize=(fig_w_nl, fig_h), layout="constrained", sharex=True)
 
     width3 = 0.25
     ax2.bar(x - width3, read_remote_pevt, width3, label="Remote Read", color=colors["Remote Read"])
@@ -397,6 +462,7 @@ def plot_io_patterns(all_simulation_data: List[Dict],
     ax4.set_xticks(x)
     ax4.set_xticklabels(wc_xticks, rotation=0, ha="center")
     _style_stacked_total_data_volume_axis(ax4)
+    _set_comparison_xlim(ax4, n_plot, IO_PATTERNS_NONLOCAL_CLUSTER_DATA_W)
     _io_patterns_horizontal_legend_below(fig2, ax4, ncol=3)
 
     fname_exc = "io_patterns_comparison_nonlocal.png"
@@ -485,6 +551,7 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     events_per_cpu_core = np.array(events_per_cpu_core)
 
     n_plot = len(all_simulation_data)
+    fig_w = _comparison_figure_width_inches(n_plot, bar_width=RESOURCE_UTIL_BAR_DATA_W)
     wc_xticks = _comparison_xtick_labels(n_plot, custom_labels)
     x = np.arange(n_plot)
 
@@ -492,21 +559,21 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     fig_u, (ax_n, ax_m, ax_c) = plt.subplots(
         3,
         1,
-        figsize=(STACKED_COMPARISON_FIG_W_IN, RESOURCE_UTIL_STACK_FIG_H_IN),
+        figsize=(fig_w, RESOURCE_UTIL_STACK_FIG_H_IN),
         layout="constrained",
         sharex=True,
     )
 
     util_tick_fmt = FormatStrFormatter("%.1f")
 
-    ax_n.bar(x, network_transfer, color="#9467bd", alpha=0.7)
+    ax_n.bar(x, network_transfer, width=RESOURCE_UTIL_BAR_DATA_W, color="#9467bd", alpha=0.7)
     ax_n.set_ylabel("Network per Event (MB)")
     ax_n.yaxis.set_major_formatter(util_tick_fmt)
     ax_n.grid(True, alpha=0.3)
     ax_n.tick_params(axis="x", labelbottom=False)
     _resource_util_panel_center_banner(ax_n, "Network", "#9467bd")
 
-    ax_m.bar(x, memory_utilization, color="#ff7f0e", alpha=0.7)
+    ax_m.bar(x, memory_utilization, width=RESOURCE_UTIL_BAR_DATA_W, color="#ff7f0e", alpha=0.7)
     ax_m.set_ylabel("Memory Utilization Ratio")
     ax_m.set_ylim(bottom=0.0)
     ax_m.yaxis.set_major_formatter(util_tick_fmt)
@@ -514,7 +581,7 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     ax_m.tick_params(axis="x", labelbottom=False)
     _resource_util_panel_center_banner(ax_m, "Memory", "#ff7f0e")
 
-    ax_c.bar(x, cpu_utilization, color="#8c564b", alpha=0.7)
+    ax_c.bar(x, cpu_utilization, width=RESOURCE_UTIL_BAR_DATA_W, color="#8c564b", alpha=0.7)
     ax_c.set_xlabel("Workflow Construction")
     ax_c.set_ylabel("CPU Utilization Ratio")
     ax_c.set_xticks(x)
@@ -523,6 +590,7 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     ax_c.yaxis.set_major_formatter(util_tick_fmt)
     ax_c.grid(True, alpha=0.3)
     _resource_util_panel_center_banner(ax_c, "CPU", "#8c564b")
+    _set_comparison_xlim(ax_c, n_plot, RESOURCE_UTIL_BAR_DATA_W)
 
     fig_u.align_ylabels([ax_n, ax_m, ax_c])
 
@@ -532,13 +600,14 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     print(f"  => Resource utilization comparison saved to {output_dir}/{fname_u}")
 
     # --- 2) Resource cost (CPU cores + memory GB) ---
+    fig_w_cost = _comparison_figure_width_inches(n_plot, bar_width=RESOURCE_COST_CLUSTER_DATA_W)
     fig_cost, ax_cost = plt.subplots(
         1,
         1,
-        figsize=(STACKED_COMPARISON_FIG_W_IN, RESOURCE_COST_FIG_H_IN),
+        figsize=(fig_w_cost, RESOURCE_COST_FIG_H_IN),
         layout="constrained",
     )
-    width = 0.35
+    width = RESOURCE_COST_SINGLE_BAR_DATA_W
     total_memory_gb = total_memory_mb / 1024.0
     ax_cost_twin = ax_cost.twinx()
 
@@ -561,6 +630,7 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     lines1, labels1 = ax_cost.get_legend_handles_labels()
     lines2, labels2 = ax_cost_twin.get_legend_handles_labels()
     ax_cost.legend(lines1 + lines2, labels1 + labels2, **_legend_kwargs())
+    _set_comparison_xlim(ax_cost, n_plot, RESOURCE_COST_CLUSTER_DATA_W)
 
     fname_cost = "resource_cost_comparison.png"
     fig_cost.savefig(os.path.join(output_dir, fname_cost))
@@ -621,17 +691,18 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
     cpu_utilization = np.array(cpu_utilization)
 
     n_plot = len(all_simulation_data)
+    fig_w = _comparison_figure_width_inches(n_plot, bar_width=PROCESSING_EFFICIENCY_BAR_DATA_W)
     wc_xticks = _comparison_xtick_labels(n_plot, custom_labels)
 
     # --- 1) Processing efficiency (wide single panel) ---
     fig_p, ax_p = plt.subplots(
         1,
         1,
-        figsize=(STACKED_COMPARISON_FIG_W_IN, PROCESSING_EFFICIENCY_FIG_H_IN),
+        figsize=(fig_w, PROCESSING_EFFICIENCY_FIG_H_IN),
         layout="constrained",
     )
     x = np.arange(n_plot)
-    width = 0.6
+    width = PROCESSING_EFFICIENCY_BAR_DATA_W
     ax_p_twin = ax_p.twinx()
     ax_p.bar(x, cpu_time_per_event, width, label="CPU Time per Event", color="#2ca02c", alpha=0.7)
     ax_p.set_xlabel("Workflow Construction")
@@ -666,6 +737,7 @@ def plot_performance_metrics(all_simulation_data: List[Dict],
     lines1, labels1 = ax_p.get_legend_handles_labels()
     lines2, labels2 = ax_p_twin.get_legend_handles_labels()
     ax_p.legend(lines1 + lines2, labels1 + labels2, **_legend_kwargs(loc="upper left"))
+    _set_comparison_xlim(ax_p, n_plot, PROCESSING_EFFICIENCY_BAR_DATA_W)
 
     fname_p = "processing_efficiency_comparison.png"
     fig_p.savefig(os.path.join(output_dir, fname_p))
@@ -744,11 +816,13 @@ def plot_turnaround_time_comparison(all_simulation_data: List[Dict],
     else:
         wc_xticks = _comparison_xtick_labels(len(rows), custom_labels)
 
+    n_rows = len(rows)
+    fig_w = _comparison_figure_width_inches(n_rows, bar_width=TURNAROUND_BAR_DATA_W)
     fig, ax = plt.subplots(
-        figsize=(STACKED_COMPARISON_FIG_W_IN, TURNAROUND_TIME_FIG_H_IN),
+        figsize=(fig_w, TURNAROUND_TIME_FIG_H_IN),
         layout="constrained",
     )
-    width = 0.65
+    width = TURNAROUND_BAR_DATA_W
     ax.bar(x, turnaround_hours, width, color="#17becf", alpha=0.85)
     ax.set_xlabel("Workflow Construction")
     ax.set_ylabel("Turnaround Time (hours)")
@@ -760,6 +834,7 @@ def plot_turnaround_time_comparison(all_simulation_data: List[Dict],
     y_lo, y_hi = _tight_axis_limits(turnaround_hours, clamp_non_negative=False)
     y_lo = max(0.0, y_lo)
     ax.set_ylim(y_lo, y_hi)
+    _set_comparison_xlim(ax, n_rows, TURNAROUND_BAR_DATA_W)
 
     filename = "turnaround_time_comparison.png"
     fig.savefig(os.path.join(output_dir, filename))
