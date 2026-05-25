@@ -11,7 +11,6 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from pathlib import Path
 
 from matplotlib.ticker import AutoMinorLocator, FormatStrFormatter
@@ -1606,7 +1605,7 @@ def generate_workflow_visualizations(all_simulation_data: List[Dict],
 if __name__ == "__main__":
     # Set up argument parser
     parser = argparse.ArgumentParser(
-        description='Create visualizations for workflow simulation results using pandas/matplotlib/seaborn'
+        description='Create visualizations for workflow simulation results using pandas/matplotlib'
     )
     parser.add_argument('simulation_directory', type=str,
                        help='Path to directory containing simulation result JSON files')
