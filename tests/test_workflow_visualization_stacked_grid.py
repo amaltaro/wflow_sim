@@ -7,11 +7,19 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+import pytest
 
 sys.path.append(str(Path(__file__).parent.parent / "scripts"))
 from workflow_visualization import (
+    COMPARISON_BAR_CLUSTER_WIDTH_IN,
+    COMPARISON_FIG_HORIZONTAL_MARGIN_IN,
+    COMPARISON_FIG_MIN_WIDTH_IN,
+    IO_PATTERNS_LOCAL_CLUSTER_DATA_W,
     _annotate_construction_scatter_labels,
+    _comparison_figure_width_inches,
+    _comparison_x_data_span,
     _comparison_xtick_labels,
+    _set_comparison_xlim,
     _io_patterns_horizontal_legend_below,
     _resource_util_panel_center_banner,
     _stacked_total_volume_scale_and_unit_from_max_mb,
@@ -26,6 +34,39 @@ def test_comparison_xtick_labels_custom() -> None:
         "TaskChain",
     ]
     assert _comparison_xtick_labels(3, None) == ["1", "2", "3"]
+
+
+@pytest.mark.parametrize(
+    "n_bars,bar_width,expected_span",
+    [
+        (0, 0.6, 0.6),
+        (1, 0.6, 0.6),
+        (3, 0.6, 2.6),
+        (16, 0.8, 15.8),
+    ],
+)
+def test_comparison_x_data_span(n_bars: int, bar_width: float, expected_span: float) -> None:
+    assert _comparison_x_data_span(n_bars, bar_width) == expected_span
+
+
+def test_comparison_figure_width_inches_from_bar_geometry() -> None:
+    n_bars = 16
+    bar_width = IO_PATTERNS_LOCAL_CLUSTER_DATA_W
+    scale = COMPARISON_BAR_CLUSTER_WIDTH_IN / bar_width
+    expected = (
+        COMPARISON_FIG_HORIZONTAL_MARGIN_IN
+        + _comparison_x_data_span(n_bars, bar_width) * scale
+    )
+    assert _comparison_figure_width_inches(n_bars, bar_width=bar_width) == expected
+    assert _comparison_figure_width_inches(0, bar_width=bar_width) == COMPARISON_FIG_MIN_WIDTH_IN
+
+
+def test_set_comparison_xlim_trims_to_bar_extent() -> None:
+    _, ax = plt.subplots()
+    _set_comparison_xlim(ax, 5, 0.6)
+    assert ax.get_xlim()[0] == pytest.approx(-0.42)
+    assert ax.get_xlim()[1] == pytest.approx(4.42)
+    plt.close()
 
 
 def test_annotate_construction_scatter_labels_adds_one_per_point() -> None:
