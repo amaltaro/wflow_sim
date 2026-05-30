@@ -111,38 +111,22 @@ The script generates the following outputs in the specified output directory:
 
 ### Visualizations
 
-1. **`throughput_comparison.png`**
-   - Bar chart comparing event throughput for Const 1, Const 16, and best hybrid across workflow types
-   - Shows which workflow types achieve highest throughput
-   - Best hybrid construction number is labeled above each bar
-   - Helps identify which workflow types benefit most from hybrid compositions
+The script writes two side-by-side comparison figures (IEEE-friendly layout) plus a summary CSV.
 
-2. **`throughput_improvement.png`**
-   - Bar chart showing **event throughput** improvement percentage of best hybrid over Const 1 and Const 16
-   - Calculated as: `((best_hybrid_throughput - extreme_throughput) / extreme_throughput) × 100`
-   - Positive values indicate throughput improvement, negative values indicate degradation
-   - Shows relative benefit of hybrid compositions for each workflow type
-   - Helps quantify the throughput advantage of hybrid constructions
+1. **`throughput_network_comparison.png`**
+   - **(a) Throughput:** event throughput for most grouped, most ungrouped, and best hybrid
+   - **(b) Network efficiency:** network transfer per event (MB) for the same three cases
+   - Best hybrid construction id is labeled on hybrid bars
 
-3. **`network_efficiency_comparison.png`**
-   - Bar chart comparing network transfer per event across workflow types
-   - Shows absolute network transfer values (MB per event)
-   - Lower values indicate better network efficiency
-   - Shows how different workflow types handle network I/O
-   - Helps identify which workflow types maintain better network efficiency with hybrids
-
-4. **`network_improvement_percentage.png`**
-   - Bar chart showing **network transfer reduction** percentage of best hybrid over Const 1 and Const 16
-   - Calculated as: `((extreme_network - best_hybrid_network) / extreme_network) × 100`
-   - Since lower network transfer is better, this shows reduction percentage
-   - Positive values indicate the hybrid uses less network (better efficiency)
-   - Negative values indicate the hybrid uses more network (should be rare)
-   - Shows relative network efficiency benefit of hybrid compositions for each workflow type
-   - Helps quantify the network efficiency advantage of hybrid constructions
+2. **`throughput_network_improvement.png`**
+   - **(a) Throughput improvement:** `((best_hybrid_throughput - extreme_throughput) / extreme_throughput) × 100`
+   - **(b) Network improvement:** `((extreme_network - best_hybrid_network) / extreme_network) × 100`
+   - Paired bars compare best hybrid vs most grouped (red) and most ungrouped (green)
+   - Positive throughput values indicate faster hybrids; positive network values indicate less I/O
 
 ### Data Tables
 
-5. **`workflow_type_sensitivity_summary.csv`**
+3. **`workflow_type_sensitivity_summary.csv`**
    - Comprehensive table with metrics for Const 1, Const 16, and best hybrid for each workflow type
    - Columns include:
      - Workflow type
