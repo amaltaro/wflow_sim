@@ -18,14 +18,15 @@ Analysis: Workflow Type Sensitivity (Comparison #2)
 import argparse
 import json
 import os
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
-from collections import defaultdict
 from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.ticker import FormatStrFormatter, MaxNLocator
 
 from composition_extremes import composition_extremes_from_single_map
 
@@ -34,6 +35,17 @@ def _extremes(wf: Dict[int, Dict[str, Any]]) -> tuple:
     if not wf:
         return (1, 16)
     return composition_extremes_from_single_map(wf)
+
+
+def _style_event_throughput_yaxis(ax: plt.Axes, throughput_values: List[float]) -> None:
+    """Plain decimal y ticks for small event throughput (no sci notation or offset multiplier).
+
+    Keeps units as events/s. Uses one extra decimal when the data range is below ~0.02 evt/s.
+    """
+    hi = max(throughput_values) if throughput_values else 0.0
+    fmt = "%.4f" if 0.0 < hi < 0.02 else "%.3f"
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
+    ax.yaxis.set_major_formatter(FormatStrFormatter(fmt))
 
 
 def _legend_label_with_extremes(name: str, comp_nums: List[int]) -> str:
@@ -217,393 +229,412 @@ def identify_best_hybrid(
     return best_comp
 
 
-def plot_throughput_comparison(data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]],
-                               output_dir: str) -> None:
-    """Plot throughput comparison across workflow types.
+# Shared layout for side-by-side IEEE-friendly figures.
+_COMBINED_FIG_SIZE = (8.0, 4.0)
+_COMBINED_TITLE_FS = 10
+_COMBINED_LABEL_FS = 9
+_COMBINED_TICK_FS = 8
+_COMBINED_LEGEND_FS = 7
+_COMBINED_BAR_WIDTH = 0.25
+_IMPROVEMENT_BAR_WIDTH = 0.35
+_GROUPED_BAR_COLOR = "#d62728"
+_UNGROUPED_BAR_COLOR = "#2ca02c"
+_HYBRID_BAR_COLOR = "#1f77b4"
 
-    Args:
-        data_by_workflow: Dictionary mapping workflow_type to composition metrics
-        output_dir: Output directory for plots
-    """
-    print(f"\n==> Creating throughput comparison plot")
 
-    fig, ax = plt.subplots(figsize=(12, 7))
+@dataclass
+class _WorkflowTypePlotData:
+    """Per-workflow-type metrics for combined comparison and improvement plots."""
 
+    workflow_types: List[str]
+    x: np.ndarray
+    grouped_throughput: List[float]
+    indep_throughput: List[float]
+    best_hybrid_throughput: List[float]
+    grouped_network: List[float]
+    indep_network: List[float]
+    best_hybrid_network: List[float]
+    best_hybrid_labels: List[str]
+    grouped_comp_nums: List[int]
+    indep_comp_nums: List[int]
+    throughput_improvement_grouped: List[float]
+    throughput_improvement_indep: List[float]
+    network_reduction_grouped: List[float]
+    network_reduction_indep: List[float]
+
+
+def _pct_throughput_improvement(best: float, baseline: float) -> float:
+    if baseline <= 0:
+        return 0.0
+    return ((best - baseline) / baseline) * 100
+
+
+def _pct_network_reduction(best: float, baseline: float) -> float:
+    if baseline <= 0:
+        return 0.0
+    return ((baseline - best) / baseline) * 100
+
+
+def _collect_workflow_type_plot_data(
+    data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]],
+) -> _WorkflowTypePlotData:
+    """Aggregate extremes, best hybrid, and improvement percentages in one pass."""
     workflow_types = list(data_by_workflow.keys())
     x = np.arange(len(workflow_types))
-    width = 0.25
 
-    grouped_t: List[float] = []
-    indep_t: List[float] = []
+    grouped_throughput: List[float] = []
+    indep_throughput: List[float] = []
     best_hybrid_throughput: List[float] = []
-    best_hybrid_labels: List[str] = []
-    grouped_comp_nums: List[int] = []
-    indep_comp_nums: List[int] = []
-
-    for workflow_type in workflow_types:
-        workflow_data = data_by_workflow[workflow_type]
-        g_comp, indep_comp = _extremes(workflow_data)
-        grouped_comp_nums.append(g_comp)
-        indep_comp_nums.append(indep_comp)
-        if g_comp in workflow_data:
-            grouped_t.append(workflow_data[g_comp]['event_throughput'])
-        else:
-            grouped_t.append(0.0)
-        if indep_comp in workflow_data:
-            indep_t.append(workflow_data[indep_comp]['event_throughput'])
-        else:
-            indep_t.append(0.0)
-        best_hybrid = identify_best_hybrid(
-            workflow_data, g_comp, indep_comp, verbose=False
-        )
-        if best_hybrid and best_hybrid in workflow_data:
-            best_hybrid_throughput.append(workflow_data[best_hybrid]['event_throughput'])
-            best_hybrid_labels.append(f"Const {best_hybrid}")
-        else:
-            best_hybrid_throughput.append(0.0)
-            best_hybrid_labels.append("N/A")
-
-    bars1 = ax.bar(
-        x - width,
-        grouped_t,
-        width,
-        label=_legend_label_with_extremes("Most grouped", grouped_comp_nums),
-        color="#d62728",
-        alpha=0.8,
-    )
-    bars2 = ax.bar(
-        x,
-        indep_t,
-        width,
-        label=_legend_label_with_extremes("Most ungrouped", indep_comp_nums),
-        color="#2ca02c",
-        alpha=0.8,
-    )
-    bars3 = ax.bar(x + width, best_hybrid_throughput, width, label='Best Hybrid',
-                  color='#1f77b4', alpha=0.8)
-
-    # Add value labels on bars
-    for bars in [bars1, bars2, bars3]:
-        for bar in bars:
-            height = bar.get_height()
-            if height > 0:
-                ax.text(bar.get_x() + bar.get_width()/2., height,
-                       f'{height:.4f}', ha='center', va='bottom', fontsize=9)
-
-    # Best hybrid construction labels only (extremes appear in the legend)
-    for i, _ in enumerate(workflow_types):
-        if best_hybrid_throughput[i] > 0:
-            ax.text(
-                i + width,
-                best_hybrid_throughput[i] + max(best_hybrid_throughput) * 0.02,
-                best_hybrid_labels[i],
-                ha="center",
-                va="bottom",
-                fontsize=8,
-                style="italic",
-            )
-
-    ax.set_xlabel("Workflow Type", fontsize=12)
-    ax.set_ylabel("Event Throughput (events/second)", fontsize=12)
-    ax.set_title("Throughput Comparison Across Workflow Types", fontsize=14)
-    ax.set_xticks(x)
-    ax.set_xticklabels(workflow_types, fontsize=10)
-    ax.legend(fontsize=11)
-    ax.grid(True, alpha=0.3, axis='y')
-
-    plt.tight_layout()
-    output_path = os.path.join(output_dir, "throughput_comparison.png")
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"  => Saved: {output_path}")
-
-
-def plot_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]],
-                                output_dir: str) -> None:
-    """Plot event throughput improvement percentage of best hybrid over extremes.
-
-    Calculates percentage improvement as: ((best_hybrid_throughput - extreme_throughput) / extreme_throughput) × 100
-
-    Args:
-        data_by_workflow: Dictionary mapping workflow_type to composition metrics
-        output_dir: Output directory for plots
-    """
-    print(f"==> Creating improvement percentage plot")
-
-    fig, ax = plt.subplots(figsize=(12, 7))
-
-    workflow_types = list(data_by_workflow.keys())
-    x = np.arange(len(workflow_types))
-    width = 0.35
-
-    improvement_over_const1 = []
-    improvement_over_const16 = []
-
-    for workflow_type in workflow_types:
-        workflow_data = data_by_workflow[workflow_type]
-        g_comp, indep_comp = _extremes(workflow_data)
-        # Get best hybrid
-        best_hybrid = identify_best_hybrid(
-            workflow_data, g_comp, indep_comp, verbose=False
-        )
-        if not best_hybrid or best_hybrid not in workflow_data:
-            improvement_over_const1.append(0.0)
-            improvement_over_const16.append(0.0)
-            continue
-
-        best_throughput = workflow_data[best_hybrid]['event_throughput']
-
-        if g_comp in workflow_data and workflow_data[g_comp]['event_throughput'] > 0:
-            grouped_tp = workflow_data[g_comp]['event_throughput']
-            improvement = ((best_throughput - grouped_tp) / grouped_tp) * 100
-            improvement_over_const1.append(improvement)
-        else:
-            improvement_over_const1.append(0.0)
-
-        if indep_comp in workflow_data and workflow_data[indep_comp]['event_throughput'] > 0:
-            indep_tp = workflow_data[indep_comp]['event_throughput']
-            improvement = ((best_throughput - indep_tp) / indep_tp) * 100
-            improvement_over_const16.append(improvement)
-        else:
-            improvement_over_const16.append(0.0)
-
-    bars1 = ax.bar(
-        x - width / 2, improvement_over_const1, width,
-        label="Over most grouped", color="#d62728", alpha=0.8
-    )
-    bars2 = ax.bar(
-        x + width / 2, improvement_over_const16, width,
-        label="Over most ungrouped", color="#2ca02c", alpha=0.8
-    )
-
-    # Add value labels on bars
-    # Always show labels, even for zero or very small values
-    for bars in [bars1, bars2]:
-        for bar in bars:
-            height = bar.get_height()
-            # For zero or near-zero values, show label slightly offset from baseline
-            if abs(height) < 0.01:
-                # Position label at a small offset so it's visible
-                label_y = 0.3 if height >= 0 else -0.3
-                ax.text(bar.get_x() + bar.get_width()/2., label_y,
-                       '0.0%', ha='center', va='bottom' if height >= 0 else 'top', 
-                       fontsize=9)
-            else:
-                ax.text(bar.get_x() + bar.get_width()/2., height,
-                       f'{height:.1f}%', ha='center', 
-                       va='bottom' if height > 0 else 'top', fontsize=9)
-
-    ax.set_xlabel("Workflow Type", fontsize=12)
-    ax.set_ylabel("Throughput Improvement (%)", fontsize=12)
-    ax.set_title("Best Hybrid Throughput Improvement Over Extremes", fontsize=14)
-    ax.set_xticks(x)
-    ax.set_xticklabels(workflow_types, fontsize=10)
-    ax.legend(fontsize=11)
-    ax.grid(True, alpha=0.3, axis='y')
-    ax.axhline(y=0, color='black', linestyle='--', linewidth=1, alpha=0.5)
-
-    plt.tight_layout()
-    output_path = os.path.join(output_dir, "throughput_improvement.png")
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"  => Saved: {output_path}")
-
-
-def plot_network_efficiency_comparison(data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]],
-                                      output_dir: str) -> None:
-    """Plot network efficiency comparison across workflow types.
-
-    Args:
-        data_by_workflow: Dictionary mapping workflow_type to composition metrics
-        output_dir: Output directory for plots
-    """
-    print(f"==> Creating network efficiency comparison plot")
-
-    fig, ax = plt.subplots(figsize=(12, 7))
-
-    workflow_types = list(data_by_workflow.keys())
-    x = np.arange(len(workflow_types))
-    width = 0.25
-
-    const1_network: List[float] = []
-    const16_network: List[float] = []
+    grouped_network: List[float] = []
+    indep_network: List[float] = []
     best_hybrid_network: List[float] = []
     best_hybrid_labels: List[str] = []
     grouped_comp_nums: List[int] = []
     indep_comp_nums: List[int] = []
+    throughput_improvement_grouped: List[float] = []
+    throughput_improvement_indep: List[float] = []
+    network_reduction_grouped: List[float] = []
+    network_reduction_indep: List[float] = []
 
     for workflow_type in workflow_types:
         workflow_data = data_by_workflow[workflow_type]
         g_comp, indep_comp = _extremes(workflow_data)
         grouped_comp_nums.append(g_comp)
         indep_comp_nums.append(indep_comp)
-        if g_comp in workflow_data:
-            const1_network.append(workflow_data[g_comp]['network_transfer_mb_per_event'])
-        else:
-            const1_network.append(0.0)
-        if indep_comp in workflow_data:
-            const16_network.append(
-                workflow_data[indep_comp]['network_transfer_mb_per_event']
-            )
-        else:
-            const16_network.append(0.0)
+
+        g_tp = workflow_data[g_comp]["event_throughput"] if g_comp in workflow_data else 0.0
+        i_tp = (
+            workflow_data[indep_comp]["event_throughput"]
+            if indep_comp in workflow_data
+            else 0.0
+        )
+        g_net = (
+            workflow_data[g_comp]["network_transfer_mb_per_event"]
+            if g_comp in workflow_data
+            else 0.0
+        )
+        i_net = (
+            workflow_data[indep_comp]["network_transfer_mb_per_event"]
+            if indep_comp in workflow_data
+            else 0.0
+        )
+        grouped_throughput.append(g_tp)
+        indep_throughput.append(i_tp)
+        grouped_network.append(g_net)
+        indep_network.append(i_net)
+
         best_hybrid = identify_best_hybrid(
             workflow_data, g_comp, indep_comp, verbose=False
         )
         if best_hybrid and best_hybrid in workflow_data:
-            best_hybrid_network.append(
-                workflow_data[best_hybrid]['network_transfer_mb_per_event']
-            )
+            bh = workflow_data[best_hybrid]
+            b_tp = bh["event_throughput"]
+            b_net = bh["network_transfer_mb_per_event"]
+            best_hybrid_throughput.append(b_tp)
+            best_hybrid_network.append(b_net)
             best_hybrid_labels.append(f"Const {best_hybrid}")
+            throughput_improvement_grouped.append(
+                _pct_throughput_improvement(b_tp, g_tp)
+            )
+            throughput_improvement_indep.append(
+                _pct_throughput_improvement(b_tp, i_tp)
+            )
+            network_reduction_grouped.append(_pct_network_reduction(b_net, g_net))
+            network_reduction_indep.append(_pct_network_reduction(b_net, i_net))
         else:
+            best_hybrid_throughput.append(0.0)
             best_hybrid_network.append(0.0)
             best_hybrid_labels.append("N/A")
+            throughput_improvement_grouped.append(0.0)
+            throughput_improvement_indep.append(0.0)
+            network_reduction_grouped.append(0.0)
+            network_reduction_indep.append(0.0)
 
-    bars1 = ax.bar(
-        x - width,
-        const1_network,
-        width,
-        label=_legend_label_with_extremes("Most grouped", grouped_comp_nums),
-        color="#d62728",
-        alpha=0.8,
+    return _WorkflowTypePlotData(
+        workflow_types=workflow_types,
+        x=x,
+        grouped_throughput=grouped_throughput,
+        indep_throughput=indep_throughput,
+        best_hybrid_throughput=best_hybrid_throughput,
+        grouped_network=grouped_network,
+        indep_network=indep_network,
+        best_hybrid_network=best_hybrid_network,
+        best_hybrid_labels=best_hybrid_labels,
+        grouped_comp_nums=grouped_comp_nums,
+        indep_comp_nums=indep_comp_nums,
+        throughput_improvement_grouped=throughput_improvement_grouped,
+        throughput_improvement_indep=throughput_improvement_indep,
+        network_reduction_grouped=network_reduction_grouped,
+        network_reduction_indep=network_reduction_indep,
     )
-    bars2 = ax.bar(
-        x,
-        const16_network,
-        width,
-        label=_legend_label_with_extremes("Most ungrouped", indep_comp_nums),
-        color="#2ca02c",
-        alpha=0.8,
-    )
-    bars3 = ax.bar(x + width, best_hybrid_network, width, label='Best Hybrid',
-                  color='#1f77b4', alpha=0.8)
-
-    # Add value labels on bars
-    for bars in [bars1, bars2, bars3]:
-        for bar in bars:
-            height = bar.get_height()
-            if height > 0:
-                ax.text(bar.get_x() + bar.get_width()/2., height,
-                       f'{height:.3f}', ha='center', va='bottom', fontsize=9)
-
-    # Best hybrid construction labels only (extremes appear in the legend)
-    for i, _ in enumerate(workflow_types):
-        if best_hybrid_network[i] > 0 and best_hybrid_labels[i] != "N/A":
-            ax.text(
-                i + width,
-                best_hybrid_network[i] + max(best_hybrid_network) * 0.02,
-                best_hybrid_labels[i],
-                ha="center",
-                va="bottom",
-                fontsize=8,
-                style="italic",
-            )
-
-    ax.set_xlabel("Workflow Type", fontsize=12)
-    ax.set_ylabel("Network Transfer per Event (MB)", fontsize=12)
-    ax.set_title("Network Efficiency Comparison Across Workflow Types", fontsize=14)
-    ax.set_xticks(x)
-    ax.set_xticklabels(workflow_types, fontsize=10)
-    ax.legend(fontsize=11)
-    ax.grid(True, alpha=0.3, axis='y')
-
-    plt.tight_layout()
-    output_path = os.path.join(output_dir, "network_efficiency_comparison.png")
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"  => Saved: {output_path}")
 
 
-def plot_network_improvement_percentage(data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]],
-                                       output_dir: str) -> None:
-    """Plot network transfer reduction percentage of best hybrid over extremes.
-
-    Since lower network transfer is better, this shows reduction percentage:
-    ((extreme_network - best_hybrid_network) / extreme_network) × 100
-    Positive values indicate the hybrid uses less network (better).
-
-    Args:
-        data_by_workflow: Dictionary mapping workflow_type to composition metrics
-        output_dir: Output directory for plots
-    """
-    print(f"==> Creating network improvement percentage plot")
-
-    fig, ax = plt.subplots(figsize=(12, 7))
-
-    workflow_types = list(data_by_workflow.keys())
-    x = np.arange(len(workflow_types))
-    width = 0.35
-
-    reduction_over_const1 = []
-    reduction_over_const16 = []
-
-    for workflow_type in workflow_types:
-        workflow_data = data_by_workflow[workflow_type]
-        g_comp, indep_comp = _extremes(workflow_data)
-        best_hybrid = identify_best_hybrid(
-            workflow_data, g_comp, indep_comp, verbose=False
-        )
-        if not best_hybrid or best_hybrid not in workflow_data:
-            reduction_over_const1.append(0.0)
-            reduction_over_const16.append(0.0)
+def _hybrid_bar_labels(heights: List[float], labels: List[str], *, fmt: str) -> List[str]:
+    """Two lines per hybrid bar: construction id first, metric below (centered on bar)."""
+    out: List[str] = []
+    for i, h in enumerate(heights):
+        if h <= 0:
+            out.append("")
             continue
-
-        best_network = workflow_data[best_hybrid]['network_transfer_mb_per_event']
-
-        if g_comp in workflow_data and workflow_data[g_comp]['network_transfer_mb_per_event'] > 0:
-            gn = workflow_data[g_comp]['network_transfer_mb_per_event']
-            reduction = ((gn - best_network) / gn) * 100
-            reduction_over_const1.append(reduction)
+        val = f"{h:{fmt}}"
+        hl = labels[i]
+        if hl == "N/A":
+            out.append(val)
         else:
-            reduction_over_const1.append(0.0)
+            short = hl.replace("Const ", "C")
+            out.append(f"{short}\n{val}")
+    return out
 
-        if indep_comp in workflow_data and workflow_data[indep_comp]['network_transfer_mb_per_event'] > 0:
-            inn = workflow_data[indep_comp]['network_transfer_mb_per_event']
-            reduction = ((inn - best_network) / inn) * 100
-            reduction_over_const16.append(reduction)
-        else:
-            reduction_over_const16.append(0.0)
 
-    bars1 = ax.bar(
-        x - width / 2, reduction_over_const1, width,
-        label="Over most grouped", color="#d62728", alpha=0.8
+def _apply_combined_subplot_layout(fig: plt.Figure) -> None:
+    fig.subplots_adjust(left=0.07, right=0.99, top=0.90, bottom=0.26, wspace=0.22)
+
+
+def _add_combined_figure_legend(
+    fig: plt.Figure,
+    ax: plt.Axes,
+    *,
+    ncol: int,
+) -> None:
+    handles, labels = ax.get_legend_handles_labels()
+    fig.legend(
+        handles,
+        labels,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.14),
+        ncol=ncol,
+        fontsize=_COMBINED_LEGEND_FS,
+        frameon=True,
+        columnspacing=0.9,
+        handletextpad=0.35,
     )
-    bars2 = ax.bar(
-        x + width / 2, reduction_over_const16, width,
-        label="Over most ungrouped", color="#2ca02c", alpha=0.8
-    )
 
-    # Add value labels on bars
-    # Always show labels, even for zero or very small values
-    for bars in [bars1, bars2]:
+
+def _save_combined_figure(fig: plt.Figure, output_dir: str, filename: str) -> None:
+    output_path = os.path.join(output_dir, filename)
+    fig.savefig(output_path, dpi=200, bbox_inches="tight", pad_inches=0.14)
+    plt.close(fig)
+    print(f"  => Saved: {output_path}")
+
+
+def _label_percentage_bars(ax: plt.Axes, bar_groups: List[Any], *, fontsize: float) -> None:
+    """Add percentage labels on grouped improvement bars (handles near-zero heights)."""
+    for bars in bar_groups:
         for bar in bars:
             height = bar.get_height()
-            # For zero or near-zero values, show label slightly offset from baseline
             if abs(height) < 0.01:
-                # Position label at a small offset so it's visible
                 label_y = 0.3 if height >= 0 else -0.3
-                ax.text(bar.get_x() + bar.get_width()/2., label_y,
-                       '0.0%', ha='center', va='bottom' if height >= 0 else 'top', 
-                       fontsize=9)
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2.0,
+                    label_y,
+                    "0.0%",
+                    ha="center",
+                    va="bottom" if height >= 0 else "top",
+                    fontsize=fontsize,
+                )
             else:
-                ax.text(bar.get_x() + bar.get_width()/2., height,
-                       f'{height:.1f}%', ha='center', 
-                       va='bottom' if height > 0 else 'top', fontsize=9)
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2.0,
+                    height,
+                    f"{height:.1f}%",
+                    ha="center",
+                    va="bottom" if height > 0 else "top",
+                    fontsize=fontsize,
+                )
 
-    ax.set_xlabel("Workflow Type", fontsize=12)
-    ax.set_ylabel("Network Transfer Reduction (%)", fontsize=12)
-    ax.set_title("Best Hybrid Network Transfer Reduction Over Extremes", fontsize=14)
-    ax.set_xticks(x)
-    ax.set_xticklabels(workflow_types, fontsize=10)
-    ax.legend(fontsize=11)
-    ax.grid(True, alpha=0.3, axis='y')
-    ax.axhline(y=0, color='black', linestyle='--', linewidth=1, alpha=0.5)
 
-    plt.tight_layout()
-    output_path = os.path.join(output_dir, "network_improvement_percentage.png")
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"  => Saved: {output_path}")
+def plot_throughput_and_network_combined(
+    data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]],
+    output_dir: str,
+) -> None:
+    """Throughput (left) and network transfer (right) in one row.
+
+    Saves: ``throughput_network_comparison.png``
+    """
+    print("==> Creating combined throughput + network efficiency figure (side-by-side)")
+
+    data = _collect_workflow_type_plot_data(data_by_workflow)
+    width = _COMBINED_BAR_WIDTH
+    hybrid_lbl_fs = 6.5
+
+    fig, (ax_t, ax_n) = plt.subplots(1, 2, figsize=_COMBINED_FIG_SIZE)
+    _apply_combined_subplot_layout(fig)
+
+    ax_t.bar(
+        data.x - width,
+        data.grouped_throughput,
+        width,
+        label=_legend_label_with_extremes("Most grouped", data.grouped_comp_nums),
+        color=_GROUPED_BAR_COLOR,
+        alpha=0.8,
+    )
+    ax_t.bar(
+        data.x,
+        data.indep_throughput,
+        width,
+        label=_legend_label_with_extremes("Most ungrouped", data.indep_comp_nums),
+        color=_UNGROUPED_BAR_COLOR,
+        alpha=0.8,
+    )
+    bars3 = ax_t.bar(
+        data.x + width,
+        data.best_hybrid_throughput,
+        width,
+        label="Best Hybrid",
+        color=_HYBRID_BAR_COLOR,
+        alpha=0.8,
+    )
+    ax_t.bar_label(
+        bars3,
+        labels=_hybrid_bar_labels(
+            data.best_hybrid_throughput, data.best_hybrid_labels, fmt=".3f"
+        ),
+        padding=4,
+        fontsize=hybrid_lbl_fs,
+    )
+    tp_vals = (
+        data.grouped_throughput + data.indep_throughput + data.best_hybrid_throughput
+    )
+    tp_hi = max(tp_vals)
+    if tp_hi > 0:
+        ax_t.set_ylim(0, tp_hi * 1.20)
+        _style_event_throughput_yaxis(ax_t, tp_vals)
+
+    ax_t.set_xlabel("Workflow Type", fontsize=_COMBINED_LABEL_FS)
+    ax_t.set_ylabel("Event Throughput (events/s)", fontsize=_COMBINED_LABEL_FS)
+    ax_t.set_title("(a) Throughput", fontsize=_COMBINED_TITLE_FS)
+    ax_t.set_xticks(data.x)
+    ax_t.set_xticklabels(
+        data.workflow_types, fontsize=_COMBINED_TICK_FS, rotation=0, ha="center"
+    )
+    ax_t.grid(True, alpha=0.3, axis="y")
+
+    ax_n.bar(
+        data.x - width,
+        data.grouped_network,
+        width,
+        label=_legend_label_with_extremes("Most grouped", data.grouped_comp_nums),
+        color=_GROUPED_BAR_COLOR,
+        alpha=0.8,
+    )
+    ax_n.bar(
+        data.x,
+        data.indep_network,
+        width,
+        label=_legend_label_with_extremes("Most ungrouped", data.indep_comp_nums),
+        color=_UNGROUPED_BAR_COLOR,
+        alpha=0.8,
+    )
+    nb3 = ax_n.bar(
+        data.x + width,
+        data.best_hybrid_network,
+        width,
+        label="Best Hybrid",
+        color=_HYBRID_BAR_COLOR,
+        alpha=0.8,
+    )
+    ax_n.bar_label(
+        nb3,
+        labels=_hybrid_bar_labels(
+            data.best_hybrid_network, data.best_hybrid_labels, fmt=".3f"
+        ),
+        padding=4,
+        fontsize=hybrid_lbl_fs,
+    )
+    net_hi = max(
+        data.grouped_network + data.indep_network + data.best_hybrid_network
+    )
+    if net_hi > 0:
+        ax_n.set_ylim(0, net_hi * 1.20)
+
+    ax_n.set_xlabel("Workflow Type", fontsize=_COMBINED_LABEL_FS)
+    ax_n.set_ylabel("Network Transfer per Event (MB)", fontsize=_COMBINED_LABEL_FS)
+    ax_n.set_title("(b) Network efficiency", fontsize=_COMBINED_TITLE_FS)
+    ax_n.set_xticks(data.x)
+    ax_n.set_xticklabels(
+        data.workflow_types, fontsize=_COMBINED_TICK_FS, rotation=0, ha="center"
+    )
+    ax_n.grid(True, alpha=0.3, axis="y")
+
+    _add_combined_figure_legend(fig, ax_t, ncol=3)
+    _save_combined_figure(fig, output_dir, "throughput_network_comparison.png")
+
+
+def plot_throughput_and_network_improvement_combined(
+    data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]],
+    output_dir: str,
+) -> None:
+    """Throughput (left) and network reduction (right) improvement percentages in one row.
+
+    Saves: ``throughput_network_improvement.png``
+    """
+    print("==> Creating combined throughput + network improvement figure (side-by-side)")
+
+    data = _collect_workflow_type_plot_data(data_by_workflow)
+    width = _IMPROVEMENT_BAR_WIDTH
+    bar_lbl_fs = _COMBINED_LEGEND_FS
+
+    fig, (ax_tp, ax_net) = plt.subplots(1, 2, figsize=_COMBINED_FIG_SIZE)
+    _apply_combined_subplot_layout(fig)
+
+    tp_bars1 = ax_tp.bar(
+        data.x - width / 2,
+        data.throughput_improvement_grouped,
+        width,
+        label="Over most grouped",
+        color=_GROUPED_BAR_COLOR,
+        alpha=0.8,
+    )
+    tp_bars2 = ax_tp.bar(
+        data.x + width / 2,
+        data.throughput_improvement_indep,
+        width,
+        label="Over most ungrouped",
+        color=_UNGROUPED_BAR_COLOR,
+        alpha=0.8,
+    )
+    _label_percentage_bars(ax_tp, [tp_bars1, tp_bars2], fontsize=bar_lbl_fs)
+
+    ax_tp.set_xlabel("Workflow Type", fontsize=_COMBINED_LABEL_FS)
+    ax_tp.set_ylabel("Throughput Improvement (%)", fontsize=_COMBINED_LABEL_FS)
+    ax_tp.set_title("(a) Throughput improvement", fontsize=_COMBINED_TITLE_FS)
+    ax_tp.set_xticks(data.x)
+    ax_tp.set_xticklabels(
+        data.workflow_types, fontsize=_COMBINED_TICK_FS, rotation=0, ha="center"
+    )
+    ax_tp.grid(True, alpha=0.3, axis="y")
+    ax_tp.axhline(y=0, color="black", linestyle="--", linewidth=1, alpha=0.5)
+
+    net_bars1 = ax_net.bar(
+        data.x - width / 2,
+        data.network_reduction_grouped,
+        width,
+        label="Over most grouped",
+        color=_GROUPED_BAR_COLOR,
+        alpha=0.8,
+    )
+    net_bars2 = ax_net.bar(
+        data.x + width / 2,
+        data.network_reduction_indep,
+        width,
+        label="Over most ungrouped",
+        color=_UNGROUPED_BAR_COLOR,
+        alpha=0.8,
+    )
+    _label_percentage_bars(ax_net, [net_bars1, net_bars2], fontsize=bar_lbl_fs)
+
+    ax_net.set_xlabel("Workflow Type", fontsize=_COMBINED_LABEL_FS)
+    ax_net.set_ylabel("Network Transfer Reduction (%)", fontsize=_COMBINED_LABEL_FS)
+    ax_net.set_title("(b) Network improvement", fontsize=_COMBINED_TITLE_FS)
+    ax_net.set_xticks(data.x)
+    ax_net.set_xticklabels(
+        data.workflow_types, fontsize=_COMBINED_TICK_FS, rotation=0, ha="center"
+    )
+    ax_net.grid(True, alpha=0.3, axis="y")
+    ax_net.axhline(y=0, color="black", linestyle="--", linewidth=1, alpha=0.5)
+
+    _add_combined_figure_legend(fig, ax_tp, ncol=2)
+    _save_combined_figure(fig, output_dir, "throughput_network_improvement.png")
 
 
 def generate_summary_table(data_by_workflow: Dict[str, Dict[int, Dict[str, Any]]],
@@ -736,10 +767,8 @@ def main():
                 f"best hybrid Const {best_hybrid}"
             )
 
-    plot_throughput_comparison(data_by_workflow, args.output_dir)
-    plot_improvement_percentage(data_by_workflow, args.output_dir)
-    plot_network_efficiency_comparison(data_by_workflow, args.output_dir)
-    plot_network_improvement_percentage(data_by_workflow, args.output_dir)
+    plot_throughput_and_network_combined(data_by_workflow, args.output_dir)
+    plot_throughput_and_network_improvement_combined(data_by_workflow, args.output_dir)
     generate_summary_table(data_by_workflow, args.output_dir)
 
     print("\n" + "="*70)
