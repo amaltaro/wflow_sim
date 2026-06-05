@@ -1087,6 +1087,9 @@ def _get_output_path(input_path: str,
     return str(output_path)
 
 
+DEFAULT_WORKFLOW = 'templates/others/seq_real/seq_real_const_001.json'
+
+
 def parse_arguments():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
@@ -1107,8 +1110,8 @@ def parse_arguments():
     parser.add_argument(
         '--input-workflow-path',
         type=str,
-        default='templates/3tasks_composition_001.json',
-        help='Path to input workflow JSON file (default: templates/3tasks_composition_001.json)'
+        default=DEFAULT_WORKFLOW,
+        help=f'Path to input workflow JSON file (default: {DEFAULT_WORKFLOW})'
     )
     parser.add_argument(
         '--failure-rate',
