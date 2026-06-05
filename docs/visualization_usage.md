@@ -1,7 +1,7 @@
 # Workflow Simulation Visualization
 
-This directory contains tooling to visualize workflow simulation results using pandas, matplotlib,
-and seaborn. The visualizer reads completed simulation outputs from the `results/sim/` directory and
+This directory contains tooling to visualize workflow simulation results using pandas and
+matplotlib. The visualizer reads completed simulation outputs from the `results/sim/` directory and
 produces comparison plots across multiple workflow constructions (JSON files).
 
 ## Overview
@@ -18,14 +18,15 @@ The visualization tool analyzes simulation results and generates plots to help u
 
 ## Requirements
 
-The visualization tools require the following Python packages (already included in `requirements_visualization.txt`):
+The visualization tools require the following Python packages (included in `requirements.txt`):
 
 ```
-matplotlib>=3.5.0
-seaborn>=0.11.0
-pandas>=1.3.0
-numpy>=1.21.0
+matplotlib>=3.7.0
+pandas>=2.0.0
+numpy>=1.24.0
 ```
+
+Install with `make setup` or `pip install -r requirements.txt`.
 
 ## Usage
 

@@ -126,7 +126,7 @@ from src.workflow_simulator import WorkflowSimulator
 from src.job_metrics import JobMetricsCalculator
 
 # Run simulation (failure_rate and data_transfer_rate from parser or pass explicitly)
-simulator = WorkflowSimulator(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
+simulator = WorkflowSimulator(job_failure_rate=0, data_transfer_rate_mb_per_s=100.0)
 result = simulator.simulate_workflow('workflow.json')
 
 # Calculate job statistics

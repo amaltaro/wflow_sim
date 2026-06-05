@@ -53,7 +53,7 @@ python src/workflow_runner.py
 python src/workflow_runner.py --target-wallclock-time 3600 --max-job-slots 10
 
 # Specify custom workflow file
-python src/workflow_runner.py --input-workflow-path templates/3tasks/seq/3tasks_001.json
+python src/workflow_runner.py --input-workflow-path templates/sequential/3tasks/3tasks_composition_001.json
 
 # Simulation only (no metrics)
 python src/workflow_simulator.py --target-wallclock-time 1800
@@ -78,10 +78,10 @@ resource_config = ResourceConfig(
 # Create runner and execute (failure_rate and data_transfer_rate passed explicitly)
 runner = WorkflowRunner(
     resource_config,
-    failure_rate=0,
+    job_failure_rate=0,
     data_transfer_rate_mb_per_s=100.0
 )
-results = runner.run_workflow('templates/3tasks_composition_001.json')
+results = runner.run_workflow('templates/others/seq_real/seq_real_const_001.json')
 
 # Print results
 runner.print_complete_summary(results)
@@ -105,7 +105,7 @@ Both `workflow_runner.py` and `workflow_simulator.py` support comprehensive comm
 
 - `--target-wallclock-time`: Target wallclock time in seconds (default: 43200 = 12 hours)
 - `--max-job-slots`: Maximum number of job slots (-1 for infinite, default: -1)
-- `--input-workflow-path`: Path to input workflow JSON file (default: templates/3tasks_composition_001.json)
+- `--input-workflow-path`: Path to input workflow JSON file (default: templates/others/seq_real/seq_real_const_001.json)
 
 ### Usage Examples
 
@@ -170,12 +170,12 @@ from src.workflow_simulator import WorkflowSimulator, ResourceConfig
 # Create simulator (failure_rate and data_transfer_rate passed explicitly)
 simulator = WorkflowSimulator(
     ResourceConfig(),
-    failure_rate=0,
+    job_failure_rate=0,
     data_transfer_rate_mb_per_s=100.0
 )
 
 # Run simulation
-result = simulator.simulate_workflow('templates/3tasks_composition_001.json')
+result = simulator.simulate_workflow('templates/others/seq_real/seq_real_const_001.json')
 
 # Print simulation summary
 simulator.print_simulation_summary(result)
@@ -192,12 +192,12 @@ from src.workflow_runner import WorkflowRunner
 # Create runner (failure_rate and data_transfer_rate passed explicitly)
 runner = WorkflowRunner(
     resource_config,
-    failure_rate=0,
+    job_failure_rate=0,
     data_transfer_rate_mb_per_s=100.0
 )
 
 # Run complete analysis (simulation + metrics)
-results = runner.run_workflow('templates/3tasks_composition_001.json')
+results = runner.run_workflow('templates/others/seq_real/seq_real_const_001.json')
 
 # Access individual components
 simulation = results['simulation_result']

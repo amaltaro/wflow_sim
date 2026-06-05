@@ -135,7 +135,8 @@ This guide provides comprehensive visualization strategies for analyzing workflo
 ## Installation
 
 ```bash
-pip install -r visualization_requirements.txt
+make setup
+# or: pip install -r requirements.txt
 ```
 
 ## Usage Examples

@@ -152,7 +152,7 @@ The script generates the following outputs in the specified output directory:
 ## Requirements
 
 - Python 3.x
-- Required packages: `matplotlib`, `numpy`, `pandas`, `seaborn`
+- Required packages: `matplotlib`, `numpy`, `pandas`
 - Simulation result JSON files organized in the hierarchical structure:
   ```
   results/sim/others/

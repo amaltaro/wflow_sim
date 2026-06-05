@@ -57,8 +57,8 @@ from src.job_metrics import JobMetricsCalculator
 
 # Run simulation first
 from src.workflow_runner import WorkflowRunner
-runner = WorkflowRunner(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
-results = runner.run_workflow('templates/3tasks_composition_001.json')
+runner = WorkflowRunner(job_failure_rate=0, data_transfer_rate_mb_per_s=100.0)
+results = runner.run_workflow('templates/others/seq_real/seq_real_const_001.json')
 
 # Create calculator and calculate metrics from simulation results
 calculator = WorkflowMetricsCalculator()

@@ -300,7 +300,7 @@ For comprehensive analysis, use:
 ## Requirements
 
 - Python 3.x
-- Required packages: `matplotlib`, `numpy`, `pandas`, `seaborn`
+- Required packages: `matplotlib`, `numpy`, `pandas`
 - Simulation result JSON files organized in the hierarchical structure:
   ```
   results/sim/others/

@@ -4,7 +4,7 @@
 
 [![Tests](https://github.com/amaltaro/wflow_sim/workflows/Run%20Tests/badge.svg)](https://github.com/amaltaro/wflow_sim/actions/workflows/test.yml)
 [![Release Notes](https://github.com/amaltaro/wflow_sim/workflows/Generate%20Release%20Notes/badge.svg)](https://github.com/amaltaro/wflow_sim/actions/workflows/release-notes.yml)
-[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Code Style](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
@@ -77,39 +77,48 @@ DAGFlowSim provides a powerful workflow simulation engine that:
 - **Simulation Results Only**: All metrics work with simulation results (not raw workflow data)
 - **No Redundancy**: Each calculation happens in exactly one place
 
-## Installation
+## Getting Started
 
 ### Prerequisites
 
-- Python 3.8 or higher
-- **networkx** (required for `workflow_builder.py`; simulation modules use only the standard library)
+- **Python 3.10+** (CI uses 3.12)
+- **[uv](https://docs.astral.sh/uv/)** — recommended; the Makefile uses it to manage the `.venv/` environment
 
-### Quick Setup
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/amaltaro/wflow_sim.git
-   cd wflow_sim
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Run the example:**
-   ```bash
-   python examples/metrics_example.py
-   ```
-
-### Optional: Install Testing Dependencies
-
-If you want to run the tests:
+### Clone and set up
 
 ```bash
-pip install -r requirements.txt
-pytest tests/ -v
+git clone https://github.com/amaltaro/wflow_sim.git
+cd wflow_sim
+make setup
 ```
+
+`make setup` creates `.venv/` and installs dependencies from `requirements.txt`.
+
+**Alternative without uv** (same flow as CI):
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Verify everything works
+
+```bash
+make test    # run unit tests (103 tests)
+make run     # single simulation: seq_real const_001, 12h target
+```
+
+Or without Make:
+
+```bash
+uv run pytest tests/ -v
+uv run python -m src.workflow_runner
+```
+
+Simulation results are written under `results/sim/` (mirroring the input template path).
+
+See [DEPENDENCIES.md](DEPENDENCIES.md) for package details.
 
 ## Quick Start
 
@@ -118,17 +127,18 @@ pytest tests/ -v
 The easiest way to run workflow simulations is using the command line interface:
 
 ```bash
-# Basic usage with default settings
-python src/workflow_runner.py
+# Basic usage with default settings (seq_real const_001, 12h)
+uv run python -m src.workflow_runner
 
 # Custom wallclock time and job slots
-python src/workflow_runner.py --target-wallclock-time 3600 --max-job-slots 10
+uv run python -m src.workflow_runner --target-wallclock-time 3600 --max-job-slots 10
 
-# Specify custom workflow file
-python src/workflow_runner.py --input-workflow-path templates/3tasks/seq/3tasks_001.json
+# Specify a different workflow file
+uv run python -m src.workflow_runner \
+  --input-workflow-path templates/sequential/3tasks/3tasks_composition_001.json
 
 # Show all available options
-python src/workflow_runner.py --help
+uv run python -m src.workflow_runner --help
 ```
 
 **Output**: Single-run results go to `results/sim/` mirroring the input path. Batch runs (Makefile) use a unified tree under `results/sim/others/` (see Batch Processing).
@@ -139,9 +149,11 @@ python src/workflow_runner.py --help
 from src.workflow_runner import WorkflowRunner
 from src.workflow_metrics import WorkflowMetricsCalculator
 
+DEFAULT_WORKFLOW = "templates/others/seq_real/seq_real_const_001.json"
+
 # Run simulation and get results (failure_rate and data_transfer_rate from parser or pass explicitly)
-runner = WorkflowRunner(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
-results = runner.run_workflow('templates/3tasks_composition_001.json')
+runner = WorkflowRunner(job_failure_rate=0, data_transfer_rate_mb_per_s=100.0)
+results = runner.run_workflow(DEFAULT_WORKFLOW)
 
 # Calculate metrics from simulation results
 calculator = WorkflowMetricsCalculator()
@@ -154,17 +166,15 @@ calculator.print_metrics()
 ### 3. Run Examples
 
 ```bash
-# Command line example
-python src/workflow_runner.py --target-wallclock-time 1800
-
-# Python API example
-python examples/metrics_example.py
+uv run python examples/metrics_example.py
+uv run python examples/workflow_simulation_example.py
 ```
 
 ### 4. Run Tests
 
 ```bash
-pytest tests/ -v
+make test
+# or: uv run pytest tests/ -v
 ```
 
 ## Command Line Interface
@@ -175,7 +185,7 @@ Both `workflow_runner.py` and `workflow_simulator.py` support command line argum
 
 - `--target-wallclock-time`: Target wallclock time in seconds (default: 43200 = 12 hours)
 - `--max-job-slots`: Maximum number of job slots (-1 for infinite, default: -1)
-- `--input-workflow-path`: Path to input workflow JSON file (default: templates/3tasks_composition_001.json)
+- `--input-workflow-path`: Path to input workflow JSON file (default: templates/others/seq_real/seq_real_const_001.json)
 
 ### Usage Examples
 
@@ -197,6 +207,7 @@ The Makefile provides convenient targets for running batch simulations and gener
 Run simulations and visualizations for all configured use cases with a single command:
 
 ```bash
+make setup    # first time only
 make all
 ```
 
@@ -347,14 +358,10 @@ Simulation JSON output also includes a top-level **`simulation_stats`** object w
 ### Testing
 
 ```bash
-# Install testing dependencies
-pip install -r requirements.txt
+make test
 
-# Run all tests
-pytest tests/ -v
-
-# Run tests with coverage
-pytest tests/ --cov=src --cov-report=html
+# With coverage (requires pytest-cov: uv pip install pytest-cov)
+uv run pytest tests/ --cov=src --cov-report=html
 ```
 
 ### Continuous Integration
