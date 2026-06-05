@@ -36,7 +36,9 @@ def main():
     logging.basicConfig(level=logging.WARNING)
     
     # Set workflow file path
-    workflow_file = Path(__file__).parent.parent / 'templates' / '3tasks_composition_001.json'
+    workflow_file = (
+        Path(__file__).parent.parent / 'templates' / 'others' / 'seq_real' / 'seq_real_const_001.json'
+    )
     print(f"Using workflow file: {workflow_file}")
     
     if not workflow_file.exists():
@@ -57,8 +59,8 @@ def main():
     # Create workflow runner (failure_rate and data_transfer_rate passed explicitly)
     runner = WorkflowRunner(
         resource_config,
-        failure_rate=0,
-        data_transfer_rate_mb_per_s=100.0
+        job_failure_rate=0,
+        data_transfer_rate_mb_per_s=100.0,
     )
     
     # Run simulation

@@ -17,10 +17,14 @@ from workflow_metrics import WorkflowMetricsCalculator
 from workflow_runner import WorkflowRunner
 
 
+DEFAULT_WORKFLOW = (
+    Path(__file__).parent.parent / "templates" / "others" / "seq_real" / "seq_real_const_001.json"
+)
+
+
 def main():
     """Main example function."""
-    # Load the workflow template
-    template_path = Path(__file__).parent.parent / "templates" / "3tasks_composition_001.json"
+    template_path = DEFAULT_WORKFLOW
 
     if not template_path.exists():
         print(f"Template file not found: {template_path}")
@@ -37,7 +41,7 @@ def main():
 
     # Run simulation to get accurate results
     print("\nRunning workflow simulation...")
-    runner = WorkflowRunner(failure_rate=0, data_transfer_rate_mb_per_s=100.0)
+    runner = WorkflowRunner(job_failure_rate=0, data_transfer_rate_mb_per_s=100.0)
     results = runner.run_workflow(template_path)
 
     if not results['success']:
@@ -53,7 +57,7 @@ def main():
     calculator.print_metrics()
 
     # Save metrics to file
-    output_path = Path(__file__).parent.parent / "results" / "3tasks_composition_001_metrics.json"
+    output_path = Path(__file__).parent.parent / "results" / "seq_real_const_001_metrics.json"
     output_path.parent.mkdir(exist_ok=True)
 
     calculator.write_metrics_to_file(output_path)
