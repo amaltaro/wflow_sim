@@ -32,14 +32,17 @@ This repository provides a **Workflow Simulator** that:
 ## Development Commands
 
 ```bash
+# Environment
+make setup          # create .venv and install requirements.txt (requires uv)
+
 # Code quality
 ruff check          # Type-check and lint
 ruff format         # Auto-fix formatting
 
 # Testing
-pytest              # Run all tests
-pytest -v           # Verbose output
-pytest --cov        # With coverage
+make test           # Run all tests via uv
+uv run pytest tests/ -v
+uv run pytest tests/ --cov=src   # requires pytest-cov
 ```
 
 ## Core Development Principles

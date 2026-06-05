@@ -17,14 +17,29 @@ See `requirements.txt` for exact pins.
 
 ## Installation
 
+### Recommended (uv + Makefile)
+
+Requires [uv](https://docs.astral.sh/uv/) and Python 3.10+:
+
 ```bash
+make setup
+```
+
+This creates `.venv/` and runs `uv pip install -r requirements.txt`.
+
+### Alternative (pip, matches CI)
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
 ### Tests
 
 ```bash
-pytest tests/ -v
+make test
+# or: uv run pytest tests/ -v
 ```
 
 **CI** (`.github/workflows/test.yml`) installs `requirements.txt` before `pytest`, so
@@ -34,3 +49,7 @@ everything listed there must cover test imports (including `failure_rate_analysi
 ## Python Version
 
 Use **Python 3.10+** in practice; CI uses **3.12** (see the workflow file).
+
+Analysis and visualization scripts under `scripts/` use the same packages as tests
+(`matplotlib`, `numpy`, `pandas`) — all covered by `requirements.txt`. Run `make setup`
+once before batch targets such as `make visualize-all` or `make all`.

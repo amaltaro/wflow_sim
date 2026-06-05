@@ -1,9 +1,10 @@
 # Makefile for DAGFlowSim Project
 
-# FIXME: This ensures we use the correct Python environment
-PYTHON := /Users/amaltar2/pyenv-3.12/bin/python
-PIP := /Users/amaltar2/pyenv-3.12/bin/pip
-PYTEST := /Users/amaltar2/pyenv-3.12/bin/pytest
+# Python tooling (uv-managed virtual environment in .venv/)
+UV := uv
+PYTHON := $(UV) run python
+PIP := $(UV) pip
+PYTEST := $(UV) run pytest
 
 # Simulation configuration
 # Which workflow family to use for batch targets (sequential = paper default; fork = shorter time grid)
@@ -53,7 +54,7 @@ ALL_USE_CASES := seq_real seq_homo seq_hetero fork_real fork_homo fork_hetero
 .PHONY: help
 help:
 	@echo "Available targets:"
-	@echo "  setup          - Set up the project environment"
+	@echo "  setup          - Create .venv and install dependencies (requires uv)"
 	@echo "  test           - Run tests"
 	@echo "  build-workflows - Build all workflow constructions from generic templates"
 	@echo "  run            - Run single workflow simulation"
@@ -87,17 +88,9 @@ help:
 .PHONY: setup
 setup:
 	@echo "Setting up project environment..."
-	$(PYTHON) -m venv venv
-	venv/bin/pip install --upgrade pip
-	venv/bin/pip install -r requirements.txt
+	$(UV) venv
+	$(PIP) install -r requirements.txt
 	@echo "Environment setup complete!"
-
-# Install visualization dependencies
-.PHONY: setup-viz
-setup-viz:
-	@echo "Installing visualization dependencies..."
-	$(PIP) install -r requirements_visualization.txt
-	@echo "Visualization dependencies installed!"
 
 # Run tests
 .PHONY: test
@@ -379,13 +372,10 @@ all:
 	@echo "Use cases: $(USE_CASES)"
 	@echo "=========================================="
 	@echo ""
-	@echo "Step 1/3: Running simulations (overhead always applied)..."
+	@echo "Step 1/2: Running simulations (overhead always applied)..."
 	@$(MAKE) simulate-all
 	@echo ""
-	@echo "Step 2/3: Installing visualization dependencies..."
-	@$(MAKE) setup-viz
-	@echo ""
-	@echo "Step 3/3: Generating visualizations..."
+	@echo "Step 2/2: Generating visualizations..."
 	@$(MAKE) visualize-all
 	@echo ""
 	@echo "=========================================="
@@ -399,7 +389,7 @@ all:
 .PHONY: clean
 clean:
 	@echo "Cleaning up..."
-	rm -rf venv/
+	rm -rf .venv/
 	rm -rf __pycache__/
 	rm -rf src/__pycache__/
 	rm -rf tests/__pycache__/
