@@ -10,14 +10,13 @@ import logging
 import argparse
 from typing import Dict, List, Any, Optional, Union
 from pathlib import Path
-import time
 
 try:
-    from .workflow_simulator import WorkflowSimulator, ResourceConfig, SimulationResult
-    from .workflow_metrics import WorkflowMetricsCalculator, WorkflowMetrics, compute_simulation_stats
+    from .workflow_simulator import WorkflowSimulator, ResourceConfig, RND_SEED
+    from .workflow_metrics import WorkflowMetricsCalculator, compute_simulation_stats
 except ImportError:
-    from workflow_simulator import WorkflowSimulator, ResourceConfig, SimulationResult
-    from workflow_metrics import WorkflowMetricsCalculator, WorkflowMetrics, compute_simulation_stats
+    from workflow_simulator import WorkflowSimulator, ResourceConfig, RND_SEED
+    from workflow_metrics import WorkflowMetricsCalculator, compute_simulation_stats
 
 # Limit job dumps per group in JSON output to reduce disk usage
 MAX_JOBS_PER_GROUP_IN_OUTPUT = 10
@@ -58,7 +57,8 @@ class WorkflowRunner:
     def __init__(self, resource_config: Optional[ResourceConfig] = None,
                  *,
                  job_failure_rate: int,
-                 data_transfer_rate_mb_per_s: float):
+                 data_transfer_rate_mb_per_s: float,
+                 random_seed: int = RND_SEED):
         """
         Initialize the workflow runner.
 
@@ -68,13 +68,16 @@ class WorkflowRunner:
                 (supply from CLI parser or caller).
             data_transfer_rate_mb_per_s: Network data transfer rate in MB/s for
                 overhead; required, no default (supply from CLI parser or caller).
+            random_seed: Seed for stochastic job-failure draws (default: RND_SEED).
         """
         self.resource_config = resource_config or ResourceConfig()
         self.job_failure_rate = job_failure_rate
+        self.random_seed = int(random_seed)
         self.simulator = WorkflowSimulator(
             self.resource_config,
             job_failure_rate=job_failure_rate,
-            data_transfer_rate_mb_per_s=data_transfer_rate_mb_per_s
+            data_transfer_rate_mb_per_s=data_transfer_rate_mb_per_s,
+            random_seed=self.random_seed,
         )
         self.logger = logging.getLogger(__name__)
 
@@ -134,6 +137,7 @@ class WorkflowRunner:
         print(f"  Composition: {simulation.composition_number}")
         print(f"  Overhead Enabled: {simulation.overhead_enabled}")
         print(f"  Job Failure Rate: {simulation.job_failure_rate:.1f}%")
+        print(f"  Random Seed: {simulation.random_seed}")
         print(f"  Total Events: {simulation.total_events:,}")
         print(f"  Total Groups: {simulation.total_groups}")
         total_logical_jobs = simulation.total_jobs - simulation.total_job_retries
@@ -209,6 +213,7 @@ class WorkflowRunner:
                     'error_message': simulation.error_message,
                     'overhead_enabled': simulation.overhead_enabled,
                     'job_failure_rate': simulation.job_failure_rate,
+                    'random_seed': simulation.random_seed,
                     'actual_job_failure_rate': 0.0,
                     'total_job_retries': simulation.total_job_retries,
                     'jobs_per_group_limit': MAX_JOBS_PER_GROUP_IN_OUTPUT,
@@ -262,6 +267,7 @@ class WorkflowRunner:
                 'error_message': simulation.error_message,
                 'overhead_enabled': simulation.overhead_enabled,
                 'job_failure_rate': simulation.job_failure_rate,
+                'random_seed': simulation.random_seed,
                 'actual_job_failure_rate': _actual_job_failure_rate(simulation.jobs),
                 'total_job_retries': simulation.total_job_retries,
                 'jobs_per_group_limit': MAX_JOBS_PER_GROUP_IN_OUTPUT,
@@ -454,6 +460,13 @@ def parse_arguments():
         help='Network data transfer rate in MB/s for overhead calculation (default: 100.0)'
     )
     parser.add_argument(
+        '--seed',
+        dest='random_seed',
+        type=int,
+        default=RND_SEED,
+        help=f'RNG seed for stochastic job failures (default: {RND_SEED})'
+    )
+    parser.add_argument(
         '--output-base',
         type=str,
         default='results/sim',
@@ -486,7 +499,8 @@ def main():
     runner = WorkflowRunner(
         resource_config,
         job_failure_rate=args.job_failure_rate,
-        data_transfer_rate_mb_per_s=args.data_transfer_rate
+        data_transfer_rate_mb_per_s=args.data_transfer_rate,
+        random_seed=args.random_seed,
     )
     results = runner.run_workflow(args.input_workflow_path)
 

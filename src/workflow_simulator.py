@@ -116,6 +116,7 @@ class SimulationResult:
     overhead_enabled: bool = True  # Whether job overhead was included in calculations
     job_failure_rate: float = 0.0  # Job failure rate percentage used in simulation
     total_job_retries: int = 0  # Total number of retry jobs (jobs with retry_count > 0)
+    random_seed: int = RND_SEED  # RNG seed used for stochastic job failures
 
 
 class WorkflowSimulator:
@@ -132,7 +133,8 @@ class WorkflowSimulator:
     def __init__(self, resource_config: Optional[ResourceConfig] = None,
                  *,
                  job_failure_rate: int,
-                 data_transfer_rate_mb_per_s: float):
+                 data_transfer_rate_mb_per_s: float,
+                 random_seed: int = RND_SEED):
         """
         Initialize the workflow simulator.
 
@@ -146,17 +148,18 @@ class WorkflowSimulator:
                 (supply from CLI parser or caller).
             data_transfer_rate_mb_per_s: Network data transfer rate in MB/s for
                 overhead; required, no default (supply from CLI parser or caller).
+            random_seed: Seed for stochastic job-failure draws (default: RND_SEED).
         """
         self.resource_config = resource_config or ResourceConfig()
         self.job_failure_rate = float(job_failure_rate)
+        self.random_seed = int(random_seed)
 
         # Validate job failure rate (protect against 100% which prevents convergence)
         if self.job_failure_rate >= 100.0:
             raise ValueError("Failure rate must be less than 100% to allow workflow convergence")
 
-        # Set up random seed for reproducibility (hard-coded)
-        random.seed(RND_SEED)
-        self.random = random
+        # Instance RNG so concurrent/repeated runs do not share global state
+        self.random = random.Random(self.random_seed)
 
         self.job_metrics_calculator = JobMetricsCalculator(
             taskset_overhead_seconds=TASKSET_OVERHEAD_SECONDS,
@@ -223,7 +226,8 @@ class WorkflowSimulator:
                 error_message=str(e),
                 overhead_enabled=True,
                 job_failure_rate=self.job_failure_rate,
-                total_job_retries=0
+                total_job_retries=0,
+                random_seed=self.random_seed,
             )
 
         # Simulate workflow execution
@@ -247,7 +251,8 @@ class WorkflowSimulator:
                 success=True,
                 overhead_enabled=True,
                 job_failure_rate=self.job_failure_rate,
-                total_job_retries=total_retry_jobs
+                total_job_retries=total_retry_jobs,
+                random_seed=self.random_seed,
             )
 
             self.logger.info(f"Workflow simulation completed successfully. "
@@ -271,7 +276,8 @@ class WorkflowSimulator:
                 error_message=str(e),
                 overhead_enabled=True,
                 job_failure_rate=self.job_failure_rate,
-                total_job_retries=0
+                total_job_retries=0,
+                random_seed=self.random_seed,
             )
 
     def _extract_tasksets(self, workflow_data: Dict[str, Any]) -> List[TasksetInfo]:
@@ -983,6 +989,7 @@ class WorkflowSimulator:
         print(f"Total Wall Time: {result.total_wall_time:.2f} seconds ({result.total_wall_time/3600:.2f} hours)")
         print(f"Total Turnaround Time: {result.total_turnaround_time:.2f} seconds ({result.total_turnaround_time/3600:.2f} hours)")
         print(f"Job Failure Rate: {result.job_failure_rate:.1f}%")
+        print(f"Random Seed: {result.random_seed}")
         print(f"Success: {result.success}")
 
         if result.error_message:
@@ -1126,6 +1133,13 @@ def parse_arguments():
         default=100.0,
         help='Network data transfer rate in MB/s for overhead calculation (default: 100.0)'
     )
+    parser.add_argument(
+        '--seed',
+        dest='random_seed',
+        type=int,
+        default=RND_SEED,
+        help=f'RNG seed for stochastic job failures (default: {RND_SEED})'
+    )
     return parser.parse_args()
 
 
@@ -1153,7 +1167,8 @@ def main():
     simulator = WorkflowSimulator(
         resource_config,
         job_failure_rate=args.job_failure_rate,
-        data_transfer_rate_mb_per_s=args.data_transfer_rate
+        data_transfer_rate_mb_per_s=args.data_transfer_rate,
+        random_seed=args.random_seed,
     )
     result = simulator.simulate_workflow(args.input_workflow_path)
 
