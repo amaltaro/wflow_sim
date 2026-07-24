@@ -154,6 +154,53 @@ Multi-metric comparison and weighted score for the 16 workflow constructions in 
 
 **See**: [Construction metrics analysis](construction_metrics_analysis.md) for full documentation (metrics, normalization, score formula, outputs, usage, and Makefile target).
 
+### `run_multiseed_simulations.py`
+
+Runs all `*_const_*.json` constructions for **one** scenario across **N** RNG
+seeds (seed = run index `0 .. N-1`). Each seed is applied to every construction
+before moving to the next seed. Invokes `python -m src.workflow_runner` (no
+Makefile changes).
+
+**Default scenario** (paper rebuttal figure): `seq_real`, 12h, fr5, 100 MB/s,
+10 runs.
+
+```bash
+# Defaults: seq_real / 12h / fr5 / 100MBps / 10 seeds
+python scripts/run_multiseed_simulations.py
+
+# Smaller smoke run
+python scripts/run_multiseed_simulations.py --runs 2
+```
+
+**Output**:
+- `results/sim/rebuttal/campaign.json` — campaign parameters and seed list
+- `results/sim/rebuttal/seed{S}/others/<use_case>/<time>/fr<fr>/<rate>/*.json`
+
+Template paths must live under the repository so `--output-base` nesting works.
+
+### `run_multiseed_visualization.py`
+
+Aggregates multi-seed results under `results/sim/rebuttal/seed*/` by construction,
+then writes comparison PNGs with **mean ± SEM** error bars when failure rate > 0
+(and N > 1). The throughput vs remote-write scatter uses **mean** points only
+(no SEM). Reuses layout helpers from `workflow_visualization.py`.
+
+```bash
+# Defaults: input results/sim/rebuttal → results/vis/rebuttal/<use_case>/...
+python scripts/run_multiseed_visualization.py
+
+python scripts/run_multiseed_visualization.py \
+  --input-root results/sim/rebuttal \
+  --output-dir results/vis/rebuttal/seq_real/12h/fr5/100MBps
+```
+
+**Outputs** (same names as the single-run visualizer where applicable):
+- `processing_efficiency_comparison.png`
+- `performance_vs_remote_write_comparison.png`
+- `turnaround_time_comparison.png`
+- `resource_utilization_comparison.png`, `resource_cost_comparison.png`
+- `multiseed_aggregation_summary.csv`
+
 ## Workflow
 
 Typical workflow for analyzing real vs simulated data:
