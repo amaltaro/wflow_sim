@@ -115,10 +115,12 @@ python -m src.workflow_runner \
   --input-workflow-path templates/others/seq_real/seq_real_const_001.json \
   --target-wallclock-time 43200 \
   --failure-rate 5 \
-  --data-transfer-rate 100
+  --data-transfer-rate 100 \
+  --seed 42
 
 # Results will be saved to:
 # results/sim/others/seq_real/12h/fr5/100MBps/seq_real_const_001.json
+# (random_seed is recorded inside simulation_result; it does not change the path)
 ```
 
 ## Migration from Old Structure

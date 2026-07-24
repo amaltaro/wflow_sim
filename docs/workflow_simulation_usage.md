@@ -106,6 +106,10 @@ Both `workflow_runner.py` and `workflow_simulator.py` support comprehensive comm
 - `--target-wallclock-time`: Target wallclock time in seconds (default: 43200 = 12 hours)
 - `--max-job-slots`: Maximum number of job slots (-1 for infinite, default: -1)
 - `--input-workflow-path`: Path to input workflow JSON file (default: templates/others/seq_real/seq_real_const_001.json)
+- `--failure-rate`: Job failure rate as percentage (0-99, default: 0)
+- `--data-transfer-rate`: Network data transfer rate in MB/s (default: 100.0)
+- `--seed`: RNG seed for stochastic job failures (default: 42); written to
+  `simulation_result.random_seed` in the output JSON
 
 ### Usage Examples
 
@@ -113,6 +117,12 @@ Both `workflow_runner.py` and `workflow_simulator.py` support comprehensive comm
 # Show help for all options
 python src/workflow_runner.py --help
 python src/workflow_simulator.py --help
+
+# Reproducible run with an explicit seed
+python -m src.workflow_runner \
+  --input-workflow-path templates/others/seq_real/seq_real_const_001.json \
+  --failure-rate 5 \
+  --seed 7
 ```
 
 ### Output Structure

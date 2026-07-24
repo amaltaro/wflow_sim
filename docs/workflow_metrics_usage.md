@@ -205,7 +205,8 @@ Success Rate: 1.00
 When results are written by `WorkflowRunner.write_complete_results()`, the file contains three top-level keys:
 
 - **`metrics`**: Workflow metrics (including the aggregated job metrics above). Summary keys include `total_job_overhead_secs`, `total_job_overhead_cpu_time`, and other workflow-level fields.
-- **`simulation_result`**: Raw simulation data (groups, jobs sample, `failure_rate` intended, `actual_failure_rate` observed, `total_job_retries`, etc.).
+- **`simulation_result`**: Raw simulation data (groups, jobs sample, `job_failure_rate`
+  intended, `actual_job_failure_rate` observed, `random_seed`, `total_job_retries`, etc.).
 - **`simulation_stats`**: Distribution statistics over all jobs for use in visualizations. Each key (e.g. `job_overhead_secs`, `job_overhead_cpu_time`, `batch_size`, `total_write_local_mb`, `total_write_remote_mb`, `total_read_local_mb`, `total_read_remote_mb`) has `mean`, `std`, `median`, `min`, `max`, and `n`, computed from the full job list.
 
 Example `metrics` summary keys:
