@@ -196,6 +196,42 @@ class TestWorkflowRunner:
         assert "Memory Occupancy: 81.25%" in captured.out
         assert "Event Throughput: 1.000000 events/CPU-second" in captured.out
         assert "Network Transfer per Event: 0.100000 MB/event" in captured.out
+        assert "Random Seed: 42" in captured.out
+
+    def test_run_workflow_custom_seed_in_result(self):
+        """Custom seed is stored on the simulation result."""
+        workflow_data = {
+            "Comments": "Test Workflow",
+            "NumTasks": 1,
+            "RequestNumEvents": 1000,
+            "Taskset1": {
+                "Memory": 2000,
+                "Multicore": 1,
+                "TimePerEvent": 10,
+                "SizePerEvent": 200,
+                "GroupName": "group_1",
+            },
+            "CompositionNumber": 1,
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(workflow_data, f)
+            temp_file = f.name
+
+        try:
+            runner = WorkflowRunner(
+                ResourceConfig(target_wallclock_time=3600.0),
+                job_failure_rate=0,
+                data_transfer_rate_mb_per_s=100.0,
+                random_seed=77,
+            )
+            results = runner.run_workflow(temp_file)
+            assert results['success'] is True
+            assert results['simulation_result'].random_seed == 77
+            assert runner.random_seed == 77
+            assert runner.simulator.random_seed == 77
+        finally:
+            Path(temp_file).unlink()
 
     def test_print_complete_summary_failure(self, capsys):
         """Test printing complete summary for failed workflow."""
@@ -338,6 +374,8 @@ class TestWorkflowRunner:
         assert sim_result['success'] is True
         assert sim_result['error_message'] is None
         assert 'job_failure_rate' in sim_result
+        assert 'random_seed' in sim_result
+        assert sim_result['random_seed'] == 42
         assert 'actual_job_failure_rate' in sim_result
         assert 'total_job_retries' in sim_result
         assert sim_result['groups'][0]['group_id'] == "group_1"

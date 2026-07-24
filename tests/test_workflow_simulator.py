@@ -437,6 +437,77 @@ class TestWorkflowSimulator:
         finally:
             Path(temp_file).unlink()
 
+    def test_random_seed_default_and_custom(self):
+        """Default seed is RND_SEED; custom seed is stored on the simulator."""
+        from workflow_simulator import RND_SEED
+
+        default_sim = WorkflowSimulator(
+            job_failure_rate=0, data_transfer_rate_mb_per_s=100.0
+        )
+        assert default_sim.random_seed == RND_SEED
+
+        custom_sim = WorkflowSimulator(
+            job_failure_rate=5,
+            data_transfer_rate_mb_per_s=100.0,
+            random_seed=123,
+        )
+        assert custom_sim.random_seed == 123
+
+    def test_random_seed_reproducibility_and_divergence(self):
+        """Same seed reproduces failures; different seeds can diverge at fr>0."""
+        workflow_data = {
+            "Comments": "Seed reproducibility workflow",
+            "NumTasks": 1,
+            "RequestNumEvents": 50000,
+            "Taskset1": {
+                "Memory": 2000,
+                "Multicore": 1,
+                "TimePerEvent": 10,
+                "SizePerEvent": 200,
+                "GroupName": "group_1",
+            },
+            "CompositionNumber": 1,
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(workflow_data, f)
+            temp_file = f.name
+
+        try:
+            config = ResourceConfig(target_wallclock_time=3600.0)
+            result_a1 = WorkflowSimulator(
+                config,
+                job_failure_rate=25,
+                data_transfer_rate_mb_per_s=100.0,
+                random_seed=7,
+            ).simulate_workflow(temp_file)
+            result_a2 = WorkflowSimulator(
+                config,
+                job_failure_rate=25,
+                data_transfer_rate_mb_per_s=100.0,
+                random_seed=7,
+            ).simulate_workflow(temp_file)
+            result_b = WorkflowSimulator(
+                config,
+                job_failure_rate=25,
+                data_transfer_rate_mb_per_s=100.0,
+                random_seed=99,
+            ).simulate_workflow(temp_file)
+
+            assert result_a1.success and result_a2.success and result_b.success
+            assert result_a1.random_seed == 7
+            assert result_a2.random_seed == 7
+            assert result_b.random_seed == 99
+            assert result_a1.total_job_retries == result_a2.total_job_retries
+            assert result_a1.total_jobs == result_a2.total_jobs
+            # With enough jobs and a high failure rate, distinct seeds should differ
+            assert (
+                result_a1.total_job_retries != result_b.total_job_retries
+                or result_a1.total_jobs != result_b.total_jobs
+            )
+        finally:
+            Path(temp_file).unlink()
+
 
 if __name__ == "__main__":
     pytest.main([__file__])
