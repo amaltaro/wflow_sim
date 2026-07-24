@@ -1,0 +1,41 @@
+{
+  "use_case": "seq_real",
+  "templates_dir": "/Users/amalta2/Master/wflow_sim/templates/others/seq_real",
+  "constructions": [
+    "seq_real_const_001.json",
+    "seq_real_const_002.json",
+    "seq_real_const_003.json",
+    "seq_real_const_004.json",
+    "seq_real_const_005.json",
+    "seq_real_const_006.json",
+    "seq_real_const_007.json",
+    "seq_real_const_008.json",
+    "seq_real_const_009.json",
+    "seq_real_const_010.json",
+    "seq_real_const_011.json",
+    "seq_real_const_012.json",
+    "seq_real_const_013.json",
+    "seq_real_const_014.json",
+    "seq_real_const_015.json",
+    "seq_real_const_016.json"
+  ],
+  "target_wallclock_time": 43200,
+  "job_failure_rate": 5,
+  "data_transfer_rate_mb_per_s": 100.0,
+  "max_job_slots": -1,
+  "runs": 10,
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "output_root": "results/sim/rebuttal",
+  "output_layout": "{output_root}/seed{seed}/others/<use_case>/<time>/fr<fr>/<rate>/<construction>.json"
+}
