@@ -158,18 +158,14 @@ Multi-metric comparison and weighted score for the 16 workflow constructions in 
 
 Runs all `*_const_*.json` constructions for **one** scenario across **N** RNG
 seeds (seed = run index `0 .. N-1`). Each seed is applied to every construction
-before moving to the next seed. Invokes `python -m src.workflow_runner` (no
-Makefile changes).
+before moving to the next seed. Invokes `python -m src.workflow_runner`.
 
 **Default scenario** (paper rebuttal figure): `seq_real`, 12h, fr5, 100 MB/s,
 10 runs.
 
 ```bash
 # Defaults: seq_real / 12h / fr5 / 100MBps / 10 seeds
-python scripts/run_multiseed_simulations.py
-
-# Smaller smoke run
-python scripts/run_multiseed_simulations.py --runs 2
+python scripts/run_multiseed_simulations.py --runs 10
 ```
 
 **Output**:

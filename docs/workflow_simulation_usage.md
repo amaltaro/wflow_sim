@@ -108,8 +108,7 @@ Both `workflow_runner.py` and `workflow_simulator.py` support comprehensive comm
 - `--input-workflow-path`: Path to input workflow JSON file (default: templates/others/seq_real/seq_real_const_001.json)
 - `--failure-rate`: Job failure rate as percentage (0-99, default: 0)
 - `--data-transfer-rate`: Network data transfer rate in MB/s (default: 100.0)
-- `--seed`: RNG seed for stochastic job failures (default: 42); written to
-  `simulation_result.random_seed` in the output JSON
+- `--seed`: RNG seed for stochastic job failures (default: 42)
 
 ### Usage Examples
 
