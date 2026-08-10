@@ -113,11 +113,18 @@ def _io_patterns_horizontal_legend_below(fig: plt.Figure, ax_bottom: plt.Axes, n
     )
 
 
-def _resource_util_panel_center_banner(ax: plt.Axes, text: str, accent: str) -> None:
-    """Centered ribbon label in axes coordinates (replaces a separate subplot title)."""
+def _resource_util_panel_center_banner(
+    ax: plt.Axes,
+    text: str,
+    accent: str,
+    *,
+    x: float = 0.5,
+    y: float = 0.5,
+) -> None:
+    """Ribbon label in axes coordinates (default: panel center)."""
     ax.text(
-        0.5,
-        0.5,
+        x,
+        y,
         text,
         transform=ax.transAxes,
         ha="center",
@@ -479,10 +486,10 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
 
     Writes two PNGs:
 
-    1. ``resource_utilization_comparison.png`` — network, memory, and CPU utilization
-       bar charts in one column (top → bottom), shared x-axis, same width as I/O comparison
-       plots; each panel uses a **center banner** (``Network`` / ``Memory`` / ``CPU``) instead
-       of a matplotlib title. Y tick labels use one decimal place on all three panels;
+    1. ``resource_utilization_comparison.png`` — 2×1 stack: network (top), then
+       **Memory + CPU** utilization as grouped bars on a shared 0–1 ratio axis
+       (bottom). Network keeps a center banner; the ratio panel uses a legend.
+       Same width as I/O comparison plots; y tick labels use one decimal place;
        y-axis titles are aligned with ``fig.align_ylabels``.
     2. ``resource_cost_comparison.png`` — total CPU cores and total memory (GB), dual y-axis.
     """
@@ -554,11 +561,13 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     wc_xticks = _comparison_xtick_labels(n_plot, custom_labels)
     x = np.arange(n_plot)
 
-    # --- 1) Network, memory, CPU utilization (3×1, shared x) ---
-    fig_u, (ax_n, ax_m, ax_c) = plt.subplots(
-        3,
+    # --- 1) Network + merged Memory/CPU utilization (2×1, shared x) ---
+    # Slightly shorter than the old 3-panel stack (one fewer row).
+    fig_h = RESOURCE_UTIL_STACK_FIG_H_IN * (2.0 / 3.0)
+    fig_u, (ax_n, ax_u) = plt.subplots(
+        2,
         1,
-        figsize=(fig_w, RESOURCE_UTIL_STACK_FIG_H_IN),
+        figsize=(fig_w, fig_h),
         layout="constrained",
         sharex=True,
     )
@@ -572,26 +581,34 @@ def plot_resource_utilization(all_simulation_data: List[Dict],
     ax_n.tick_params(axis="x", labelbottom=False)
     _resource_util_panel_center_banner(ax_n, "Network", "#9467bd")
 
-    ax_m.bar(x, memory_utilization, width=RESOURCE_UTIL_BAR_DATA_W, color="#ff7f0e", alpha=0.7)
-    ax_m.set_ylabel("Memory Utilization Ratio")
-    ax_m.set_ylim(bottom=0.0)
-    ax_m.yaxis.set_major_formatter(util_tick_fmt)
-    ax_m.grid(True, alpha=0.3)
-    ax_m.tick_params(axis="x", labelbottom=False)
-    _resource_util_panel_center_banner(ax_m, "Memory", "#ff7f0e")
+    pair_w = RESOURCE_UTIL_BAR_DATA_W / 2.0
+    ax_u.bar(
+        x - pair_w / 2.0,
+        memory_utilization,
+        pair_w,
+        color="#ff7f0e",
+        alpha=0.7,
+    )
+    ax_u.bar(
+        x + pair_w / 2.0,
+        cpu_utilization,
+        pair_w,
+        color="#8c564b",
+        alpha=0.7,
+    )
+    ax_u.set_xlabel("Workflow Construction")
+    ax_u.set_ylabel("Utilization Ratio")
+    ax_u.set_xticks(x)
+    ax_u.set_xticklabels(wc_xticks, rotation=0, ha="center")
+    ax_u.set_ylim(0.0, 1.05)
+    ax_u.yaxis.set_major_formatter(util_tick_fmt)
+    ax_u.grid(True, alpha=0.3)
+    # Side-by-side banners (same mid-height, spaced) instead of a legend
+    _resource_util_panel_center_banner(ax_u, "Memory", "#ff7f0e", x=0.36)
+    _resource_util_panel_center_banner(ax_u, "CPU", "#8c564b", x=0.64)
+    _set_comparison_xlim(ax_u, n_plot, RESOURCE_UTIL_BAR_DATA_W)
 
-    ax_c.bar(x, cpu_utilization, width=RESOURCE_UTIL_BAR_DATA_W, color="#8c564b", alpha=0.7)
-    ax_c.set_xlabel("Workflow Construction")
-    ax_c.set_ylabel("CPU Utilization Ratio")
-    ax_c.set_xticks(x)
-    ax_c.set_xticklabels(wc_xticks, rotation=0, ha="center")
-    ax_c.set_ylim(bottom=0.0)
-    ax_c.yaxis.set_major_formatter(util_tick_fmt)
-    ax_c.grid(True, alpha=0.3)
-    _resource_util_panel_center_banner(ax_c, "CPU", "#8c564b")
-    _set_comparison_xlim(ax_c, n_plot, RESOURCE_UTIL_BAR_DATA_W)
-
-    fig_u.align_ylabels([ax_n, ax_m, ax_c])
+    fig_u.align_ylabels([ax_n, ax_u])
 
     fname_u = "resource_utilization_comparison.png"
     fig_u.savefig(os.path.join(output_dir, fname_u))
