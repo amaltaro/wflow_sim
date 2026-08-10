@@ -178,9 +178,9 @@ def plot_group_overview(
 
     ax.set_xticks(
         range(len(matrix.taskset_names)),
-        labels=matrix.taskset_names,
-        rotation=45,
-        ha="right",
+        labels=[f"T{_taskset_index(name)}" for name in matrix.taskset_names],
+        rotation=0,
+        ha="center",
     )
     ax.set_yticks(
         range(len(matrix.composition_numbers)),
