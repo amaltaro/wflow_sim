@@ -938,10 +938,11 @@ def plot_turnaround_time_comparison(
     grouped_comp: int,
     independent_comp: int,
 ) -> None:
-    """Plot turnaround time for extremes and best hybrid per target job length.
+    """Plot workflow makespan for extremes and best hybrid per target job length.
 
-    Same grouped bar layout as best_hybrid_comparison. Time is converted from seconds
-    to hours (or days if max >= 24h) for readability.
+    Uses ``total_turnaround_time`` (metric name unchanged). Same grouped bar layout
+    as best_hybrid_comparison. Time is converted from seconds to hours (or days if
+    max >= 24h) for readability.
 
     Args:
         data_by_composition: Dictionary mapping composition_number to metrics list
@@ -950,7 +951,7 @@ def plot_turnaround_time_comparison(
         grouped_comp: Most grouped composition
         independent_comp: Most ungrouped composition
     """
-    print(f"==> Creating turnaround time comparison plot")
+    print("==> Creating workflow makespan comparison plot")
 
     all_target_lengths = set()
     for comp_data in data_by_composition.values():
@@ -1062,8 +1063,8 @@ def plot_turnaround_time_comparison(
                    label, ha='center', va='bottom', fontsize=8, style='italic')
 
     ax.set_xlabel("Target Job Length", fontsize=12)
-    ax.set_ylabel(f"Turnaround Time ({unit})", fontsize=12)
-    ax.set_title("Turnaround Time: Best Hybrid vs. Extremes", fontsize=14)
+    ax.set_ylabel(f"Makespan ({unit})", fontsize=12)
+    ax.set_title("Workflow Makespan: Best Hybrid vs. Extremes", fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels(target_lengths)
     apply_truncated_legend(
