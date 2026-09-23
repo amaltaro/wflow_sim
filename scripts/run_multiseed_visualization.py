@@ -26,6 +26,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import FormatStrFormatter
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -391,8 +392,8 @@ def plot_turnaround_time(
         error_kw={"elinewidth": 1.0, "capthick": 1.0},
     )
     ax.set_xlabel("Workflow Construction")
-    ax.set_ylabel("Turnaround Time (hours)")
-    title = "Workflow Turnaround Time by Composition"
+    ax.set_ylabel("Makespan (hours)")
+    title = "Workflow Makespan"
     if draw_error_bars:
         title += f" (mean ± SEM, N={n_runs})"
     ax.set_title(title)
@@ -419,7 +420,11 @@ def plot_resource_utilization(
     draw_error_bars: bool,
     n_runs: int,
 ) -> Tuple[Path, Path]:
-    """Resource util stack + cost dual-axis plots with optional SEM bars."""
+    """Resource util stack + cost dual-axis plots with optional SEM bars.
+
+    Utilization figure matches ``workflow_visualization.plot_resource_utilization``:
+    2×1 stack with Network on top and Memory+CPU grouped bars below.
+    """
     net_mean, net_sem = _metric_arrays(aggregated, "network_transfer_mb_per_event")
     mem_mean, mem_sem = _metric_arrays(aggregated, "memory_occupancy")
     cpu_mean, cpu_sem = _metric_arrays(aggregated, "cpu_utilization")
@@ -433,50 +438,76 @@ def plot_resource_utilization(
     width = RESOURCE_UTIL_BAR_DATA_W
     fig_w = _comparison_figure_width_inches(n_plot, bar_width=width)
     wc_xticks = _comparison_xtick_labels(n_plot)
+    util_tick_fmt = FormatStrFormatter("%.1f")
 
-    fig_u, axes = plt.subplots(
-        3,
+    # --- Utilization: Network + merged Memory/CPU (2×1) ---
+    fig_h = RESOURCE_UTIL_STACK_FIG_H_IN * (2.0 / 3.0)
+    fig_u, (ax_n, ax_u) = plt.subplots(
+        2,
         1,
-        figsize=(fig_w, RESOURCE_UTIL_STACK_FIG_H_IN),
+        figsize=(fig_w, fig_h),
         sharex=True,
         layout="constrained",
     )
-    panels = (
-        (axes[0], net_mean, net_sem, "Network transfer per event (MB)", "Network", "#1f77b4"),
-        (axes[1], mem_mean, mem_sem, "Memory occupancy ratio", "Memory", "#ff7f0e"),
-        (axes[2], cpu_mean, cpu_sem, "CPU utilization ratio", "CPU", "#2ca02c"),
-    )
-    for ax, means, sems, ylabel, banner, color in panels:
-        ax.bar(
-            x,
-            means,
-            width,
-            yerr=_yerr_or_none(sems, draw_error_bars),
-            color=color,
-            alpha=0.75,
-            capsize=3 if draw_error_bars else 0,
-            error_kw={"elinewidth": 1.0, "capthick": 1.0},
-        )
-        ax.set_ylabel(ylabel)
-        _resource_util_panel_center_banner(ax, banner, color)
-        ax.grid(True, axis="y", alpha=0.3)
-        if banner in ("Memory", "CPU"):
-            ax.set_ylim(0, 1)
-        else:
-            lo, hi = _ylim_from_mean_err(
-                means, sems, draw_err=draw_error_bars, clamp_non_negative=True
-            )
-            ax.set_ylim(lo, hi)
-        _set_comparison_xlim(ax, n_plot, width)
 
-    axes[2].set_xlabel("Workflow Construction")
-    axes[2].set_xticks(x)
-    axes[2].set_xticklabels(wc_xticks, rotation=0, ha="center")
+    ax_n.bar(
+        x,
+        net_mean,
+        width,
+        yerr=_yerr_or_none(net_sem, draw_error_bars),
+        color="#9467bd",
+        alpha=0.7,
+        capsize=3 if draw_error_bars else 0,
+        error_kw={"elinewidth": 1.0, "capthick": 1.0},
+    )
+    ax_n.set_ylabel("Network per Event (MB)")
+    ax_n.yaxis.set_major_formatter(util_tick_fmt)
+    ax_n.grid(True, alpha=0.3)
+    ax_n.tick_params(axis="x", labelbottom=False)
+    _resource_util_panel_center_banner(ax_n, "Network", "#9467bd")
+    lo, hi = _ylim_from_mean_err(
+        net_mean, net_sem, draw_err=draw_error_bars, clamp_non_negative=True
+    )
+    ax_n.set_ylim(lo, hi)
+    _set_comparison_xlim(ax_n, n_plot, width)
+
+    pair_w = RESOURCE_UTIL_BAR_DATA_W / 2.0
+    ax_u.bar(
+        x - pair_w / 2.0,
+        mem_mean,
+        pair_w,
+        yerr=_yerr_or_none(mem_sem, draw_error_bars),
+        color="#ff7f0e",
+        alpha=0.7,
+        capsize=3 if draw_error_bars else 0,
+        error_kw={"elinewidth": 1.0, "capthick": 1.0},
+    )
+    ax_u.bar(
+        x + pair_w / 2.0,
+        cpu_mean,
+        pair_w,
+        yerr=_yerr_or_none(cpu_sem, draw_error_bars),
+        color="#8c564b",
+        alpha=0.7,
+        capsize=3 if draw_error_bars else 0,
+        error_kw={"elinewidth": 1.0, "capthick": 1.0},
+    )
+    ax_u.set_xlabel("Workflow Construction")
+    ax_u.set_ylabel("Utilization Ratio")
+    ax_u.set_xticks(x)
+    ax_u.set_xticklabels(wc_xticks, rotation=0, ha="center")
+    ax_u.set_ylim(0.0, 1.05)
+    ax_u.yaxis.set_major_formatter(util_tick_fmt)
+    ax_u.grid(True, alpha=0.3)
+    _resource_util_panel_center_banner(ax_u, "Memory", "#ff7f0e", x=0.36)
+    _resource_util_panel_center_banner(ax_u, "CPU", "#8c564b", x=0.64)
+    _set_comparison_xlim(ax_u, n_plot, RESOURCE_UTIL_BAR_DATA_W)
+
     title = "Resource Utilization"
     if draw_error_bars:
         title += f" (mean ± SEM, N={n_runs})"
     fig_u.suptitle(title)
-    fig_u.align_ylabels(axes)
+    fig_u.align_ylabels([ax_n, ax_u])
 
     out_u = output_dir / "resource_utilization_comparison.png"
     fig_u.savefig(out_u)
